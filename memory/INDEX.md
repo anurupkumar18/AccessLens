@@ -46,4 +46,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0038-part1-hardening.md`
+- `episodic/0039-part1-contract-gaps.md`

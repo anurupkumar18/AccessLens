@@ -19,7 +19,79 @@ export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ ...LiveEventBase, type:z.literal('source.unmatched') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('session.ended') }).strict(),
 ]);
-export const SessionMessageSchema = z.discriminatedUnion('kind',[z.object({kind:z.literal('event'),event:LiveEventSchema}),z.object({kind:z.literal('join'),sessionId:z.string().min(1),role:z.enum(['instructor','student'])})]);
-export type AccessPack=z.infer<typeof AccessPackSchema>; export type LiveEvent=z.infer<typeof LiveEventSchema>; export type SessionMessage=z.infer<typeof SessionMessageSchema>;
-export interface SessionClient { send(event:LiveEvent):void; subscribe(listener:(event:LiveEvent)=>void):()=>void; }
-export class InMemorySessionClient implements SessionClient { private listeners=new Set<(e:LiveEvent)=>void>(); send(event:LiveEvent){LiveEventSchema.parse(event); this.listeners.forEach(l=>l(event));} subscribe(listener:(e:LiveEvent)=>void){this.listeners.add(listener);return()=>this.listeners.delete(listener);} }
+export const SessionMessageSchema = z.discriminatedUnion('kind',[
+  z.object({kind:z.literal('create'), sessionId:z.string().min(1)}).strict(),
+  z.object({kind:z.literal('join'), sessionId:z.string().min(1), role:z.enum(['instructor','student'])}).strict(),
+  z.object({kind:z.literal('close'), sessionId:z.string().min(1)}).strict(),
+  z.object({kind:z.literal('event'), event:LiveEventSchema}).strict(),
+]);
+
+// Signed instructor/student role capability (SYSTEM_DESIGN.md "Allowed MVP
+// data"; A6). Part 1 owns the shape; Part 4 (AWS) owns issuing and signing
+// the opaque `token`. Never carries identity, diagnosis, or behavioral data.
+export const RoleCapabilitySchema = z.object({
+  schemaVersion: z.literal('1.0'),
+  sessionId: z.string().min(1),
+  role: z.enum(['instructor','student']),
+  issuedAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  token: z.string().min(1),
+}).strict();
+
+export type AccessPack=z.infer<typeof AccessPackSchema>; export type LiveEvent=z.infer<typeof LiveEventSchema>; export type SessionMessage=z.infer<typeof SessionMessageSchema>; export type RoleCapability=z.infer<typeof RoleCapabilitySchema>;
+
+// SessionClient freezes the shape from PARALLEL_WORKSTREAMS.md's contract
+// freeze: create, join, send, subscribe, and close. Part 4 replaces
+// InMemorySessionClient with a real WebSocket-backed implementation behind
+// this same interface; Parts 2 and 3 only ever depend on the interface.
+export interface SessionClient {
+  create(sessionId: string): Promise<RoleCapability>;
+  join(sessionId: string): Promise<RoleCapability>;
+  send(event: LiveEvent): void;
+  subscribe(listener: (event: LiveEvent) => void): () => void;
+  close(): void;
+}
+
+export class InMemorySessionClient implements SessionClient {
+  private listeners = new Set<(e: LiveEvent) => void>();
+  private closed = false;
+
+  async create(sessionId: string): Promise<RoleCapability> {
+    return this.issueCapability(sessionId, 'instructor');
+  }
+
+  async join(sessionId: string): Promise<RoleCapability> {
+    return this.issueCapability(sessionId, 'student');
+  }
+
+  send(event: LiveEvent): void {
+    if (this.closed) throw new Error('SessionClient is closed');
+    LiveEventSchema.parse(event);
+    this.listeners.forEach(l => l(event));
+  }
+
+  subscribe(listener: (e: LiveEvent) => void): () => void {
+    if (this.closed) throw new Error('SessionClient is closed');
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  close(): void {
+    this.closed = true;
+    this.listeners.clear();
+  }
+
+  private issueCapability(sessionId: string, role: 'instructor' | 'student'): RoleCapability {
+    if (this.closed) throw new Error('SessionClient is closed');
+    const issuedAt = new Date();
+    const expiresAt = new Date(issuedAt.getTime() + 60 * 60 * 1000);
+    return RoleCapabilitySchema.parse({
+      schemaVersion: '1.0',
+      sessionId,
+      role,
+      issuedAt: issuedAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      token: `mock-${role}-${sessionId}`,
+    });
+  }
+}
