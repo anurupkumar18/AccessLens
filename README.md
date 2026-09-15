@@ -31,8 +31,11 @@ equipment, specimens, studio work, field observations, and physical demonstratio
 
 The repository has been reset around AccessLens. The product contract, system
 design, technical stack, research basis, implementation plan, and demo runbook are
-documented. The browser extension and AWS session service are the next engineering
-slices; production Canvas integration and camera mode are not implemented.
+documented. The reviewed `bio-cell-demo` Access Pack, its AR cell model, and the event-sequence
+simulator the other workstreams test against are implemented and checked by
+`make check`. The browser extension and AWS session service are the next
+engineering slices; production Canvas integration and camera mode are not
+implemented.
 
 ## Start here
 
@@ -42,6 +45,7 @@ slices; production Canvas integration and camera mode are not implemented.
 - [Product vision](docs/VISION.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Five-person parallel workstreams](docs/PARALLEL_WORKSTREAMS.md)
+- [bio-cell-demo Access Pack and event simulator](packages/access-packs/bio-cell-demo/README.md)
 - [Safety and data charter](docs/PROJECT_CHARTER.md)
 - [Demo runbook](docs/DEMO_RUNBOOK.md)
 - [Canvas and institutional boundary](docs/CANVAS_INTEGRATION.md)
@@ -70,6 +74,8 @@ screen, store recordings, infer disability or attention, or grade students.
 ```text
 docs/       Current AccessLens product, architecture, contracts, and demo plan
 memory/     Historical decisions and compact contributor handoffs
+packages/   Reviewed Access Packs; bio-cell-demo is the pack the MVP runs on
+tests/      Guardrail suites that run in make check
 ```
 
 Historical Evidence Engine implementation was removed from the active tree when

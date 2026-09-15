@@ -1,0 +1,434 @@
+{
+  "schemaVersion": "1.0",
+  "packId": "bio-cell-demo",
+  "version": 1,
+  "title": "Cell Structure",
+  "review": {
+    "status": "internally-reviewed",
+    "reviewedBy": "AccessLens content workstream (Part 5)",
+    "reviewedAt": "2026-09-15",
+    "externalSubjectMatterReview": false,
+    "notes": "Every student-facing sentence was written and checked against introductory cell-biology material by the content workstream. No external biology instructor or accessibility professional has signed off yet; implementation-plan task A15 tracks that review. Do not describe this pack as expert-reviewed until A15 closes."
+  },
+  "matching": {
+    "algorithm": "dhash12",
+    "hashBits": 132,
+    "maxHammingDistance": 26,
+    "minMargin": 14,
+    "onNoMatch": "source.unmatched"
+  },
+  "arCameras": {
+    "cell-overview": {
+      "position": [
+        0.0,
+        0.9,
+        3.4
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov": 40
+    },
+    "nucleus-closeup": {
+      "position": [
+        -0.1,
+        0.5,
+        1.7
+      ],
+      "target": [
+        -0.22,
+        0.1,
+        0.0
+      ],
+      "fov": 35
+    },
+    "mitochondrion-closeup": {
+      "position": [
+        0.95,
+        0.45,
+        1.5
+      ],
+      "target": [
+        0.38,
+        0.16,
+        0.1
+      ],
+      "fov": 35
+    },
+    "secretory-path": {
+      "position": [
+        0.15,
+        0.85,
+        2.3
+      ],
+      "target": [
+        0.02,
+        -0.18,
+        0.05
+      ],
+      "fov": 38
+    },
+    "recycling-closeup": {
+      "position": [
+        -0.75,
+        -0.35,
+        1.9
+      ],
+      "target": [
+        -0.4,
+        -0.42,
+        0.05
+      ],
+      "fov": 35
+    }
+  },
+  "reservedReadingOrderIds": [
+    "title"
+  ],
+  "assets": [
+    {
+      "assetId": "cell-slide-01",
+      "mediaUri": "slides/cell-slide-01.png",
+      "fingerprint": "dhash12:00180240618f2964ac558896d862c0601",
+      "title": "The Animal Cell",
+      "subtitle": "An overview of the boundary, the interior, and the control centre",
+      "readingOrder": [
+        "title",
+        "cell-membrane",
+        "cytoplasm",
+        "nucleus"
+      ],
+      "regions": [
+        {
+          "regionId": "cell-membrane",
+          "label": "Cell membrane",
+          "bounds": {
+            "x": 0.08,
+            "y": 0.22,
+            "width": 0.84,
+            "height": 0.66
+          },
+          "shortDescription": "The cell membrane is the outer boundary of the cell. It controls which substances enter and leave.",
+          "plainLanguage": "The outside edge of the cell. It decides what gets in and out."
+        },
+        {
+          "regionId": "cytoplasm",
+          "label": "Cytoplasm",
+          "bounds": {
+            "x": 0.14,
+            "y": 0.28,
+            "width": 0.72,
+            "height": 0.54
+          },
+          "shortDescription": "The cytoplasm is the fluid that fills the cell. The organelles sit in it and move through it.",
+          "plainLanguage": "The liquid inside the cell. Everything else floats in it."
+        },
+        {
+          "regionId": "nucleus",
+          "label": "Nucleus",
+          "bounds": {
+            "x": 0.3,
+            "y": 0.38,
+            "width": 0.22,
+            "height": 0.3
+          },
+          "shortDescription": "The nucleus holds the cell's DNA and directs which proteins the cell makes.",
+          "plainLanguage": "The control centre. It stores the instructions for the cell."
+        }
+      ],
+      "arScene": {
+        "modelUri": "models/cell.glb",
+        "defaultCamera": "cell-overview",
+        "hotspots": [
+          {
+            "hotspotId": "cell-slide-01:cell-membrane",
+            "regionId": "cell-membrane",
+            "nodeName": "CellMembrane",
+            "label": "Cell membrane",
+            "cameraTarget": "cell-overview",
+            "highlight": "outline"
+          },
+          {
+            "hotspotId": "cell-slide-01:cytoplasm",
+            "regionId": "cytoplasm",
+            "nodeName": "Cytoplasm",
+            "label": "Cytoplasm",
+            "cameraTarget": "cell-overview",
+            "highlight": "outline"
+          },
+          {
+            "hotspotId": "cell-slide-01:nucleus",
+            "regionId": "nucleus",
+            "nodeName": "Nucleus",
+            "label": "Nucleus",
+            "cameraTarget": "nucleus-closeup",
+            "highlight": "outline"
+          }
+        ]
+      }
+    },
+    {
+      "assetId": "cell-slide-02",
+      "mediaUri": "slides/cell-slide-02.png",
+      "fingerprint": "dhash12:001403e0328724b51622d4660e01e0601",
+      "title": "Inside the Nucleus",
+      "subtitle": "Where the cell stores instructions and starts building ribosomes",
+      "readingOrder": [
+        "title",
+        "nucleus",
+        "nucleolus"
+      ],
+      "regions": [
+        {
+          "regionId": "nucleus",
+          "label": "Nucleus",
+          "bounds": {
+            "x": 0.22,
+            "y": 0.24,
+            "width": 0.44,
+            "height": 0.6
+          },
+          "shortDescription": "The nucleus is enclosed by a double membrane with pores that let molecules pass between it and the cytoplasm.",
+          "plainLanguage": "The control centre has a wall with small openings in it."
+        },
+        {
+          "regionId": "nucleolus",
+          "label": "Nucleolus",
+          "bounds": {
+            "x": 0.35,
+            "y": 0.42,
+            "width": 0.16,
+            "height": 0.22
+          },
+          "shortDescription": "The nucleolus is a dense region inside the nucleus where ribosome parts are assembled.",
+          "plainLanguage": "A dark spot inside the control centre. It builds ribosome parts."
+        }
+      ],
+      "arScene": {
+        "modelUri": "models/cell.glb",
+        "defaultCamera": "nucleus-closeup",
+        "hotspots": [
+          {
+            "hotspotId": "cell-slide-02:nucleus",
+            "regionId": "nucleus",
+            "nodeName": "Nucleus",
+            "label": "Nucleus",
+            "cameraTarget": "nucleus-closeup",
+            "highlight": "outline"
+          },
+          {
+            "hotspotId": "cell-slide-02:nucleolus",
+            "regionId": "nucleolus",
+            "nodeName": "Nucleolus",
+            "label": "Nucleolus",
+            "cameraTarget": "nucleus-closeup",
+            "highlight": "outline"
+          }
+        ]
+      }
+    },
+    {
+      "assetId": "cell-slide-03",
+      "mediaUri": "slides/cell-slide-03.png",
+      "fingerprint": "dhash12:001202600c018130200402c0900b00601",
+      "title": "Mitochondria and Energy",
+      "subtitle": "Releasing usable energy from nutrients",
+      "readingOrder": [
+        "title",
+        "mitochondrion",
+        "cytoplasm"
+      ],
+      "regions": [
+        {
+          "regionId": "mitochondrion",
+          "label": "Mitochondrion",
+          "bounds": {
+            "x": 0.35,
+            "y": 0.22,
+            "width": 0.18,
+            "height": 0.24
+          },
+          "shortDescription": "The mitochondrion releases usable energy from nutrients and stores it as ATP. Its inner membrane is folded to increase surface area.",
+          "plainLanguage": "This structure helps power the cell."
+        },
+        {
+          "regionId": "cytoplasm",
+          "label": "Cytoplasm",
+          "bounds": {
+            "x": 0.1,
+            "y": 0.55,
+            "width": 0.8,
+            "height": 0.3
+          },
+          "shortDescription": "The first stage of releasing energy from glucose happens in the cytoplasm, before the mitochondrion finishes the process.",
+          "plainLanguage": "The first step of getting energy happens in the liquid part."
+        }
+      ],
+      "arScene": {
+        "modelUri": "models/cell.glb",
+        "defaultCamera": "mitochondrion-closeup",
+        "hotspots": [
+          {
+            "hotspotId": "cell-slide-03:mitochondrion",
+            "regionId": "mitochondrion",
+            "nodeName": "Mitochondrion",
+            "label": "Mitochondrion",
+            "cameraTarget": "mitochondrion-closeup",
+            "highlight": "outline"
+          },
+          {
+            "hotspotId": "cell-slide-03:cytoplasm",
+            "regionId": "cytoplasm",
+            "nodeName": "Cytoplasm",
+            "label": "Cytoplasm",
+            "cameraTarget": "cell-overview",
+            "highlight": "outline"
+          }
+        ]
+      }
+    },
+    {
+      "assetId": "cell-slide-04",
+      "mediaUri": "slides/cell-slide-04.png",
+      "fingerprint": "dhash12:00160330400dc1a02660c618403806601",
+      "title": "Building and Shipping Proteins",
+      "subtitle": "Ribosome, rough endoplasmic reticulum, then Golgi apparatus",
+      "readingOrder": [
+        "title",
+        "ribosome",
+        "rough-er",
+        "golgi-apparatus"
+      ],
+      "regions": [
+        {
+          "regionId": "ribosome",
+          "label": "Ribosome",
+          "bounds": {
+            "x": 0.08,
+            "y": 0.26,
+            "width": 0.2,
+            "height": 0.24
+          },
+          "shortDescription": "Ribosomes read the instructions copied from DNA and join amino acids into a protein chain.",
+          "plainLanguage": "Ribosomes put proteins together, one piece at a time."
+        },
+        {
+          "regionId": "rough-er",
+          "label": "Rough endoplasmic reticulum",
+          "bounds": {
+            "x": 0.37,
+            "y": 0.4,
+            "width": 0.26,
+            "height": 0.3
+          },
+          "shortDescription": "The rough endoplasmic reticulum is studded with ribosomes. It folds new proteins and passes them on in small vesicles.",
+          "plainLanguage": "A folded surface covered in ribosomes. It shapes new proteins."
+        },
+        {
+          "regionId": "golgi-apparatus",
+          "label": "Golgi apparatus",
+          "bounds": {
+            "x": 0.7,
+            "y": 0.58,
+            "width": 0.22,
+            "height": 0.26
+          },
+          "shortDescription": "The Golgi apparatus finishes, sorts, and packages proteins, then sends them to where the cell needs them.",
+          "plainLanguage": "The packing and sending area for finished proteins."
+        }
+      ],
+      "arScene": {
+        "modelUri": "models/cell.glb",
+        "defaultCamera": "secretory-path",
+        "hotspots": [
+          {
+            "hotspotId": "cell-slide-04:ribosome",
+            "regionId": "ribosome",
+            "nodeName": "Ribosome",
+            "label": "Ribosome",
+            "cameraTarget": "secretory-path",
+            "highlight": "outline"
+          },
+          {
+            "hotspotId": "cell-slide-04:rough-er",
+            "regionId": "rough-er",
+            "nodeName": "RoughER",
+            "label": "Rough endoplasmic reticulum",
+            "cameraTarget": "secretory-path",
+            "highlight": "outline"
+          },
+          {
+            "hotspotId": "cell-slide-04:golgi-apparatus",
+            "regionId": "golgi-apparatus",
+            "nodeName": "GolgiApparatus",
+            "label": "Golgi apparatus",
+            "cameraTarget": "secretory-path",
+            "highlight": "outline"
+          }
+        ]
+      }
+    },
+    {
+      "assetId": "cell-slide-05",
+      "mediaUri": "slides/cell-slide-05.png",
+      "fingerprint": "dhash12:00110300630e6da8b5371407000000601",
+      "title": "Breaking Down and Storing",
+      "subtitle": "Lysosomes recycle materials; vacuoles hold them",
+      "readingOrder": [
+        "title",
+        "lysosome",
+        "vacuole"
+      ],
+      "regions": [
+        {
+          "regionId": "lysosome",
+          "label": "Lysosome",
+          "bounds": {
+            "x": 0.14,
+            "y": 0.3,
+            "width": 0.3,
+            "height": 0.36
+          },
+          "shortDescription": "Lysosomes contain enzymes that break down worn-out cell parts and material the cell has taken in.",
+          "plainLanguage": "Lysosomes break down old or unwanted parts of the cell."
+        },
+        {
+          "regionId": "vacuole",
+          "label": "Vacuole",
+          "bounds": {
+            "x": 0.56,
+            "y": 0.28,
+            "width": 0.32,
+            "height": 0.4
+          },
+          "shortDescription": "Vacuoles are membrane-bound sacs that store water, nutrients, or waste until the cell needs or removes them.",
+          "plainLanguage": "Vacuoles are storage bags inside the cell."
+        }
+      ],
+      "arScene": {
+        "modelUri": "models/cell.glb",
+        "defaultCamera": "recycling-closeup",
+        "hotspots": [
+          {
+            "hotspotId": "cell-slide-05:lysosome",
+            "regionId": "lysosome",
+            "nodeName": "Lysosome",
+            "label": "Lysosome",
+            "cameraTarget": "recycling-closeup",
+            "highlight": "outline"
+          },
+          {
+            "hotspotId": "cell-slide-05:vacuole",
+            "regionId": "vacuole",
+            "nodeName": "Vacuole",
+            "label": "Vacuole",
+            "cameraTarget": "recycling-closeup",
+            "highlight": "outline"
+          }
+        ]
+      }
+    }
+  ]
+}

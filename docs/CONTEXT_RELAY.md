@@ -5,7 +5,7 @@ this project mid-flight, and appends to on the way out. It exists so that contex
 travels between sessions and between people, and so that nothing quietly falls
 through the gap at the end of the hackathon.
 
-**State as of:** `0771bce` (Jacob takes Part 2), September 15, 2026.
+**State as of:** `a881f11` (Part 5 pack merged), September 15, 2026.
 
 This file is **append-mostly**. The tables are living state and get edited in
 place; the relay log at the bottom is append-only. Never delete a log entry, and
@@ -61,7 +61,7 @@ during the build.
 | 2. Instructor capture | Jacob | not yet created | Owner assigned in `0771bce`. No code yet under `apps/extension/src/instructor/` or `src/sources/screen/`. Everything needed to start is listed in section 6. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
 | 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
-| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, and a content review sheet for A15. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
+| 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`; PR #6 open for review follow-ups | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, and runbook-versus-pack checks. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
 
 **The single largest risk in this project is still the second column**, though it
 moved today: Part 2 now has an owner. Parts 3 and 4 do not. Part 3 is the student
@@ -395,3 +395,27 @@ something breaks later it broke after this point. But the only reason anyone
 knows that is that someone went and looked. Until PR #5's workflow fix merges,
 assume nothing on the integration branch has been verified unless a relay entry
 says it was.
+
+### RL-014 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** PR #4 merged as `a881f11`, putting the reviewed pack, the simulator,
+the validators, and the E2E replay on the integration branch. PR #6 opened for
+the three minor points from the review, which arrived after the merge: a
+docstring on `check_ar_framing`'s scalar field-of-view assumption, a trip-wire
+failing any hotspot that uses more than 95% of its half field of view, and a
+warning at the definition of `TIE_EPSILON` that symmetrising it would silently
+change every fingerprint in the pack.
+
+Also acted on the review of PR #5: `tests/relay/test_relay_check.py` now encodes
+21 mutation cases, escaped pipes are honoured in table cells with an error that
+names the cause, and an owned part's branch cell must be a branch path, a
+`merged as <sha>` reference, or the exact words "not yet created".
+
+**Threads touched:** none closed.
+**Next agent needs to know:** the reviewer's sharpest point is worth repeating.
+The relay checker's whole justification was that an unchecked guard drifts
+silently, and it had shipped without a guard of its own — nine mutations run by
+hand, none committed. If you add a check to this repository, commit the
+mutations that prove it can fail, including a control asserting the good case
+passes. Without that control, a checker that rejects everything satisfies every
+other test you write.
