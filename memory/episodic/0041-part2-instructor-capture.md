@@ -46,6 +46,24 @@ public index modules, the shared contracts, and the fixtures.
   twins 0 bits apart (rejected by the ambiguity rule). Threshold 10 and
   margin 4 unchanged; the first fixture set was redesigned instead of tuning.
 
+## Integration (same day, after Parts 3 and 5 landed)
+
+- Merged `origin/accesslens-extension-ar-pivot` (Part 5) and
+  `origin/workstream/3-student-ar` (Part 3) into this branch.
+- Adopted Part 5's `dhash12` fingerprint contract and deleted `dhash-v1`;
+  port verified byte-for-byte against the reviewed pack (5/5) and against the
+  Python on the synthetic slides (8/8). Thresholds now read from
+  `pack.matching`.
+- Widened `AccessPackSchema` and its JSON mirror additively for the reviewed
+  pack's optional blocks (Part 5 conformance gaps 1 and 2); Part 1 to review.
+- Added `BroadcastSessionClient` (same-profile cross-tab demo transport),
+  `scripts/build-pack.ts` (pptx to draft pack with Sonnet 4.6 descriptions on
+  Bedrock), and `packs/hnsw` (8-slide draft pack).
+- Shell: Part 2 instructor panel plus Part 3 student experience, reviewed pack
+  default, HNSW draft selectable, dark colour-blind-safe theme.
+- After merge: 20 test files, 181 tests passing; `make check` (memory,
+  Python pack-check, typecheck, tests, build) passing.
+
 ## Blocker
 
 None for merge. Chrome-dependent behaviour (real `getDisplayMedia()`

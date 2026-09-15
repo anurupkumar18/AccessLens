@@ -6,6 +6,45 @@ test-first with black-box tests. This document tells the other Part owners
 what exists, what they must decide, and what a human still has to verify in
 Chrome.
 
+## Integration status (after merging Parts 3 and 5)
+
+Branch `workstream/2-instructor-capture` now contains the integration branch
+(Part 5's reviewed pack) and `workstream/3-student-ar` (Part 3's student
+experience). Decisions made during that merge, all reflected in code:
+
+1. **Fingerprint contract is `dhash12`, Part 5's definition.** Part 2's
+   `dhash-v1` was removed, not bridged. `sources/screen/fingerprint.ts` is a
+   port of `bio-cell-demo/tools/imagehash.py`, tested byte-for-byte against the
+   reviewed pack and cross-checked against the Python on the synthetic slides.
+   Thresholds come from `pack.matching` (26 / 14 in the reviewed pack).
+2. **`AccessPackSchema` and `access-pack.schema.json` were widened
+   additively** (Part 1's files) to close gaps 1 and 2 of
+   `PART5_CONTRACT_CONFORMANCE.md`: optional `review`, `matching`,
+   `arCameras`, `reservedReadingOrderIds`, `assets[].mediaUri`,
+   `assets[].subtitle`, `assets[].arScene`, `regions[].label`. Required fields
+   are unchanged; the strict denylist tests still pass; Part 5's Python
+   conformance check reports those gaps as closed. Part 1 should review the
+   exact shapes, especially `arCameras` (a record of `{position, target, fov}`)
+   and the AR hotspot fields.
+3. **Shell:** instructor branch is `InstructorPanel`, student branch is Part
+   3's `StudentExperience` unchanged. The default pack is the reviewed
+   bio-cell-demo pack; the HNSW draft pack is selectable and labelled as a
+   draft. Part 3's component styles were ported onto the shared dark tokens.
+4. **Transport for local testing:** `shared/broadcastSessionClient.ts`
+   implements the frozen `SessionClient` over `BroadcastChannel`, so an
+   instructor tab and student tabs in one browser profile follow each other
+   with no network. Part 4's relay replaces it behind the same interface.
+5. **Automated pack authoring:** `scripts/build-pack.ts` turns a `.pptx` into
+   a draft pack with Claude Sonnet 4.6 descriptions on Bedrock. Output is
+   always `pack.draft.json`; the instructor review is the rename to
+   `pack.json` (charter A3, and the human review gate for automated content
+   generation applies).
+
+Still open for other owners: the instructor/student authorization gate
+(anyone can open the Instructor view; enforcement belongs in Part 4's relay
+with a shell gate on the capability role), `capture.stopped` versus
+`session.ended` for Stop, and the offscreen sampling host.
+
 ## What was built and where
 
 | Path | What it is |
@@ -24,13 +63,12 @@ the fake host's call log.
 
 ## Fingerprint contract summary and CLI usage (for Part 5)
 
-`fingerprint` is `dhash-v1:` plus sixteen lowercase hex characters: Rec. 601
-luminance, 9x8 area-averaged grid over the full frame, 64
-left-brighter-than-right bits, row-major, MSB first. Matching is Hamming
-distance with threshold 10 and ambiguity margin 4; anything not clearing both
-is `source.unmatched`. Full algorithm, the distance table that supports the
-thresholds, and a known limitation on flat slide backgrounds are in
-`apps/extension/src/sources/screen/README.md`.
+`fingerprint` is `dhash12:` plus thirty-three lowercase hex characters, Part
+5's definition: Rec. 601 luminance, 12x12 block means over the full frame, 132
+left-brighter-by-more-than-0.75 bits, row-major, MSB first. Matching is
+Hamming distance against `pack.matching.maxHammingDistance` and
+`pack.matching.minMargin`; anything not clearing both is `source.unmatched`.
+Full algorithm and evidence are in `apps/extension/src/sources/screen/README.md`.
 
 ```sh
 npx tsx scripts/fingerprint-pack.ts packs/bio-cell/pack.json packs/bio-cell/slides
@@ -113,7 +151,7 @@ chooser. Everything below is **unverified** until a human runs it.
    the service worker to create the offscreen document with reason
    `USER_MEDIA`/`DISPLAY_MEDIA`. Verification is Chrome-only.
 3. **OpenCV.js substitution (Parts 1 and 5).** The system-design stack table
-   lists OpenCV.js for matching. Part 2 uses the pure-JavaScript `dhash-v1`
+   lists OpenCV.js for matching. Part 2 uses the pure-JavaScript `dhash12`
    contract instead: deterministic, no native dependency, unit-testable.
    Update the stack table when convenient.
 4. **Synthetic pack in the shell (Part 5).** Until the reviewed biology pack
