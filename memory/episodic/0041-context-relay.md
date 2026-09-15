@@ -96,3 +96,28 @@ with parallel branches whichever PR merges second always conflicts there.
 - `make check` green end to end, including `npm run check`.
 - `scripts/relay_check.py`: 5 parts, 18 threads, 14 unsettled, 5 log entries.
 - The CI failure was reproduced before fixing it, not inferred from reading.
+
+## Addendum 2 — after 38542ad
+
+Part 1 closed its own contract-freeze gaps: `RoleCapabilitySchema`, the frozen
+`create/join/send/subscribe/close` `SessionClient`, `.env.example`, and a
+typecheck step. `AccessPackSchema` and `LiveEventSchema` were untouched, so
+T-05, T-06, and T-16 are unaffected and the pack's conformance is unchanged.
+
+T-17 and T-18 both recurred and are no longer cosmetic. In one afternoon, with
+only two active workstreams, the team produced four `memory/INDEX.md` conflicts
+on the same line and two renumberings of the same Part 5 episodic record
+(`0038→0040`, then `0039→0041`). With five parts that becomes friction on every
+merge, and the likely outcome is someone skipping the memory record rather than
+fighting it. Both threads now carry a concrete proposal: hundred-blocks per part
+for record numbers, and a per-part list for the handoff pointer with
+`memory_check.py` requiring each part's newest rather than one global newest.
+
+Neither change was made here. The numbering scheme and `memory_check.py` are
+shared conventions, and changing them unilaterally mid-hackathon is worse than
+proposing them with evidence.
+
+## Validation evidence (addendum 2)
+
+- `make check` green end to end after both merges, including the new typecheck.
+- Relay: 5 parts, 18 threads, 14 unsettled, 7 log entries.

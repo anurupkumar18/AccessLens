@@ -52,4 +52,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0039-context-relay.md`
+- `episodic/0041-context-relay.md`

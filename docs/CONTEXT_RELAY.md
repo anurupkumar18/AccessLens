@@ -5,7 +5,7 @@ this project mid-flight, and appends to on the way out. It exists so that contex
 travels between sessions and between people, and so that nothing quietly falls
 through the gap at the end of the hackathon.
 
-**State as of:** `c3ddc27` (Part 1 hardening), September 15, 2026.
+**State as of:** `38542ad` (Part 1 contract-freeze closure), September 15, 2026.
 
 This file is **append-mostly**. The tables are living state and get edited in
 place; the relay log at the bottom is append-only. Never delete a log entry, and
@@ -57,7 +57,7 @@ during the build.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `c3ddc27` | Shell split into `src/shell/`, per-type discriminated-union event contract, local preferences, ajv contract tests. T-02 and T-03 closed by this. | `npm run check`; `dist/` loads unpacked |
+| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
 | 2. Instructor capture | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/instructor/` or `src/sources/screen/`. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
 | 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
@@ -95,8 +95,8 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-12 | `codex/live-workspace-foundation` is 3 commits ahead and 64 behind, last touched 2026-08-28, from the superseded Evidence Engine product. Salvage or delete before the repo is handed over. | UNOWNED | Nothing | UNOWNED | `git log origin/codex/live-workspace-foundation` |
 | T-13 | Nobody owns merging `accesslens-extension-ar-pivot` into `master`, and no moment is defined for it. The build rule forbids merging to `master` during the hackathon, so this must happen deliberately at the end. | UNOWNED | Final handover | UNOWNED | `docs/PARALLEL_WORKSTREAMS.md`, merge and branch rules |
 | T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
-| T-17 | Two episodic records were numbered `0038` by different workstreams on the same day. Part 5's moved to `0040`. The numbering has no allocation scheme, so it will collide again with five people appending. | UNOWNED | Nothing | UNOWNED | `memory/episodic/0038-part1-hardening.md` vs the renamed `0040-…` |
-| T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record. With parallel branches, whichever PR merges second always conflicts there. Minor but guaranteed, every time. | UNOWNED | Nothing | UNOWNED | Conflicted on both the #4 and #5 merges of `c3ddc27` |
+| T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
+| T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. Hit **four times** across the `c3ddc27` and `38542ad` merges of #4 and #5. Proposal: let the pointer be a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | Four conflicts on the same line in one afternoon |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts` |
 
@@ -270,3 +270,32 @@ dependencies, so it dies on `vitest: command not found`. PR #5 fixes that. And
 the conformance checker's unsupported-keyword guard is the reason this pass
 found anything: when the schema became an `allOf` matrix the check *stopped*
 rather than reporting that everything still conformed. Keep that guard.
+
+### RL-006 — 2026-09-15 — Part 1 — Anurup Kumar
+
+**Landed:** `38542ad`. A verification pass found Part 1's own contract-freeze
+list had three unmet items. Adds `RoleCapabilitySchema` (the session-token
+contract A2 names) with a JSON Schema mirror, expands `SessionClient` to the
+frozen `create/join/send/subscribe/close` shape so Part 4 has something stable
+to build against, freezes the WebSocket and asset-base-URL names in
+`.env.example`, wires local-only preferences into a real Reduce-motion control,
+and adds a typecheck step to `npm run check`.
+**Threads touched:** none closed. `AccessPackSchema` and `LiveEventSchema`
+untouched, so T-05, T-06, and T-16 are unaffected.
+**Next agent needs to know:** `SessionClient` is now async — `create` and `join`
+return a `Promise<RoleCapability>`. Part 4 replaces `InMemorySessionClient`
+behind that interface; Parts 2 and 3 should code against it and not import AWS.
+
+### RL-007 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** merged `38542ad` into both open PRs and reverified. Conformance is
+unchanged at ten gaps — the new capability schema does not reach the pack.
+`make check` is green end to end including the new typecheck, and `dist/`
+rebuilds byte-identical to the committed output.
+**Threads touched:** T-17 and T-18 strengthened; both recurred during this
+merge, and each now carries a concrete proposal rather than just a complaint.
+**Next agent needs to know:** T-17 and T-18 are not cosmetic any more. Two
+workstreams produced four `memory/INDEX.md` conflicts and two episodic
+renumberings in a single afternoon. With five parts active that becomes
+constant friction on every merge, and it is the kind of friction that gets
+"fixed" by someone skipping the memory record entirely.
