@@ -27,6 +27,10 @@ different face, because a substituted face would change the fingerprints.
 ## Content review
 
 - **Status:** internally reviewed by the content workstream (Part 5) on 2026-09-15.
+- **For a reviewer:** open `review/content-review-sheet.html`. It draws every
+  region on the slide it belongs to, from the same normalized bounds a student
+  renderer receives, beside the exact words a student is given. A box that does
+  not sit on the structure it names is a content bug no schema can catch.
 - **External subject-matter review:** not yet done. Implementation-plan task
   **A15** tracks review by a biology instructor and an accessibility or
   instructional-design professional.
@@ -49,6 +53,7 @@ python3 tools/generate_unapproved_slide.py  # needs Pillow; rewrites demo-assets
 python3 tools/generate_model.py             # standard library only
 python3 tools/generate_pack.py              # standard library only; refreshes fingerprints
 python3 tools/measure_matching.py           # needs Pillow; re-derives the match thresholds
+python3 tools/generate_review_sheet.py      # standard library only; rewrites review/
 python3 tools/validate_pack.py              # standard library only; must pass before merge
 ```
 

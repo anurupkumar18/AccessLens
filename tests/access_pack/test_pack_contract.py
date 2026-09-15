@@ -19,7 +19,9 @@ Run:  python3 -m unittest discover -s tests/access_pack -t .
 
 from __future__ import annotations
 
+import html
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -34,6 +36,7 @@ sys.path.insert(0, str(TOOLS))
 import glb  # noqa: E402
 import imagehash  # noqa: E402
 import check_contract_conformance as conformance  # noqa: E402
+import generate_review_sheet  # noqa: E402
 import reference_event_check as contract  # noqa: E402
 import validate_pack  # noqa: E402
 
@@ -377,6 +380,54 @@ class NegativeFixturesAreRejected(unittest.TestCase):
                 field: "x",
             }
             self.assertIn(f"field-not-on-contract:{field}", contract.check_event(event, PACK, 1))
+
+
+class ReviewSheet(unittest.TestCase):
+    """A15 needs something a biology or accessibility reviewer can actually read."""
+
+    def setUp(self):
+        self.html = (PACK_ROOT / "review" / "content-review-sheet.html").read_text(encoding="utf-8")
+
+    def test_the_checked_in_sheet_matches_the_pack(self):
+        pack = json.loads((PACK_ROOT / "pack.json").read_text(encoding="utf-8"))
+        self.assertEqual(generate_review_sheet.render(pack), self.html)
+
+    def test_every_region_box_is_drawn_at_its_pack_bounds(self):
+        """The boxes are the review: one drawn wrong sends a reviewer's eye astray."""
+        drawn = re.findall(
+            r"left:([\d.]+)%;top:([\d.]+)%;width:([\d.]+)%;height:([\d.]+)%", self.html
+        )
+        expected = [
+            (
+                region["bounds"]["x"] * 100,
+                region["bounds"]["y"] * 100,
+                region["bounds"]["width"] * 100,
+                region["bounds"]["height"] * 100,
+            )
+            for asset in PACK["assets"]
+            for region in asset["regions"]
+        ]
+        self.assertEqual(len(drawn), len(expected))
+        for (dx, dy, dw, dh), (ex, ey, ew, eh) in zip(drawn, expected):
+            self.assertAlmostEqual(float(dx), ex, places=3)
+            self.assertAlmostEqual(float(dy), ey, places=3)
+            self.assertAlmostEqual(float(dw), ew, places=3)
+            self.assertAlmostEqual(float(dh), eh, places=3)
+
+    def test_every_student_facing_sentence_appears(self):
+        for asset in PACK["assets"]:
+            for region in asset["regions"]:
+                for text in (region["shortDescription"], region["plainLanguage"]):
+                    self.assertIn(html.escape(text, quote=True), self.html, region["regionId"])
+
+    def test_it_declares_a_charset(self):
+        """Without it the em dashes in the reviewed copy render as mojibake."""
+        self.assertIn('<meta charset="utf-8">', self.html)
+
+    def test_it_says_the_content_is_not_expert_reviewed(self):
+        if PACK["review"].get("externalSubjectMatterReview") is False:
+            self.assertIn("has not been reviewed by a", self.html)
+            self.assertIn("A15", self.html)
 
 
 class ConformanceWithPart1Contracts(unittest.TestCase):

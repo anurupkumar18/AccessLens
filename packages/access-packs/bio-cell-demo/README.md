@@ -14,6 +14,7 @@ pack.json                    reviewed pack: assets, regions, reading order, AR h
 slides/                      five original PNG slides (1280x720)
 models/cell.glb              original glTF 2.0 cell, one named node per organelle
 demo-assets/                 the deliberately UNAPPROVED slide for the failure beat
+review/                      content review sheet for a human subject-matter reviewer
 fixtures/                    six ordered event scenarios for Parts 2, 3, and 4
 fixtures/invalid/            ten single-fault events that must be rejected
 tools/                       generators, the validator, and the simulator
@@ -79,6 +80,17 @@ Both are additive; nothing in the documented schema changes meaning. They need
 Part 1 and Part 3 sign-off before the contract freeze closes. `hotspotId` is also
 scoped per asset (`cell-slide-03:mitochondrion`) because several slides teach the
 same region and `arState.hotspotId` has to resolve to exactly one hotspot.
+
+## Getting the content reviewed (A15)
+
+Open `review/content-review-sheet.html`. Every region is drawn on its slide from
+the same normalized bounds a student renderer receives, beside the exact
+`shortDescription` and `plainLanguage` a student is given, plus the AR node and
+camera each region maps to. The last section lists all 24 student-facing
+sentences on their own for reading straight through.
+
+Regenerate with `tools/generate_review_sheet.py`; `make pack-check` fails if the
+checked-in page has drifted from `pack.json`.
 
 ## Checks
 

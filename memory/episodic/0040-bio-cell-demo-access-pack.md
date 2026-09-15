@@ -186,3 +186,34 @@ lifecycle event. Fixed to replay in order up to the redelivery point.
 - `make check` green: memory, pack validator, conformance, 40 Python tests, and
   `npm run check` — typecheck, 105 vitest tests across 11 files, build.
 - Drift guard verified against two verdict-flipping mutations, restored after.
+
+## Addendum 4 — making A15 reviewable
+
+A15 asks for review by a biology instructor and an accessibility professional.
+Neither can review a `pack.json` and a folder of PNGs, which is a large part of
+why that task had not moved. `tools/generate_review_sheet.py` generates
+`review/content-review-sheet.html`: every region drawn on its slide from the same
+normalized bounds a student renderer receives, beside the exact
+`shortDescription` and `plainLanguage` a student is given, plus the AR node and
+camera each maps to, and a final list of all 24 student-facing sentences for
+reading straight through.
+
+Drawing the boxes from the student-facing bounds is the point. A region whose box
+does not sit on the structure it names is a content bug no schema can catch, and
+it would send every student to the wrong part of the diagram.
+
+Verified in a browser: the rendered position of all twelve boxes matches
+`pack.json` to four decimal places. The first render came out as mojibake — the
+page had no charset declaration, which matters more than usual on a page whose
+whole job is careful reading of text. It emits a full document shell now, and a
+test asserts the charset is there.
+
+`--check` mode and two tests guard it: the checked-in page must equal a fresh
+render, and every drawn box percentage must equal its pack bounds. Both were
+verified to fail by moving one box twenty percent across its slide.
+
+## Validation evidence (addendum 4)
+
+- 45 Python tests, `make check` green end to end.
+- Rendered geometry cross-checked against `pack.json` in a real browser.
+- Both new guards verified against a deliberately displaced region box.

@@ -6,6 +6,7 @@ memory-check:
 pack-check:
 	python3 packages/access-packs/bio-cell-demo/tools/validate_pack.py
 	python3 packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py
+	python3 packages/access-packs/bio-cell-demo/tools/generate_review_sheet.py --check
 	python3 -m unittest discover -s tests/access_pack
 
 extension-check:

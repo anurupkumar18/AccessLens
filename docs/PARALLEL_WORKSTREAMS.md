@@ -251,6 +251,10 @@ guardrail suite is `tests/access_pack/`.
 - Asset source and licence recorded, every student-facing statement reviewed:
   **done** — `PROVENANCE.md`. Internal review only; external subject-matter
   review is task A15 and the pack says so.
+- A15 is now unblocked on the Part 5 side: `review/content-review-sheet.html`
+  draws every region on its slide beside the exact words a student is given, so
+  a biology instructor or accessibility professional has something to review.
+  What remains is finding the reviewers.
 
 First slice of the end-to-end suite: **done** — `tests/e2e/fixture-replay.test.ts`
 replays the fixtures through Part 1's real `InMemorySessionClient`, covers
