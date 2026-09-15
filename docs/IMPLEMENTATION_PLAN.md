@@ -46,6 +46,11 @@ student-facing misinformation.
 
 ## 3. Phased tasks and acceptance criteria
 
+Team ownership, directory boundaries, independent test paths, and integration
+checkpoints are defined in
+[`PARALLEL_WORKSTREAMS.md`](PARALLEL_WORKSTREAMS.md). Its five parts map the tasks
+below onto five people without changing their acceptance criteria.
+
 ### Phase 0 — Product reset
 
 - **A0 — AccessLens source-of-truth reset:** replace active product, charter,

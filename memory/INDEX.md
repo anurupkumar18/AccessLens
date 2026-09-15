@@ -21,6 +21,7 @@ Current sources of truth:
 - `docs/VISION.md`
 - `docs/PROJECT_CHARTER.md`
 - `docs/IMPLEMENTATION_PLAN.md`
+- `docs/PARALLEL_WORKSTREAMS.md`
 - `docs/SYSTEM_DESIGN.md`
 - `docs/ACCESSLENS_PROPOSAL.md`
 - `docs/TEAM_PRODUCT_DIRECTION.md`
@@ -45,4 +46,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0036-accesslens-product-reset.md`
+- `episodic/0037-five-person-workstreams.md`

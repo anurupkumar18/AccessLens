@@ -40,6 +40,7 @@ slices; production Canvas integration and camera mode are not implemented.
 - [System design and technical stack](docs/SYSTEM_DESIGN.md)
 - [Product vision](docs/VISION.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
+- [Five-person parallel workstreams](docs/PARALLEL_WORKSTREAMS.md)
 - [Safety and data charter](docs/PROJECT_CHARTER.md)
 - [Demo runbook](docs/DEMO_RUNBOOK.md)
 - [Canvas and institutional boundary](docs/CANVAS_INTEGRATION.md)
