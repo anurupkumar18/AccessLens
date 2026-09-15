@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AccessPack","type":"object","required":["schemaVersion","packId","version","title","assets"],"additionalProperties":false,"properties":{"schemaVersion":{"const":"1.0"},"packId":{"type":"string"},"version":{"type":"integer","minimum":1},"title":{"type":"string"},"assets":{"type":"array","minItems":1}}}
