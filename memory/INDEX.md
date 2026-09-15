@@ -63,4 +63,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0040-bio-cell-demo-access-pack.md`
+- `episodic/0042-deployment-readiness.md`
