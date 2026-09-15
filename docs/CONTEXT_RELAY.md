@@ -100,6 +100,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. Hit **four times** across the `c3ddc27` and `38542ad` merges of #4 and #5. Proposal: let the pointer be a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | Four conflicts on the same line in one afternoon |
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
 | T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
+| T-21 | CDK is not bootstrapped in the hackathon AWS account, so no `cdk deploy` will work until someone runs `npx cdk bootstrap` once. Thirty seconds of work that blocks the entire deploy, and it is in nobody's task list. | UNOWNED | Part 4, the demo | UNOWNED | `python3 scripts/deploy_preflight.py --aws`; `docs/DEPLOYMENT.md` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts` |
 
@@ -435,3 +436,16 @@ failure this document exists to catch, and it still took a person noticing.
 looked wrong — the gate had simply stopped being called. After you resolve a
 conflict in `Makefile` or `.github/workflows/`, diff the list of targets and
 triggers, not just the file.
+
+### RL-016 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** `scripts/deploy_preflight.py`, `make deploy-preflight`, and
+`docs/DEPLOYMENT.md`. The AWS account was probed rather than assumed: every
+create the planned stack needs succeeded and was cleaned up afterwards, so the
+`SYSTEM_DESIGN.md` §7 architecture is deployable in this account.
+**Threads touched:** T-21 opened.
+**Next agent needs to know:** the account expires when the event does, and the
+credentials expire sooner. Nothing deployed survives the demo, which makes the
+recorded fallback load-bearing rather than a nicety. Also `npx cdk bootstrap`
+has never been run here — that is T-21, it takes thirty seconds, and nothing
+deploys until someone does it.
