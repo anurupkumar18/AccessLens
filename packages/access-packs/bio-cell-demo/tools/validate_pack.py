@@ -14,6 +14,7 @@ Exit 0 when the pack is publishable, 1 with a list of problems otherwise.
 from __future__ import annotations
 
 import json
+import math
 import sys
 from itertools import combinations
 from pathlib import Path
@@ -284,6 +285,85 @@ def check_assets(pack: dict) -> list[str]:
     return errors
 
 
+def check_ar_framing(pack: dict) -> list[str]:
+    """Every hotspot's camera must actually frame the structure it names.
+
+    A camera aimed at empty space, or one whose organelle sits outside its field
+    of view, is a bug nothing else here can see: the ids all resolve, the schema
+    passes, and a student following the instructor to the mitochondrion is shown
+    a view with no mitochondrion in it.
+
+    The model has no rotations and a flat node list, so a node's translation is
+    its position and the largest scale component is its radius. The test is
+    whether the node's angular radius plus its off-axis angle from the camera's
+    aim fits inside half the field of view.
+    """
+    errors: list[str] = []
+    cameras = pack.get("arCameras", {})
+    transforms: dict[str, dict] = {}
+
+    for asset in pack.get("assets", []):
+        scene = asset.get("arScene", {})
+        model_uri = scene.get("modelUri")
+        if not model_uri:
+            continue
+        model_path = (PACK_ROOT / model_uri).resolve()
+        if not model_path.exists():
+            continue
+        if model_uri not in transforms:
+            try:
+                transforms[model_uri] = glb.node_transforms(model_path)
+            except glb.GlbError:
+                continue
+        nodes = transforms[model_uri]
+
+        for hotspot in scene.get("hotspots", []):
+            node = nodes.get(hotspot.get("nodeName"))
+            camera = cameras.get(hotspot.get("cameraTarget"))
+            if node is None or not isinstance(camera, dict):
+                continue  # Already reported by check_assets.
+            position = camera.get("position")
+            target = camera.get("target")
+            fov = camera.get("fov")
+            if not (isinstance(position, list) and isinstance(target, list)):
+                continue
+            if not isinstance(fov, (int, float)):
+                continue
+
+            where = f"{asset['assetId']} hotspot {hotspot['hotspotId']}"
+            centre = node["translation"]
+            radius = max(abs(value) for value in node["scale"])
+
+            to_target = [target[i] - position[i] for i in range(3)]
+            to_node = [centre[i] - position[i] for i in range(3)]
+            aim = math.dist(position, target)
+            distance = math.dist(position, centre)
+
+            if aim == 0:
+                errors.append(f"{where}: camera '{hotspot['cameraTarget']}' sits on its own target")
+                continue
+            if distance <= radius:
+                errors.append(
+                    f"{where}: camera '{hotspot['cameraTarget']}' is inside node "
+                    f"'{hotspot['nodeName']}' (distance {distance:.2f}, radius {radius:.2f})"
+                )
+                continue
+
+            cosine = sum(to_target[i] * to_node[i] for i in range(3)) / (aim * distance)
+            off_axis = math.degrees(math.acos(max(-1.0, min(1.0, cosine))))
+            angular_radius = math.degrees(math.asin(min(1.0, radius / distance)))
+            half_fov = fov / 2
+
+            if off_axis + angular_radius > half_fov:
+                errors.append(
+                    f"{where}: node '{hotspot['nodeName']}' is not fully inside camera "
+                    f"'{hotspot['cameraTarget']}' — it sits {off_axis:.1f} degrees off axis with "
+                    f"an angular radius of {angular_radius:.1f}, needing {off_axis + angular_radius:.1f} "
+                    f"of the {half_fov:.1f} available. A student sent here would not see it."
+                )
+    return errors
+
+
 def check_fingerprint_separation(pack: dict) -> list[str]:
     matching = pack.get("matching", {})
     margin = matching.get("minMargin")
@@ -374,6 +454,7 @@ def validate() -> list[str]:
     errors += check_prohibited_fields(pack)
     errors += check_cameras(pack)
     errors += check_assets(pack)
+    errors += check_ar_framing(pack)
     errors += check_fingerprint_separation(pack)
     errors += check_unapproved_assets_are_rejected(pack)
     errors += check_provenance(pack)

@@ -253,3 +253,35 @@ for the wrong reason is worse than no test.
 - Eight runbook mutations — bad slide id, bad AR node, bad camera, bad region,
   missing file, stale number, unaccepted flag, missing fallback row — each
   caught by the test that should catch it.
+
+## Addendum 6 — AR camera framing, and a suite that had got too slow
+
+Nothing validated the AR scene's geometry. Every id resolved, the schema passed,
+and a camera could still be aimed at empty space — a student following the
+instructor to the mitochondrion would be shown a view with no mitochondrion in
+it. `validate_pack.py` now checks, for every hotspot, that its node's angular
+radius plus its off-axis angle from the camera's aim fits inside half the field
+of view, and that the camera is not inside the node it frames.
+
+All twelve pass. The tightest is the vacuole on `cell-slide-05`, using 15.6 of
+the 17.5 degrees available — correct, but at 89% of the half field of view it
+has little room, which is exactly the kind of margin that disappears silently
+when someone nudges a camera.
+
+`glb.py` grew `node_transforms`. It assumes a flat node list with no rotations,
+which is true of this model; if that changes, the framing errors it reports will
+really be transform errors, and the docstring says so.
+
+Separately: the suite had grown to 61 seconds. `ValidatorCanFail` copied the
+whole pack into a fresh temp directory per test, and the fingerprint cache is
+keyed by path, so every mutation case rehashed five slides from scratch. One
+copy per class with the mutable files restored in `setUp` takes it to 5.4
+seconds for the same 60 tests. Worth fixing rather than tolerating: a suite slow
+enough to skip is a suite that stops catching things, and this one exists
+precisely to catch what nobody looks at.
+
+## Validation evidence (addendum 6)
+
+- 60 Python tests in 5.4s, down from 61.5s. `make check` green.
+- Three framing mutations — camera aimed away from its node, field of view
+  narrowed to 11 degrees, camera placed inside its own node — each caught.

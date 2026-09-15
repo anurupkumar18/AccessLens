@@ -41,3 +41,23 @@ def read_json_chunk(path: Path) -> dict:
 def node_names(path: Path) -> list[str]:
     gltf = read_json_chunk(path)
     return [node["name"] for node in gltf.get("nodes", []) if "name" in node]
+
+
+def node_transforms(path: Path) -> dict[str, dict[str, list[float]]]:
+    """Named nodes with their translation and scale, for framing checks.
+
+    The demo model is a flat list of nodes under one root with no rotations, so
+    a node's translation is its position in model space. If that ever stops
+    being true -- nested transforms, rotations -- this needs to compose matrices
+    instead, and `validate_pack.py` will start reporting framing errors that are
+    really transform errors.
+    """
+    gltf = read_json_chunk(path)
+    return {
+        node["name"]: {
+            "translation": list(node.get("translation", [0.0, 0.0, 0.0])),
+            "scale": list(node.get("scale", [1.0, 1.0, 1.0])),
+        }
+        for node in gltf.get("nodes", [])
+        if "name" in node
+    }

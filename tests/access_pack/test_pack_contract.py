@@ -54,6 +54,16 @@ class PackValidates(unittest.TestCase):
             hotspots = [hotspot["regionId"] for hotspot in asset["arScene"]["hotspots"]]
             self.assertCountEqual(regions, hotspots, asset["assetId"])
 
+    def test_every_hotspot_camera_frames_its_node(self):
+        """Measured, not assumed.
+
+        Tightest framing today is the vacuole on cell-slide-05, using 15.6 of
+        the 17.5 degrees available — 89% of the half field of view. That is
+        correct but has little room, so widening `recycling-closeup` or moving
+        the vacuole is the kind of edit this test exists to catch.
+        """
+        self.assertEqual(validate_pack.check_ar_framing(PACK), [])
+
     def test_every_hotspot_names_a_real_model_node(self):
         nodes = set(glb.node_names(PACK_ROOT / "models" / "cell.glb"))
         for asset in PACK["assets"]:
@@ -100,11 +110,28 @@ class PackValidates(unittest.TestCase):
 class ValidatorCanFail(unittest.TestCase):
     """Each rule is checked against a mutation, so the validator cannot rot green."""
 
+    # One copy for the whole class, not one per test. The fingerprint cache in
+    # imagehash is keyed by path, so a fresh temp directory per test made every
+    # validate() rehash five slides from scratch. That grew the suite past a
+    # minute as mutation cases were added, and a suite that slow stops being run.
+    @classmethod
+    def setUpClass(cls):
+        cls.workspace = Path(tempfile.mkdtemp())
+        cls.copy = cls.workspace / "bio-cell-demo"
+        shutil.copytree(PACK_ROOT, cls.copy)
+        cls.pristine = {
+            name: (cls.copy / name).read_text(encoding="utf-8")
+            for name in ("pack.json", "PROVENANCE.md")
+        }
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.workspace, ignore_errors=True)
+
     def setUp(self):
-        self.workspace = Path(tempfile.mkdtemp())
-        self.copy = self.workspace / "bio-cell-demo"
-        shutil.copytree(PACK_ROOT, self.copy)
-        self.addCleanup(shutil.rmtree, self.workspace, True)
+        # Restore the files a test may mutate, so sharing the copy stays safe.
+        for name, text in self.pristine.items():
+            (self.copy / name).write_text(text, encoding="utf-8")
         self._original_root = validate_pack.PACK_ROOT
 
     def _validate_with(self, mutate) -> list[str]:
@@ -195,6 +222,28 @@ class ValidatorCanFail(unittest.TestCase):
             encoding="utf-8",
         )
         self._assert_flags(lambda pack: None, "does not record the source and licence")
+
+    def test_a_camera_aimed_away_from_its_node_is_caught(self):
+        """The bug this exists for: ids all resolve, but the view is empty."""
+        def mutate(pack):
+            pack["arCameras"]["mitochondrion-closeup"]["target"] = [-0.9, -0.9, 0.0]
+
+        self._assert_flags(mutate, "not fully inside camera")
+
+    def test_too_narrow_a_field_of_view_is_caught(self):
+        def mutate(pack):
+            pack["arCameras"]["cell-overview"]["fov"] = 11
+
+        self._assert_flags(mutate, "not fully inside camera")
+
+    def test_a_camera_inside_its_own_node_is_caught(self):
+        def mutate(pack):
+            pack["arCameras"]["mitochondrion-closeup"]["position"] = [0.38, 0.16, 0.1]
+
+        errors = self._validate_with(mutate)
+        self.assertTrue(
+            any("sits on its own target" in e or "is inside node" in e for e in errors), errors
+        )
 
     def test_near_duplicate_slides_are_caught(self):
         def mutate(pack):
