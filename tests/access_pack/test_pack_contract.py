@@ -64,6 +64,43 @@ class PackValidates(unittest.TestCase):
         """
         self.assertEqual(validate_pack.check_ar_framing(PACK), [])
 
+    def test_no_hotspot_framing_is_dangerously_tight(self):
+        """A trip-wire, not a manual note.
+
+        The vacuole on cell-slide-05 uses 89% of its available half field of
+        view. That is correct but leaves little room, and the reviewer's point
+        was that relying on someone noticing during a future model tweak is not
+        a plan. This fails before a nudge pushes an organelle out of shot.
+        """
+        import math
+
+        transforms = glb.node_transforms(PACK_ROOT / "models" / "cell.glb")
+        worst = (0.0, "")
+        for asset in PACK["assets"]:
+            for hotspot in asset["arScene"]["hotspots"]:
+                node = transforms[hotspot["nodeName"]]
+                camera = PACK["arCameras"][hotspot["cameraTarget"]]
+                position, target = camera["position"], camera["target"]
+                centre = node["translation"]
+                radius = max(abs(value) for value in node["scale"])
+                aim = math.dist(position, target)
+                distance = math.dist(position, centre)
+                cosine = sum(
+                    (target[i] - position[i]) * (centre[i] - position[i]) for i in range(3)
+                ) / (aim * distance)
+                used = math.degrees(math.acos(max(-1.0, min(1.0, cosine)))) + math.degrees(
+                    math.asin(min(1.0, radius / distance))
+                )
+                fraction = used / (camera["fov"] / 2)
+                if fraction > worst[0]:
+                    worst = (fraction, hotspot["hotspotId"])
+        self.assertLess(
+            worst[0],
+            0.95,
+            f"{worst[1]} now uses {worst[0]:.0%} of its half field of view. Widen the "
+            "camera or move the node before it leaves the frame entirely.",
+        )
+
     def test_every_hotspot_names_a_real_model_node(self):
         nodes = set(glb.node_names(PACK_ROOT / "models" / "cell.glb"))
         for asset in PACK["assets"]:
