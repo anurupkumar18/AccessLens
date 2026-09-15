@@ -217,3 +217,39 @@ verified to fail by moving one box twenty percent across its slide.
 - 45 Python tests, `make check` green end to end.
 - Rendered geometry cross-checked against `pack.json` in a real browser.
 - Both new guards verified against a deliberately displaced region box.
+
+## Addendum 5 — the runbook is now checked against the pack
+
+`docs/DEMO_RUNBOOK.md` is the document read under pressure three minutes before a
+demo, often by someone who did not write it, and nothing verified that anything
+it names still exists. `tests/access_pack/test_demo_runbook.py` checks the prose
+against the pack: every slide id, region, hotspot, AR node, camera, file path,
+fallback scenario, and simulator flag it names must resolve, every scenario must
+have a fallback row, and the measured numbers it states out loud are recomputed
+from the actual fingerprints.
+
+That last one matters most. The runbook says the unapproved slide "sits 48 bits
+from its nearest reviewed slide against a ceiling of 26, and clears the margin
+rule by 3 bits against a required 14". Those are true today and would silently
+stop being true the moment the deck changed, leaving someone reading false
+numbers aloud to judges.
+
+Mutation testing found two of these tests were theatre. The camera check used a
+regex with a literal space, but the runbook wraps, so `camera\n\`x\`` matched
+nothing and cameras were never checked at all. The simulator-flag check filtered
+the flags it found down to four it already knew were valid, so an invented
+`--tempo` passed cleanly — the direction was backwards: extract from the prose,
+validate against the tool, not the reverse. Both fixed; all eight mutations are
+caught now.
+
+An earlier version of the label test classified every capitalized backticked
+word as a model node, which would have failed the moment someone wrote `Pause`
+in the prose. Replaced with parsing the runbook's own labels. A test that fails
+for the wrong reason is worse than no test.
+
+## Validation evidence (addendum 5)
+
+- 56 Python tests, `make check` green end to end.
+- Eight runbook mutations — bad slide id, bad AR node, bad camera, bad region,
+  missing file, stale number, unaccepted flag, missing fallback row — each
+  caught by the test that should catch it.
