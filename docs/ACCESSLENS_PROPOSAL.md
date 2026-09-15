@@ -218,7 +218,7 @@ Use one checked-in biology deck and show one instructor plus two student views.
 | --- | --- |
 | Browser extension | Chrome Manifest V3 |
 | Interface | React, TypeScript, Vite, Chrome Side Panel API |
-| AR rendering | Three.js, React Three Fiber, WebXR `immersive-ar` where supported |
+| AR rendering | Direct Three.js and WebXR `immersive-ar` where supported |
 | Capture runtime | Service worker, offscreen document, content scripts, `getDisplayMedia()` or `chrome.tabCapture` |
 | Local recognition | OpenCV.js; MediaPipe only after a feasibility test |
 | Local preferences | `chrome.storage.local` or IndexedDB |

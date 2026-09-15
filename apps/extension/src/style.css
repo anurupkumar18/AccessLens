@@ -112,3 +112,53 @@ input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--acce
 .draft-note { margin: .75rem 0 0; padding: .6rem .8rem; border-radius: 8px; border: 1px dashed var(--warn); color: var(--text); font-size: .85rem; }
 .draft-note::before { content: "\26A0  "; color: var(--warn); }
 .draft-note code { font-size: .8rem; }
+
+/* ---- Student experience (Part 3), on the shared dark tokens ---- */
+.student-experience { padding: 1rem; }
+.student-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.student-heading h2, .eyebrow { margin: 0; }
+.eyebrow { color: var(--accent); font-size: .76rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.connection-pill { padding: .2rem .55rem; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-size: .75rem; font-weight: 750; text-transform: capitalize; }
+.connection-pill.live { border-color: var(--ok); color: var(--ok); }
+.connection-pill.paused, .connection-pill.stale, .connection-pill.unmatched { border-color: var(--warn); color: var(--warn); }
+.connection-pill.ended, .connection-pill.incompatible { border-color: var(--muted); color: var(--text); }
+.join-form > label { display: block; margin-top: 1rem; font-weight: 700; color: var(--text); }
+.join-form div { display: flex; align-items: center; gap: .45rem; }
+.join-form input { min-width: 0; flex: 1; }
+.join-form button { margin: 0; }
+.supporting-text { color: var(--muted); font-size: .9rem; }
+.live-message { padding: .7rem; border-left: 4px solid var(--accent); background: var(--surface-2); border-radius: 6px; }
+.mode-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; margin-top: 1rem; }
+.mode-tabs button { margin: 0; padding-inline: .4rem; }
+[role="tab"][aria-selected="true"], [aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+[role="tabpanel"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.mode-panel { margin-top: .75rem; }
+.active-concept { display: flex; flex-direction: column; gap: .2rem; padding: .75rem; border-radius: .55rem; background: var(--surface-2); }
+.focus-diagram { display: grid; min-height: 230px; place-items: center; overflow: hidden; border-radius: .65rem; background: radial-gradient(circle at 50% 30%, #233a68, #0d1729); }
+.cell-membrane { position: relative; width: 190px; height: 150px; border: 6px solid #73d4c3; border-radius: 50%; background: rgba(115, 212, 195, .18); }
+.cell-nucleus { position: absolute; top: 45px; left: 55px; width: 58px; height: 58px; border-radius: 50%; background: #9d84e8; }
+.cell-mitochondrion { position: absolute; right: 28px; bottom: 30px; width: 55px; height: 26px; border-radius: 50%; background: #f28b50; transform: rotate(-24deg); }
+.cell-mitochondrion.active { outline: 5px solid var(--focus); outline-offset: 4px; }
+.ar-view { background: var(--surface); }
+.ar-canvas { min-height: 280px; overflow: hidden; border-radius: .75rem; background: radial-gradient(circle at 50% 25%, #28487a, #091221 70%); }
+.ar-canvas canvas { display: block; width: 100%; height: 280px; cursor: grab; }
+.ar-canvas canvas:active { cursor: grabbing; }
+.ar-toolbar { display: flex; flex-wrap: wrap; gap: .3rem; }
+.notice { padding: 1rem; border-radius: .55rem; border: 1px dashed var(--warn); color: var(--text); }
+.semantic-hotspots { display: grid; gap: .65rem; padding: 0; list-style: none; }
+.semantic-hotspots li { display: grid; grid-template-columns: minmax(8rem, .4fr) 1fr; align-items: center; gap: .65rem; padding-top: .65rem; border-top: 1px solid var(--border); }
+.semantic-hotspots button { margin: 0; }
+.display-settings { display: grid; gap: .65rem; margin-top: 1rem; padding: .85rem; border: 1px solid var(--border); border-radius: .65rem; }
+.display-settings label { display: flex; align-items: center; gap: .55rem; }
+.display-settings input[type="range"] { flex: 1; accent-color: var(--accent); }
+.pack-picker label { display: inline; margin-right: .5rem; }
+.pack-picker select { width: auto; display: inline-block; }
+button:disabled { cursor: not-allowed; opacity: .58; }
+
+@media (max-width: 420px) {
+  .mode-tabs { grid-template-columns: repeat(2, 1fr); }
+  .semantic-hotspots li { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
+}

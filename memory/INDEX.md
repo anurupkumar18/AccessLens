@@ -64,3 +64,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 - `episodic/0041-part2-instructor-capture.md` (Part 2: instructor capture)
 - `episodic/0040-bio-cell-demo-access-pack.md` (Part 5: reviewed pack)
+- `episodic/0040-part3-student-ar.md`
