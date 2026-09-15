@@ -3,14 +3,23 @@ name: Check
 on:
   pull_request:
   push:
-    branches: [main, master]
+    # The hackathon is built on an integration branch, so watch it too.
+    # Without this, nothing between now and the final merge is checked on push.
+    branches: [main, master, accesslens-extension-ar-pivot]
 
 jobs:
-  documentation:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # `make check` runs `npm run check`, which needs the dev dependencies.
+      # Without these two steps it fails with `sh: vitest: command not found`.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
       - run: make check

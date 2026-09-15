@@ -2,12 +2,17 @@
 
 ## Read in this order
 
-1. `memory/INDEX.md`
-2. `docs/VISION.md`
-3. `docs/PROJECT_CHARTER.md`
-4. `docs/IMPLEMENTATION_PLAN.md`
-5. `docs/SYSTEM_DESIGN.md` and the affected contract
-6. The latest relevant record in `memory/episodic/`
+1. `docs/CONTEXT_RELAY.md` — current state, open threads, decisions already made
+2. `memory/INDEX.md`
+3. `docs/VISION.md`
+4. `docs/PROJECT_CHARTER.md`
+5. `docs/IMPLEMENTATION_PLAN.md`
+6. `docs/SYSTEM_DESIGN.md` and the affected contract
+7. The latest relevant record in `memory/episodic/`
+
+Before you finish, append to `docs/CONTEXT_RELAY.md`: update your row, update any
+thread you touched, and add one relay log entry. `make check` validates the
+structure; section 7 of that file has the template.
 
 Older semantic and episodic records describe the superseded Evidence Engine coding
 prototype. Preserve them as history, but do not use them as current requirements.
@@ -51,6 +56,8 @@ See `docs/PROJECT_CHARTER.md` for the authoritative A1–A11 wording.
 - Use checked-in synthetic or public demo assets until institutional approval.
 - Extend contract, privacy, permission, and accessibility tests with each surface.
 - Add a compact episodic handoff when a task changes contributor context.
+- Append a `docs/CONTEXT_RELAY.md` log entry for any change to project state, and
+  open a thread there rather than silently working around another part's code.
 - Update semantic or long-term memory only through a reviewed PR.
 - Run the narrowest checks and `make check` before merge.
 - Report changed files, checks, evidence, risks, and next action.
