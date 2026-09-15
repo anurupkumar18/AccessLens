@@ -88,7 +88,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-04 | The event contract had no `arState`, but AR is a required renderer (A10, A12). | Part 1 + Part 3 | — | CLOSED | `c3ddc27` adds `arState {hotspotId, action}` to `region.changed`. Part 5 dropped the `camera` field it had wanted — it is derivable from the hotspot in the pack |
 | T-05 | `access-pack.schema.json` now sets `additionalProperties: false` on the **asset** object too, which makes `arScene` illegal. AR is a required renderer and `SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack cannot carry the scene the MVP requires. Also blocks `mediaUri`, `subtitle`, region `label`, and the four root blocks. | Part 1 | Part 3, Part 5 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §1–2 |
 | T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract, which cannot express it until T-05 lets the pack carry `arScene`. | Part 1 + Part 3 | Part 3 | BLOCKED | Blocked on T-05 |
-| T-07 | CI does not run on the integration branch. `.github/workflows/check.yml` pushes only on `[main, master]`, and no check ran on PR #4. The branch the whole hackathon lives on is unwatched. | UNOWNED | Everyone | UNOWNED | `gh pr checks 4` reports no checks |
+| T-07 | CI does not run on the integration branch. `.github/workflows/check.yml` pushes only on `[main, master]`, and no check has run on PR #4 or #5 either. The branch the whole hackathon lives on is unwatched. Manually verified green at `0771bce` (RL-013), so the risk has not bitten yet — but that was a person choosing to look, which is not a process. PR #5 fixes the trigger. | UNOWNED | Everyone | UNOWNED | `gh pr checks 4` reports no checks; RL-013 |
 | T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | IN PROGRESS | Reproduced by hiding `node_modules` and running `npm run check`; fix in PR #5 |
 | T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack, so it must not be described as expert-reviewed or accessibility-audited. The Part 5 side is now unblocked — `review/content-review-sheet.html` draws every region on its slide beside the exact words a student gets, so there is something to review. **What remains needs a person: finding the two reviewers.** | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/review/content-review-sheet.html` |
 | T-10 | A17 camera adapter not started. Phase 6 by plan; must not delay or destabilise the screen-sharing demo. | Part 5 | Nothing | ACCEPTED | `docs/IMPLEMENTATION_PLAN.md` §3 Phase 6 |
@@ -374,3 +374,24 @@ is now verified to actually frame what each hotspot names, so if your AR view
 shows empty space the bug is in the renderer, not the content. And the vacuole
 framing uses 89% of its half field of view — if you change `recycling-closeup`,
 `make pack-check` will tell you when you have pushed the organelle out of shot.
+
+### RL-013 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** nothing. This entry records a verification, because the result is
+worth knowing and nobody else can see it.
+
+Because of T-07, no CI run has ever validated the integration branch or either
+open PR. So `0771bce` was checked out clean into a worktree, `npm ci` run as CI
+would, and the full `make check` executed: memory check, typecheck, 98 tests,
+and the build all pass. The committed `dist/` rebuilds byte-identical, the
+manifest is copied verbatim, the built `index.html` references assets that
+exist, and `dist/manifest.json` is valid Manifest V3 with the narrow `storage`
+and `sidePanel` permissions the system design calls for.
+
+**Threads touched:** T-07 annotated with this evidence. No thread closed — a
+manual check is not CI.
+**Next agent needs to know:** the branch is sound as of `0771bce`, so if
+something breaks later it broke after this point. But the only reason anyone
+knows that is that someone went and looked. Until PR #5's workflow fix merges,
+assume nothing on the integration branch has been verified unless a relay entry
+says it was.
