@@ -42,8 +42,33 @@ THREAD_STATUSES = {"UNOWNED", "OPEN", "IN PROGRESS", "BLOCKED", "CLOSED", "ACCEP
 EVIDENCE_REQUIRED = {"CLOSED", "ACCEPTED"}
 EMPTY = {"", "—", "-", "n/a", "N/A", "TBD"}
 
+# An owned part must say where its work lives. A vague cell ("soon", "wip")
+# passes a non-empty check while telling the next person nothing, so the cell
+# has to be a branch path, a merge reference, or this exact admission.
+NOT_STARTED = "not yet created"
+
+
+def _is_meaningful_branch(cell: str) -> bool:
+    if cell in EMPTY:
+        return False
+    if cell.strip().lower() == NOT_STARTED:
+        return True
+    return "/" in cell or bool(re.search(r"merged as `?[0-9a-f]{7,40}`?", cell))
+
 LOG_FIELDS = ("**Landed:**", "**Threads touched:**", "**Next agent needs to know:**")
 LOG_HEADING = re.compile(r"^### (RL-\d{3}) — (\d{4}-\d{2}-\d{2}) — (.+?) — (.+)$")
+
+
+# A cell may contain a literal pipe if it is escaped, the same way GitHub renders
+# it. Splitting naively would silently turn one cell into two and desync every
+# column after it, so the escape is honoured here and the error message below
+# names it when someone forgets.
+_ESCAPED_PIPE = "\x00PIPE\x00"
+
+
+def _split_row(line: str) -> list[str]:
+    protected = line.strip().strip("|").replace("\\|", _ESCAPED_PIPE)
+    return [cell.strip().replace(_ESCAPED_PIPE, "|") for cell in protected.split("|")]
 
 
 def _rows(text: str, heading: str) -> list[list[str]]:
@@ -56,11 +81,21 @@ def _rows(text: str, heading: str) -> list[list[str]]:
             if rows:
                 break
             continue
-        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        cells = _split_row(stripped)
         if all(set(cell) <= {"-", ":"} and cell for cell in cells):
             continue
         rows.append(cells)
     return rows[1:] if rows else []
+
+
+def _column_count_hint(row: list[str], expected: int) -> str:
+    """Explain a column-count mismatch in terms of its likeliest cause."""
+    if len(row) > expected:
+        return (
+            f" — {len(row) - expected} more than expected, which usually means a cell "
+            "contains an unescaped `|`. Write it as `\\|`."
+        )
+    return " — a cell is missing."
 
 
 def check_sections(text: str) -> list[str]:
@@ -74,13 +109,20 @@ def check_parts(text: str) -> list[str]:
         errors.append(f"section 2 lists {len(rows)} parts; the plan defines 5")
     for row in rows:
         if len(row) != 5:
-            errors.append(f"section 2 row has {len(row)} columns, expected 5: {row}")
+            errors.append(
+                f"section 2 row has {len(row)} columns, expected 5{_column_count_hint(row, 5)} "
+                f"Row starts: {row[0][:60]!r}"
+            )
             continue
         part, owner, branch, state, _proof = row
         if owner in EMPTY:
             errors.append(f"part '{part}' has no owner cell; write UNOWNED if that is the truth")
-        if branch in EMPTY and owner != "UNOWNED":
-            errors.append(f"part '{part}' has an owner but no branch")
+        if owner != "UNOWNED" and not _is_meaningful_branch(branch):
+            errors.append(
+                f"part '{part}' has an owner but its branch cell says {branch!r}. "
+                f"Use a branch path, `merged as <sha>`, or the exact words "
+                f"'{NOT_STARTED}' so the state is unambiguous."
+            )
         if state in EMPTY:
             errors.append(f"part '{part}' has no state")
     return errors
@@ -94,7 +136,10 @@ def check_threads(text: str) -> tuple[list[str], set[str]]:
         errors.append("section 3 has no threads; an empty register is almost certainly wrong")
     for row in rows:
         if len(row) != 6:
-            errors.append(f"section 3 row has {len(row)} columns, expected 6: {row[:2]}")
+            errors.append(
+                f"section 3 row has {len(row)} columns, expected 6{_column_count_hint(row, 6)} "
+                f"Row starts: {row[0][:60]!r}"
+            )
             continue
         thread_id, summary, owner, _blocks, status, evidence = row
         if not re.fullmatch(r"T-\d{2}", thread_id):

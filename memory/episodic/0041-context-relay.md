@@ -121,3 +121,38 @@ proposing them with evidence.
 
 - `make check` green end to end after both merges, including the new typecheck.
 - Relay: 5 parts, 18 threads, 14 unsettled, 7 log entries.
+
+## Addendum 3 — acting on the review of PR #5
+
+Anurup's review made a point worth keeping: the relay checker's whole
+justification is that an unchecked guard drifts silently, and it shipped without
+a guard of its own. Nine mutations had been run by hand — one of which found a
+real asymmetric-rule bug — and none were committed.
+
+`tests/relay/test_relay_check.py` now encodes 21 cases, wired into `make check`
+through `relay-check`. It includes a control asserting the pristine document
+passes, without which a checker that rejected everything would satisfy every
+other case in the file.
+
+Two real fixes came out of the review:
+
+Table cells could not contain a literal `|`. The parser did not silently
+mis-parse — it reported "7 columns, expected 6" — but that diagnoses the symptom,
+not the cause. `\|` is now honoured the way GitHub renders it, the value survives
+unescaping, and an unescaped pipe produces an error that names the cause and the
+fix. A missing cell gets a different message.
+
+`check_parts` accepted any non-empty branch cell, so Part 2's honest "not yet
+created" and a useless "soon" were indistinguishable. An owned part's branch cell
+must now be a branch path, a `merged as <sha>` reference, or the exact words
+"not yet created".
+
+The reviewer's remaining minor point — that the checker enforces structure, not
+truth, so a fabricated "CLOSED, evidence: X" row passes — stands. No check can
+verify a claim; that is what the evidence column and review are for.
+
+## Validation evidence (addendum 3)
+
+- 21 relay tests, `make check` green end to end.
+- The escaped-pipe path is asserted to both parse and preserve the pipe, not
+  merely to stop erroring.

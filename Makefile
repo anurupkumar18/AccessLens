@@ -5,6 +5,7 @@ memory-check:
 
 relay-check:
 	python3 scripts/relay_check.py
+	python3 -m unittest discover -s tests/relay
 
 extension-check:
 	npm run check
