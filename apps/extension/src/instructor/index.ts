@@ -4,3 +4,4 @@ export { createCaptureController, systemClock, randomIds, UNMATCHED_DEBOUNCE, SH
 export type {
   CaptureController, ControllerOptions, ControllerSnapshot, CapturePhase, CurrentState, Correction, Clock, IdGenerator,
 } from './captureController';
+export { InstructorPanel } from './InstructorPanel';
