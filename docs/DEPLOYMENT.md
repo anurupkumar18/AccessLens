@@ -35,12 +35,17 @@ and was cleaned up afterwards:
 | API Gateway v2: create WebSocket API | permitted |
 | S3: create bucket | permitted |
 | CloudFormation: create stack | permitted |
+| CDK bootstrap | done — `CDKToolkit`, version 32 |
 
 So the planned architecture is deployable here. Two caveats found:
 
-- **CDK is not bootstrapped.** `npx cdk bootstrap` must be run once, by whoever
-  deploys first, before any `cdk deploy` will work. It is not in anyone's task
-  list, which is why it is thread **T-21**.
+- **CDK is now bootstrapped** (done 2026-09-15, thread T-21 closed).
+  `CDKToolkit` is at bootstrap version 32 with staging bucket
+  `cdk-hnb659fds-assets-087328706621-us-east-1`. `cdk deploy` will work without
+  further setup. Note it was bootstrapped with CDK's default
+  `AdministratorAccess` execution policy — normal for a throwaway event account,
+  and worth scoping with `--cloudformation-execution-policies` in anything that
+  outlives it.
 - A pre-provisioned Lambda named `WSConcurrencyCurtailer-DO-NOT-USE` exists in
   the account. The workshop appears to throttle concurrency; do not assume
   unlimited Lambda scaling during the demo, and do not touch that function.
@@ -52,8 +57,8 @@ Nothing here can be parallelised away — each step needs the one before it.
 1. **Preflight.** `python3 scripts/deploy_preflight.py --aws`. Fix anything
    marked `✗` before continuing. `!` items are warnings you should understand
    rather than ignore.
-2. **Bootstrap CDK**, once per account: `npx cdk bootstrap aws://<account>/us-east-1`.
-   Re-run after the account is reset or credentials change account.
+2. **Bootstrap CDK** — already done for this account. Only needed again if the
+   account is reset: `npx --yes aws-cdk@2 bootstrap aws://<account>/us-east-1`.
 3. **Deploy Part 4's stack** — API Gateway WebSocket API, Lambda handlers,
    DynamoDB session table with TTL. Part 4 owns the command; it belongs in
    `infra/` per `PARALLEL_WORKSTREAMS.md`.
@@ -105,8 +110,6 @@ are the event's own infrastructure.
 
 ## Steps that currently have no owner
 
-- **T-21** — CDK bootstrap. One command, thirty seconds, and nothing deploys
-  until someone runs it.
 - **T-13** — merging the integration branch to `master` at the end.
 - **T-07** — CI still does not run on the integration branch on push.
 
