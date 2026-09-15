@@ -5,7 +5,7 @@ this project mid-flight, and appends to on the way out. It exists so that contex
 travels between sessions and between people, and so that nothing quietly falls
 through the gap at the end of the hackathon.
 
-**State as of:** `0771bce` (Jacob takes Part 2), September 15, 2026.
+**State as of:** `a881f11` (Part 5 pack merged), September 15, 2026.
 
 This file is **append-mostly**. The tables are living state and get edited in
 place; the relay log at the bottom is append-only. Never delete a log entry, and
@@ -61,7 +61,7 @@ during the build.
 | 2. Instructor capture | Jacob | not yet created | Owner assigned in `0771bce`. No code yet under `apps/extension/src/instructor/` or `src/sources/screen/`. Everything needed to start is listed in section 6. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
 | 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
-| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, and a content review sheet for A15. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
+| 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`; PR #6 open for review follow-ups | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, and runbook-versus-pack checks. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
 
 **The single largest risk in this project is still the second column**, though it
 moved today: Part 2 now has an owner. Parts 3 and 4 do not. Part 3 is the student
@@ -99,6 +99,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
 | T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. Hit **four times** across the `c3ddc27` and `38542ad` merges of #4 and #5. Proposal: let the pointer be a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | Four conflicts on the same line in one afternoon |
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
+| T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts` |
 
@@ -395,3 +396,42 @@ something breaks later it broke after this point. But the only reason anyone
 knows that is that someone went and looked. Until PR #5's workflow fix merges,
 assume nothing on the integration branch has been verified unless a relay entry
 says it was.
+
+### RL-014 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** PR #4 merged as `a881f11`, putting the reviewed pack, the simulator,
+the validators, and the E2E replay on the integration branch. PR #6 opened for
+the three minor points from the review, which arrived after the merge: a
+docstring on `check_ar_framing`'s scalar field-of-view assumption, a trip-wire
+failing any hotspot that uses more than 95% of its half field of view, and a
+warning at the definition of `TIE_EPSILON` that symmetrising it would silently
+change every fingerprint in the pack.
+
+Also acted on the review of PR #5: `tests/relay/test_relay_check.py` now encodes
+21 mutation cases, escaped pipes are honoured in table cells with an error that
+names the cause, and an owned part's branch cell must be a branch path, a
+`merged as <sha>` reference, or the exact words "not yet created".
+
+**Threads touched:** none closed.
+**Next agent needs to know:** the reviewer's sharpest point is worth repeating.
+The relay checker's whole justification was that an unchecked guard drifts
+silently, and it had shipped without a guard of its own — nine mutations run by
+hand, none committed. If you add a check to this repository, commit the
+mutations that prove it can fail, including a control asserting the good case
+passes. Without that control, a checker that rejects everything satisfies every
+other test you write.
+
+### RL-015 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** restored `relay-check` and `freeze-check` to the `Makefile` after
+merging PR #5 dropped them, and added assertions so the loss cannot repeat
+quietly. Rebuilt the relay mutation tests to address table rows by their first
+cell rather than embedding whole rows as string literals, so ordinary edits to
+this document no longer break tests that have nothing to do with the checker.
+**Threads touched:** T-20 opened and closed in the same pass.
+**Next agent needs to know:** the merge that dropped those targets is the exact
+failure this document exists to catch, and it still took a person noticing.
+`scripts/relay_check.py` and `tests/relay/` both survived the merge, so nothing
+looked wrong — the gate had simply stopped being called. After you resolve a
+conflict in `Makefile` or `.github/workflows/`, diff the list of targets and
+triggers, not just the file.

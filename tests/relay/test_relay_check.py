@@ -27,6 +27,26 @@ import relay_check  # noqa: E402
 PRISTINE = (REPO_ROOT / "docs" / "CONTEXT_RELAY.md").read_text(encoding="utf-8")
 
 
+def replace_cell(text: str, row_prefix: str, column: int, value: str) -> str:
+    """Rewrite one cell of the table row starting with `row_prefix`.
+
+    Mutations used to embed whole rows as string literals, which meant editing
+    the relay document broke the tests for reasons that had nothing to do with
+    the checker. Addressing rows by their first cell survives ordinary edits to
+    the prose around them.
+    """
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            continue
+        cells = relay_check._split_row(stripped)
+        if cells and cells[0] == row_prefix:
+            mutated = list(cells)
+            mutated[column] = value
+            return text.replace(line, "| " + " | ".join(mutated) + " |", 1)
+    raise AssertionError(f"no table row starting with {row_prefix!r}")
+
+
 def errors_for(text: str) -> list[str]:
     """Run every check the way main() does, against an in-memory document."""
     problems = relay_check.check_sections(text)
@@ -60,24 +80,20 @@ class RelayCheckCatchesMutations(unittest.TestCase):
 
     def test_a_part_with_no_owner_is_caught(self):
         self.assert_catches(
-            PRISTINE.replace("| 3. Student experience and AR | UNOWNED |", "| 3. Student experience and AR |  |"),
+            replace_cell(PRISTINE, "3. Student experience and AR", 1, ""),
             "has no owner cell",
         )
 
     def test_an_owned_part_with_no_branch_is_caught(self):
         self.assert_catches(
-            PRISTINE.replace(
-                "| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open |",
-                "| 5. Content, camera, and demo QA | Kunj Rathod | — |",
-            ),
+            replace_cell(PRISTINE, "5. Content, camera, and demo QA", 2, "—"),
             "branch cell says",
         )
 
     def test_a_vague_branch_cell_on_an_owned_part_is_caught(self):
         """"Jacob / not yet created" is honest; "Jacob / soon" says nothing."""
         self.assert_catches(
-            PRISTINE.replace("| 2. Instructor capture | Jacob | not yet created |",
-                             "| 2. Instructor capture | Jacob | soon |"),
+            replace_cell(PRISTINE, "2. Instructor capture", 2, "soon"),
             "branch cell says",
         )
 
@@ -90,29 +106,21 @@ class RelayCheckCatchesMutations(unittest.TestCase):
         self.assertFalse(relay_check._is_meaningful_branch("—"))
 
     def test_an_invalid_thread_status_is_caught(self):
-        self.assert_catches(PRISTINE.replace("| OPEN | `docs/PART5", "| probably fine | `docs/PART5", 1), "is not one of")
+        self.assert_catches(replace_cell(PRISTINE, "T-05", 4, "probably fine"), "is not one of")
 
     def test_a_closed_thread_without_evidence_is_caught(self):
-        mutated = PRISTINE.replace(
-            "| Part 1 | — | CLOSED | `c3ddc27` made `LiveEventSchema` a per-type discriminated union; `source.unmatched` is now structurally unable to name an asset |",
-            "| Part 1 | — | CLOSED | — |",
-        )
-        self.assert_catches(mutated, "with no evidence")
+        self.assert_catches(replace_cell(PRISTINE, "T-02", 5, "—"), "with no evidence")
 
     def test_an_owner_named_beside_an_unowned_status_is_caught(self):
         """The real bug the by-hand pass found: the rule was one-directional."""
-        mutated = PRISTINE.replace(
-            "| UNOWNED | Everything downstream of the shell | UNOWNED |",
-            "| Part 1 | Everything downstream of the shell | UNOWNED |",
+        self.assert_catches(
+            replace_cell(PRISTINE, "T-01", 2, "Part 1"), "must appear in both cells or neither"
         )
-        self.assert_catches(mutated, "must appear in both cells or neither")
 
     def test_an_unowned_owner_beside_a_real_status_is_caught(self):
-        mutated = PRISTINE.replace(
-            "| UNOWNED | Everything downstream of the shell | UNOWNED |",
-            "| UNOWNED | Everything downstream of the shell | IN PROGRESS |",
+        self.assert_catches(
+            replace_cell(PRISTINE, "T-01", 4, "IN PROGRESS"), "must appear in both cells or neither"
         )
-        self.assert_catches(mutated, "must appear in both cells or neither")
 
     def test_a_log_entry_missing_a_required_field_is_caught(self):
         self.assert_catches(
@@ -142,22 +150,17 @@ class RelayCheckCatchesMutations(unittest.TestCase):
         )
 
     def test_a_duplicate_thread_id_is_caught(self):
-        mutated = PRISTINE.replace("| T-16 |", "| T-15 |", 1)
-        self.assert_catches(mutated, "duplicate thread id")
+        self.assert_catches(replace_cell(PRISTINE, "T-16", 0, "T-15"), "duplicate thread id")
 
     def test_a_malformed_thread_id_is_caught(self):
-        self.assert_catches(PRISTINE.replace("| T-16 |", "| T16 |", 1), "is not in T-NN form")
+        self.assert_catches(replace_cell(PRISTINE, "T-16", 0, "T16"), "is not in T-NN form")
 
 
 class TableParsing(unittest.TestCase):
     """The reviewer's second point: naive `|` splitting desyncs on a literal pipe."""
 
     def test_an_unescaped_pipe_is_diagnosed_not_just_detected(self):
-        mutated = PRISTINE.replace(
-            "| T-12 | `codex/live-workspace-foundation` is 3 commits ahead",
-            "| T-12 | Run `git log | head` to see that `codex/live-workspace-foundation` is 3 commits ahead",
-            1,
-        )
+        mutated = replace_cell(PRISTINE, "T-12", 1, "Run `git log | head` to inspect it")
         problems = errors_for(mutated)
         self.assertTrue(problems, "a pipe inside a cell was silently absorbed")
         self.assertTrue(
@@ -167,24 +170,43 @@ class TableParsing(unittest.TestCase):
 
     def test_an_escaped_pipe_is_accepted_and_preserved(self):
         """The workaround the error message recommends has to actually work."""
-        mutated = PRISTINE.replace(
-            "| T-12 | `codex/live-workspace-foundation` is 3 commits ahead",
-            "| T-12 | Run `git log \\| head` to see that `codex/live-workspace-foundation` is 3 commits ahead",
-            1,
-        )
+        mutated = replace_cell(PRISTINE, "T-12", 1, "Run `git log \\| head` to inspect it")
         self.assertEqual(errors_for(mutated), [])
         rows = relay_check._rows(mutated, relay_check.REQUIRED_SECTIONS[2])
         row = next(r for r in rows if r[0] == "T-12")
         self.assertIn("git log | head", row[1])
 
     def test_a_missing_cell_is_diagnosed_differently(self):
-        mutated = PRISTINE.replace(
-            "| T-12 | `codex/live-workspace-foundation` is 3 commits ahead and 64 behind, last touched 2026-08-28, from the superseded Evidence Engine product. Salvage or delete before the repo is handed over. | UNOWNED | Nothing | UNOWNED | `git log origin/codex/live-workspace-foundation` |",
-            "| T-12 | short | UNOWNED | Nothing | UNOWNED |",
-            1,
-        )
+        row = next(line for line in PRISTINE.splitlines() if line.strip().startswith("| T-12 |"))
+        mutated = PRISTINE.replace(row, "| T-12 | short | UNOWNED | Nothing | UNOWNED |", 1)
         problems = errors_for(mutated)
         self.assertTrue(any("a cell is missing" in problem for problem in problems), problems)
+
+
+class WiredIntoTheBuild(unittest.TestCase):
+    """A checker nothing runs is a checker that does not exist.
+
+    This is not hypothetical here. Merging PR #5 resolved a Makefile conflict by
+    taking the other side, which silently dropped `relay-check` from `check` and
+    removed the `freeze-check` target entirely. Both scripts stayed in the tree,
+    so nothing looked wrong. These assertions make that lossy resolution fail
+    loudly the next time.
+    """
+
+    MAKEFILE = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+
+    def test_check_depends_on_relay_check(self):
+        target = next(
+            (line for line in self.MAKEFILE.splitlines() if line.startswith("check:")), ""
+        )
+        self.assertIn("relay-check", target, "make check no longer runs the relay checker")
+
+    def test_relay_check_runs_this_suite(self):
+        self.assertIn("python3 -m unittest discover -s tests/relay", self.MAKEFILE)
+
+    def test_the_freeze_gate_target_exists(self):
+        self.assertIn("freeze-check:", self.MAKEFILE)
+        self.assertIn("relay_check.py --freeze", self.MAKEFILE)
 
 
 class FreezeGate(unittest.TestCase):
