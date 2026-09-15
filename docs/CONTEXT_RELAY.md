@@ -61,7 +61,7 @@ during the build.
 | 2. Instructor capture | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/instructor/` or `src/sources/screen/`. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
 | 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
-| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures. First E2E slice replays fixtures through Part 1's real `InMemorySessionClient` and cross-checks the two validators. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
+| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, and a content review sheet for A15. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
 
 **The single largest risk in this project is the second column.** Three of five
 parts are unowned, and Parts 2 and 3 are on the critical path to the demo. Part 5
@@ -89,7 +89,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract, which cannot express it until T-05 lets the pack carry `arScene`. | Part 1 + Part 3 | Part 3 | BLOCKED | Blocked on T-05 |
 | T-07 | CI does not run on the integration branch. `.github/workflows/check.yml` pushes only on `[main, master]`, and no check ran on PR #4. The branch the whole hackathon lives on is unwatched. | UNOWNED | Everyone | UNOWNED | `gh pr checks 4` reports no checks |
 | T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | IN PROGRESS | Reproduced by hiding `node_modules` and running `npm run check`; fix in PR #5 |
-| T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack. The pack must not be described as expert-reviewed or accessibility-audited until this closes. | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/PROVENANCE.md` |
+| T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack, so it must not be described as expert-reviewed or accessibility-audited. The Part 5 side is now unblocked — `review/content-review-sheet.html` draws every region on its slide beside the exact words a student gets, so there is something to review. **What remains needs a person: finding the two reviewers.** | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/review/content-review-sheet.html` |
 | T-10 | A17 camera adapter not started. Phase 6 by plan; must not delay or destabilise the screen-sharing demo. | Part 5 | Nothing | ACCEPTED | `docs/IMPLEMENTATION_PLAN.md` §3 Phase 6 |
 | T-11 | End-to-end suite. First slice landed now that `SessionClient` is frozen: `tests/e2e/fixture-replay.test.ts` covers fixture replay, reconnect idempotence, and session close. The rest — failure paths through a real UI, axe, screen-reader, rehearsals — still needs the student renderers. | Part 5 | Demo readiness | IN PROGRESS | `tests/e2e/fixture-replay.test.ts`, 7 tests |
 | T-12 | `codex/live-workspace-foundation` is 3 commits ahead and 64 behind, last touched 2026-08-28, from the superseded Evidence Engine product. Salvage or delete before the repo is handed over. | UNOWNED | Nothing | UNOWNED | `git log origin/codex/live-workspace-foundation` |
@@ -318,3 +318,18 @@ worked example of driving the session client from a fixture — copy its setup
 rather than inventing one. Also: proving a guard works needs a mutation that
 actually flips a verdict. The first mutation tried here changed nothing
 observable, and a weaker engineer would have read that as "the guard passes".
+
+### RL-009 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** `review/content-review-sheet.html` and its generator. Every region
+drawn on its slide from the same normalized bounds a student renderer receives,
+beside the exact words a student is given, plus the AR node and camera each maps
+to, and all 24 student-facing sentences listed for reading straight through.
+Guarded by a `--check` mode and two tests, both verified to fail.
+**Threads touched:** T-09 — the Part 5 side is unblocked; what remains needs a
+person.
+**Next agent needs to know:** A15 was not stalled on effort, it was stalled on
+there being nothing a domain expert could look at. That is fixed. Finding a
+biology instructor and an accessibility professional is now the whole of the
+remaining task, and it is the kind of thing that only happens if someone is
+asked by name at a standup.
