@@ -4,6 +4,7 @@
   "packId": "bio-cell-demo",
   "packVersion": 1,
   "sessionId": "sess-demo-0001",
+  "redeliveredEventIndices": [],
   "expectations": [
     "capture.paused freezes the student view immediately and shows a visible paused state.",
     "No region.changed may appear between capture.paused and capture.resumed.",
@@ -26,11 +27,6 @@
       "packId": "bio-cell-demo",
       "packVersion": 1,
       "assetId": "cell-slide-02",
-      "arState": {
-        "hotspotId": null,
-        "action": "frame",
-        "camera": "nucleus-closeup"
-      },
       "sequence": 2,
       "sentAt": "2026-09-15T15:00:12Z"
     },
@@ -44,8 +40,7 @@
       "regionId": "nucleolus",
       "arState": {
         "hotspotId": "cell-slide-02:nucleolus",
-        "action": "focus",
-        "camera": "nucleus-closeup"
+        "action": "focus"
       },
       "pointer": {
         "x": 0.43,
@@ -82,8 +77,7 @@
       "regionId": "nucleus",
       "arState": {
         "hotspotId": "cell-slide-02:nucleus",
-        "action": "focus",
-        "camera": "nucleus-closeup"
+        "action": "focus"
       },
       "pointer": {
         "x": 0.44,

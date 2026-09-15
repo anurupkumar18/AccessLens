@@ -4,6 +4,7 @@
   "packId": "bio-cell-demo",
   "packVersion": 1,
   "sessionId": "sess-demo-0001",
+  "redeliveredEventIndices": [],
   "expectations": [
     "source.unmatched carries no assetId, regionId, description, or arState.",
     "Student renderers show an unmatched state and keep showing it until a reviewed asset arrives.",
@@ -27,11 +28,6 @@
       "packId": "bio-cell-demo",
       "packVersion": 1,
       "assetId": "cell-slide-03",
-      "arState": {
-        "hotspotId": null,
-        "action": "frame",
-        "camera": "mitochondrion-closeup"
-      },
       "sequence": 2,
       "sentAt": "2026-09-15T15:00:12Z"
     },
@@ -45,8 +41,7 @@
       "regionId": "mitochondrion",
       "arState": {
         "hotspotId": "cell-slide-03:mitochondrion",
-        "action": "focus",
-        "camera": "mitochondrion-closeup"
+        "action": "focus"
       },
       "pointer": {
         "x": 0.44,
@@ -61,9 +56,6 @@
       "sessionId": "sess-demo-0001",
       "packId": "bio-cell-demo",
       "packVersion": 1,
-      "reason": "no reviewed asset within the configured match thresholds",
-      "nearestDistanceBits": 53,
-      "correctionAvailable": true,
       "sequence": 4,
       "sentAt": "2026-09-15T15:00:24Z"
     },
@@ -74,11 +66,6 @@
       "packId": "bio-cell-demo",
       "packVersion": 1,
       "assetId": "cell-slide-04",
-      "arState": {
-        "hotspotId": null,
-        "action": "frame",
-        "camera": "secretory-path"
-      },
       "sequence": 5,
       "sentAt": "2026-09-15T15:00:30Z"
     },
@@ -92,8 +79,7 @@
       "regionId": "rough-er",
       "arState": {
         "hotspotId": "cell-slide-04:rough-er",
-        "action": "focus",
-        "camera": "secretory-path"
+        "action": "focus"
       },
       "pointer": {
         "x": 0.5,

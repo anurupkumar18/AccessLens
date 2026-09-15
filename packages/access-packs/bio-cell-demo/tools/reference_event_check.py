@@ -1,14 +1,17 @@
-"""Executable specification for the rules a LiveEvent must satisfy.
+"""Pack-aware and stream-aware rules a LiveEvent must satisfy.
 
-This is NOT the canonical contract. Part 1 owns `packages/contracts/` and will
-express these rules in Zod and JSON Schema; Part 4 enforces them again at the
-relay. Until those exist, the fixtures in `fixtures/invalid/` would be a pile of
-JSON nobody checks, so this module states each rule once, in the standard
-library, and the pack's guardrail suite asserts that every negative fixture
-trips exactly the rule it documents.
+Part 1's contracts now cover event *shape* properly -- `c3ddc27` made
+`LiveEventSchema` a discriminated union per type and mirrored it in
+`live-event.schema.json`. Shape is checked there, and
+`check_contract_conformance.py` runs the pack and every fixture against it.
 
-When Part 1's contract lands, port these rules and keep the fixtures pointed at
-it; the rule names below are meant to survive that move.
+What a JSON Schema cannot check is whether an event is consistent with *this*
+pack and *this* stream: whether the asset exists, whether the region belongs to
+the asset, whether the hotspot matches the region, and whether the sequence
+number moved forward. Those rules live here, and the pack's guardrail suite
+asserts each negative fixture trips the one it documents.
+
+Keep the rule names stable: Part 4 has to enforce the same rules server-side.
 """
 
 from __future__ import annotations
@@ -26,18 +29,16 @@ ALLOWED_EVENT_TYPES = (
 
 REQUIRED_FIELDS = ("schemaVersion", "type", "sessionId", "packId", "packVersion", "sequence", "sentAt")
 
-# Fields that describe the instructional moment. Anything else on an event is
-# either media or a learner inference, and both are prohibited.
+# Mirrors the field matrix in packages/contracts/live-event.schema.json. The one
+# addition is `caption`: `caption.appended` is base-only in the shared contract,
+# so a caption event cannot currently carry a caption. That is tracked as a
+# contract gap rather than worked around -- see docs/PART5_CONTRACT_CONFORMANCE.md.
 KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "assetId",
     "regionId",
     "pointer",
     "arState",
     "caption",
-    "reason",
-    "nearestDistanceBits",
-    "correctionAvailable",
-    "redelivery",
 }
 
 INSTRUCTOR_ONLY_TYPES = (

@@ -4,6 +4,9 @@
   "packId": "bio-cell-demo",
   "packVersion": 1,
   "sessionId": "sess-demo-0001",
+  "redeliveredEventIndices": [
+    4
+  ],
   "expectations": [
     "A reconnecting student receives only the latest state, never a replay of the whole session.",
     "Applying the redelivered event produces the same view as having received sequence 4 live.",
@@ -26,11 +29,6 @@
       "packId": "bio-cell-demo",
       "packVersion": 1,
       "assetId": "cell-slide-04",
-      "arState": {
-        "hotspotId": null,
-        "action": "frame",
-        "camera": "secretory-path"
-      },
       "sequence": 2,
       "sentAt": "2026-09-15T15:00:12Z"
     },
@@ -44,8 +42,7 @@
       "regionId": "ribosome",
       "arState": {
         "hotspotId": "cell-slide-04:ribosome",
-        "action": "focus",
-        "camera": "secretory-path"
+        "action": "focus"
       },
       "pointer": {
         "x": 0.18,
@@ -64,8 +61,7 @@
       "regionId": "golgi-apparatus",
       "arState": {
         "hotspotId": "cell-slide-04:golgi-apparatus",
-        "action": "focus",
-        "camera": "secretory-path"
+        "action": "focus"
       },
       "pointer": {
         "x": 0.81,
@@ -84,16 +80,14 @@
       "regionId": "golgi-apparatus",
       "arState": {
         "hotspotId": "cell-slide-04:golgi-apparatus",
-        "action": "focus",
-        "camera": "secretory-path"
+        "action": "focus"
       },
       "pointer": {
         "x": 0.81,
         "y": 0.71
       },
       "sequence": 4,
-      "sentAt": "2026-09-15T15:00:24Z",
-      "redelivery": "latest-state-after-reconnect"
+      "sentAt": "2026-09-15T15:00:24Z"
     },
     {
       "schemaVersion": "1.0",

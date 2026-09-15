@@ -1,4 +1,4 @@
-.PHONY: check memory-check pack-check
+.PHONY: check memory-check pack-check extension-check
 
 memory-check:
 	python3 scripts/memory_check.py
@@ -8,5 +8,8 @@ pack-check:
 	python3 packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py
 	python3 -m unittest discover -s tests/access_pack
 
-check: memory-check pack-check
-	@echo "AccessLens documentation and Access Pack checks passed. Extension checks will be added with Phase 1."
+extension-check:
+	npm run check
+
+check: memory-check pack-check extension-check
+	@echo "AccessLens documentation, Access Pack, and extension checks passed."

@@ -1,3 +1,6 @@
-import React,{useEffect,useState} from 'react'; import {createRoot} from 'react-dom/client'; import './style.css'; import {InMemorySessionClient} from './shared/contracts'; import {validEvent,validPack} from './shared/fixtures';
-const client=new InMemorySessionClient();
-function App(){const [role,setRole]=useState<'instructor'|'student'>('instructor'); const [event,setEvent]=useState<typeof validEvent|null>(null); useEffect(()=>client.subscribe(setEvent),[]); return <main><header><h1>AccessLens</h1><p>Accessible, instructor-authorized lesson sharing</p></header><nav aria-label="Role navigation"><button aria-current={role==='instructor'} onClick={()=>setRole('instructor')}>Instructor</button><button aria-current={role==='student'} onClick={()=>setRole('student')}>Student</button></nav>{role==='instructor'?<section><h2>Instructor session</h2><p>Demo pack: {validPack.title}</p><button onClick={()=>client.send(validEvent)}>Send fixture event</button><p role="status">{event?'Event sent · sequence '+event.sequence:'Ready to share'}</p></section>:<section><h2>Student view</h2><p>{event?`Following ${event.regionId} on ${event.assetId}.`:'Waiting for instructor event.'}</p></section>}</main>}; createRoot(document.getElementById('root')!).render(<App/>);
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import './style.css';
+import { App } from './shell/App';
+
+createRoot(document.getElementById('root')!).render(<App />);

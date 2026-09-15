@@ -58,6 +58,9 @@ class Builder:
         self.sequence = 0
         self.clock = START
         self.events: list[dict] = []
+        # Indices into `events` that are transport redeliveries of an earlier
+        # event rather than new instructor actions.
+        self.redelivered_indices: list[int] = []
 
     def _assets(self) -> dict[str, dict]:
         return {asset["assetId"]: asset for asset in self.pack["assets"]}
@@ -81,12 +84,15 @@ class Builder:
         return event
 
     def asset_changed(self, asset_id: str) -> dict:
-        asset = self._assets()[asset_id]
-        return self.emit(
-            "asset.changed",
-            assetId=asset_id,
-            arState={"hotspotId": None, "action": "frame", "camera": asset["arScene"]["defaultCamera"]},
-        )
+        """Emit an asset change.
+
+        No `arState`: the shared contract forbids it on this type, correctly.
+        An asset change resets the scene, and the framing to reset to is
+        `arScene.defaultCamera` in the pack -- reviewed content the renderer
+        already holds, not something every event needs to restate.
+        """
+        self._assets()[asset_id]  # Raises if the pack does not contain it.
+        return self.emit("asset.changed", assetId=asset_id)
 
     def region_changed(self, asset_id: str, region_id: str, pointer: tuple[float, float] | None = None) -> dict:
         asset = self._assets()[asset_id]
@@ -94,11 +100,10 @@ class Builder:
         fields: dict = {
             "assetId": asset_id,
             "regionId": region_id,
-            "arState": {
-                "hotspotId": hotspot["hotspotId"],
-                "action": "focus",
-                "camera": hotspot["cameraTarget"],
-            },
+            # No `camera` here either. The renderer resolves the hotspot in the
+            # pack and reads its `cameraTarget`; duplicating it on the wire
+            # would let the event and the reviewed pack disagree.
+            "arState": {"hotspotId": hotspot["hotspotId"], "action": "focus"},
         }
         if pointer is not None:
             fields["pointer"] = {"x": pointer[0], "y": pointer[1]}
@@ -141,12 +146,10 @@ def scenario_unmatched_and_correction(pack: dict) -> tuple[Builder, list[str]]:
     builder.emit("session.started")
     builder.asset_changed("cell-slide-03")
     builder.region_changed("cell-slide-03", "mitochondrion", _region_centre(pack, "cell-slide-03", "mitochondrion"))
-    builder.emit(
-        "source.unmatched",
-        reason="no reviewed asset within the configured match thresholds",
-        nearestDistanceBits=53,
-        correctionAvailable=True,
-    )
+    # Base fields only. Why the match failed and whether correction is offered
+    # are instructor-side UI concerns; neither belongs on the wire, and the
+    # shared contract now forbids them on this type.
+    builder.emit("source.unmatched")
     builder.asset_changed("cell-slide-04")
     builder.region_changed("cell-slide-04", "rough-er", _region_centre(pack, "cell-slide-04", "rough-er"))
     builder.emit("session.ended")
@@ -213,10 +216,12 @@ def scenario_reconnect(pack: dict) -> tuple[Builder, list[str]]:
     builder.region_changed("cell-slide-04", "ribosome", _region_centre(pack, "cell-slide-04", "ribosome"))
     builder.region_changed("cell-slide-04", "golgi-apparatus", _region_centre(pack, "cell-slide-04", "golgi-apparatus"))
     # A student that missed sequences 3 and 4 rejoins and is sent only the
-    # latest semantic state, not the history.
-    latest = dict(builder.events[-1])
-    latest["redelivery"] = "latest-state-after-reconnect"
-    builder.events.append(latest)
+    # latest semantic state, not the history. The redelivery is a transport
+    # fact, so it is recorded against the fixture rather than stamped on the
+    # event -- a redelivered event must be byte-identical to the original, or
+    # consumers cannot treat re-applying it as a no-op.
+    builder.events.append(dict(builder.events[-1]))
+    builder.redelivered_indices.append(len(builder.events) - 1)
     builder.emit("session.ended")
     return builder, [
         "A reconnecting student receives only the latest state, never a replay of the whole session.",
@@ -262,6 +267,7 @@ def build(name: str, pack: dict) -> dict:
         "packId": pack["packId"],
         "packVersion": pack["version"],
         "sessionId": builder.session_id,
+        "redeliveredEventIndices": builder.redelivered_indices,
         "expectations": expectations,
         "events": builder.events,
     }

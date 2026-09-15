@@ -36,97 +36,153 @@ FIXTURES = PACK_ROOT / "fixtures"
 # "<schema>:<kind>:<detail>". Anything outside this set is a new break and
 # fails. See docs/PART5_CONTRACT_CONFORMANCE.md for why each one is here.
 EXPECTED_GAPS = {
-    # The pack carries reviewed policy the contract does not model yet.
+    # --- Pack: reviewed content the schema does not model yet ---------------
+    # The most serious of these is `arScene`. AR is a required student renderer
+    # (charter A10, task A12) and the pack schema currently forbids the pack
+    # from carrying the AR scene at all.
+    "AccessPack:additional-property:assets[].arScene",
+    "AccessPack:additional-property:assets[].mediaUri",
+    "AccessPack:additional-property:assets[].subtitle",
+    "AccessPack:additional-property:assets[].regions[].label",
     "AccessPack:additional-property:review",
     "AccessPack:additional-property:matching",
     "AccessPack:additional-property:arCameras",
     "AccessPack:additional-property:reservedReadingOrderIds",
-    # AR is a required renderer, but no event schema names its state.
-    "LiveEvent:additional-property:arState",
+    # --- Events: caption.appended cannot carry a caption --------------------
+    # The type is base-only in the contract, so neither the caption text nor
+    # the asset it belongs to can be sent. Kept in the fixtures rather than
+    # worked around, because a caption event with no caption is not a design.
     "LiveEvent:additional-property:caption",
-    # `source.unmatched` metadata: why it failed and whether correction is
-    # offered. None of it names content.
-    "LiveEvent:additional-property:reason",
-    "LiveEvent:additional-property:nearestDistanceBits",
-    "LiveEvent:additional-property:correctionAvailable",
-    # Reconnect redelivery marker.
-    "LiveEvent:additional-property:redelivery",
-    # The contract requires assetId on every event. Session lifecycle, capture
-    # pause/resume, and above all source.unmatched have no asset to name.
-    "LiveEvent:missing-required:assetId",
-    # Present in the Zod authority but absent from the JSON Schema artifact,
-    # which has additionalProperties:false. Part 1's own validEvent fixture
-    # fails its own JSON Schema for exactly this reason.
-    "LiveEvent:additional-property:regionId",
-    "LiveEvent:additional-property:pointer",
+    "LiveEvent:forbidden-property:assetId",
 }
+
 
 
 def load_schema(name: str) -> dict:
     return json.loads((CONTRACTS / name).read_text(encoding="utf-8"))
 
 
+# Keywords the contracts actually use. Anything outside this set raises rather
+# than passing quietly -- the guard already earned its keep once, when Part 1
+# rewrote the event schema as an if/then matrix and this check stopped instead
+# of silently reporting that everything was fine.
+SUPPORTED_KEYWORDS = {
+    "$schema", "title", "description",
+    "type", "const", "enum", "format",
+    "required", "properties", "additionalProperties",
+    "items", "minItems", "minLength", "minimum", "maximum",
+    "allOf", "if", "then",
+}
+
+_TYPES = {
+    "object": dict,
+    "array": list,
+    "string": str,
+    "integer": int,
+    "number": (int, float),
+    "boolean": bool,
+}
+
+
+def _assert_supported(node: object, label: str) -> None:
+    if isinstance(node, dict):
+        unhandled = set(node) - SUPPORTED_KEYWORDS
+        # Inside a `properties` map the keys are field names, not keywords.
+        if unhandled and not _looks_like_property_map(node):
+            raise NotImplementedError(
+                f"{label} schema uses unsupported keywords: {sorted(unhandled)}"
+            )
+        for key, value in node.items():
+            _assert_supported(value, label) if key != "properties" else [
+                _assert_supported(sub, label) for sub in value.values()
+            ]
+    elif isinstance(node, list):
+        for value in node:
+            _assert_supported(value, label)
+
+
+def _looks_like_property_map(node: dict) -> bool:
+    """A dict of field name -> subschema, rather than a schema itself."""
+    return bool(node) and all(isinstance(v, (dict, bool)) for v in node.values()) and not (
+        set(node) & SUPPORTED_KEYWORDS
+    )
+
+
+def _join(path: str, key: str) -> str:
+    return f"{path}.{key}" if path else key
+
+
+def _check(instance: object, schema: object, path: str) -> list[tuple[str, str]]:
+    """Evaluate one instance against one (sub)schema. Returns (kind, path) pairs."""
+    if schema is False:
+        return [("forbidden-property", path or "<root>")]
+    if schema is True or schema == {}:
+        return []
+    assert isinstance(schema, dict)
+
+    gaps: list[tuple[str, str]] = []
+    where = path or "<root>"
+
+    expected = schema.get("type")
+    if expected is not None:
+        python_type = _TYPES.get(expected)
+        # bool is a subclass of int in Python; JSON Schema does not agree.
+        wrong = python_type is not None and (
+            not isinstance(instance, python_type)
+            or (expected in ("integer", "number") and isinstance(instance, bool))
+        )
+        if wrong:
+            return [("wrong-type", where)]
+
+    if "const" in schema and instance != schema["const"]:
+        gaps.append(("const-mismatch", where))
+    if "enum" in schema and instance not in schema["enum"]:
+        gaps.append(("not-in-enum", where))
+    if isinstance(instance, str) and len(instance) < schema.get("minLength", 0):
+        gaps.append(("too-short", where))
+    if isinstance(instance, (int, float)) and not isinstance(instance, bool):
+        if "minimum" in schema and instance < schema["minimum"]:
+            gaps.append(("below-minimum", where))
+        if "maximum" in schema and instance > schema["maximum"]:
+            gaps.append(("above-maximum", where))
+
+    if isinstance(instance, list):
+        if len(instance) < schema.get("minItems", 0):
+            gaps.append(("too-few-items", where))
+        item_schema = schema.get("items")
+        if item_schema is not None:
+            for element in instance:
+                gaps.extend(_check(element, item_schema, f"{path}[]"))
+
+    if isinstance(instance, dict):
+        properties = schema.get("properties", {})
+        for field in schema.get("required", []):
+            if field not in instance:
+                gaps.append(("missing-required", _join(path, field)))
+        if schema.get("additionalProperties") is False:
+            for field in sorted(set(instance) - set(properties)):
+                gaps.append(("additional-property", _join(path, field)))
+        for field, subschema in properties.items():
+            if field in instance:
+                gaps.extend(_check(instance[field], subschema, _join(path, field)))
+
+    for entry in schema.get("allOf", []):
+        condition = entry.get("if")
+        if condition is not None and _check(instance, condition, path):
+            continue  # The `if` did not match, so `then` does not apply.
+        gaps.extend(_check(instance, entry.get("then", {}), path))
+
+    return gaps
+
+
 def validate(instance: object, schema: dict, label: str) -> list[str]:
     """Check one instance against the JSON Schema subset these contracts use.
 
-    Only the keywords Part 1's artifacts actually contain are implemented:
-    type, const, required, additionalProperties, properties, minimum, minItems.
-    A keyword appearing that is not handled raises, rather than passing quietly.
+    Array positions collapse to `[]` so a gap id stays stable no matter which
+    asset or region carries the problem.
     """
-    supported = {
-        "$schema", "title", "type", "const", "required", "additionalProperties",
-        "properties", "minimum", "minItems", "format",
-    }
-    unhandled = set(schema) - supported
-    if unhandled:
-        raise NotImplementedError(f"{label} schema uses unsupported keywords: {sorted(unhandled)}")
-
-    gaps: list[str] = []
-    expected_type = schema.get("type")
-    if expected_type == "object" and not isinstance(instance, dict):
-        return [f"{label}:wrong-type:expected-object"]
-    if expected_type == "array" and not isinstance(instance, list):
-        return [f"{label}:wrong-type:expected-array"]
-
-    if expected_type == "array":
-        minimum_items = schema.get("minItems")
-        if minimum_items is not None and len(instance) < minimum_items:
-            gaps.append(f"{label}:too-few-items")
-        return gaps
-
-    assert isinstance(instance, dict)
-    properties = schema.get("properties", {})
-
-    for field in schema.get("required", []):
-        if field not in instance:
-            gaps.append(f"{label}:missing-required:{field}")
-
-    if schema.get("additionalProperties") is False:
-        for field in sorted(set(instance) - set(properties)):
-            gaps.append(f"{label}:additional-property:{field}")
-
-    for field, subschema in properties.items():
-        if field not in instance:
-            continue
-        value = instance[field]
-        if "const" in subschema and value != subschema["const"]:
-            gaps.append(f"{label}:const-mismatch:{field}")
-        kind = subschema.get("type")
-        if kind == "string" and not isinstance(value, str):
-            gaps.append(f"{label}:wrong-type:{field}")
-        elif kind == "integer" and not isinstance(value, int):
-            gaps.append(f"{label}:wrong-type:{field}")
-        elif kind == "array" and not isinstance(value, list):
-            gaps.append(f"{label}:wrong-type:{field}")
-        if kind == "integer" and isinstance(value, int):
-            minimum = subschema.get("minimum")
-            if minimum is not None and value < minimum:
-                gaps.append(f"{label}:below-minimum:{field}")
-        if subschema.get("type") == "array" and isinstance(value, list):
-            minimum_items = subschema.get("minItems")
-            if minimum_items is not None and len(value) < minimum_items:
-                gaps.append(f"{label}:too-few-items:{field}")
-    return gaps
+    _assert_supported(schema, label)
+    return [f"{label}:{kind}:{where}" for kind, where in _check(instance, schema, "")]
 
 
 def collect_gaps() -> tuple[set[str], dict[str, int]]:

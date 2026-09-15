@@ -108,3 +108,45 @@ Nothing under `packages/contracts/` was changed — Part 1 owns it.
 `tools/check_contract_conformance.py` holds the 13 known gaps in an explicit list,
 fails on any gap outside it, and prints a notice when one closes; it runs in
 `make pack-check`. The report is `docs/PART5_CONTRACT_CONFORMANCE.md`.
+
+## Addendum 2 — after merging c3ddc27 (Part 1 hardening)
+
+Part 1 fixed both correctness bugs this branch reported, and fixed the first one
+better than asked: `LiveEventSchema` is a discriminated union per type, so
+`source.unmatched` is structurally incapable of naming an asset rather than
+relying on producers to omit the field. The JSON Schema mirrors it with ajv
+tests.
+
+The more useful half of this pass was discovering that most of the newly
+reported event gaps were Part 5's, not Part 1's, and that conforming improved
+the design. Four things left the wire: `arState` on `asset.changed` (the pack's
+`defaultCamera` already says where to reset), `arState.camera` (derivable by
+resolving `hotspotId` in the pack, and duplicating it lets the event and the
+reviewed pack disagree), the `source.unmatched` diagnostics (instructor-side UI,
+never rendered by a student), and the `redelivery` marker (a transport fact, now
+recorded as `redeliveredEventIndices` on the fixture, which makes the
+redelivered event byte-identical to the original — a stronger property, with a
+test). Event gaps went from 9 to 2.
+
+Ten gaps remain, all requests to widen the contract. The serious one is new:
+`access-pack.schema.json` now sets `additionalProperties: false` on the asset
+object, which makes `arScene` illegal. AR is a required renderer (A10, A12) and
+`SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack schema
+currently forbids the pack from carrying the scene the MVP requires.
+
+The conformance checker's unsupported-keyword guard paid for itself: the new
+schema uses `allOf`/`if`/`then`, and the check stopped with "unsupported
+keywords" rather than quietly reporting that everything still conformed. The
+validator now implements the subset in use, with the guard intact.
+
+One process note: Part 1 also numbered an episodic record 0038, so this record
+moved to 0040 to keep the sequence unambiguous.
+
+## Validation evidence (addendum 2)
+
+- `make check` green after the merge: memory, pack validator, conformance, 40
+  tests, and Part 1's `npm run check`.
+- Conformance went from 13 gaps against `df80b5d` to 10 against `c3ddc27`, with
+  4 closed by Part 1 and 9 closed by Part 5 conforming.
+- The fixture test for stale ordering caught the redelivery change rather than
+  silently passing, which is what it was for.

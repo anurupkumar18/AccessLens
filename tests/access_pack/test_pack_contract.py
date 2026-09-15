@@ -266,10 +266,43 @@ class FixturesMatchThePack(unittest.TestCase):
                 continue  # Out-of-order delivery is this fixture's whole purpose.
             # A reconnect redelivers the latest event on purpose; that duplicate
             # is the caught-up state, not a stream ordering violation.
+            redelivered = set(fixture.get("redeliveredEventIndices", []))
             sequences = [
-                event["sequence"] for event in fixture["events"] if "redelivery" not in event
+                event["sequence"]
+                for index, event in enumerate(fixture["events"])
+                if index not in redelivered
             ]
             self.assertEqual(sequences, sorted(set(sequences)), name)
+
+    def test_redelivered_events_are_identical_to_the_original(self):
+        """Reconnect catch-up must be a byte-identical replay.
+
+        A redelivery that differs from the original -- even by a marker field --
+        is a second event, and re-applying it can no longer be assumed a no-op.
+        """
+        for name, fixture in self._scenarios():
+            events = fixture["events"]
+            for index in fixture.get("redeliveredEventIndices", []):
+                original = next(
+                    (e for e in events[:index] if e["sequence"] == events[index]["sequence"]),
+                    None,
+                )
+                self.assertIsNotNone(original, f"{name}: redelivery {index} replays nothing")
+                self.assertEqual(original, events[index], f"{name}: redelivery {index} differs")
+
+    def test_no_event_carries_transport_metadata(self):
+        """Redelivery is a fact about the transport, not about the moment taught."""
+        for name, fixture in self._scenarios():
+            for event in fixture["events"]:
+                for field in ("redelivery", "redelivered", "retry", "attempt"):
+                    self.assertNotIn(field, event, name)
+
+    def test_asset_changed_carries_no_ar_state(self):
+        """The shared contract forbids it, and the pack's defaultCamera covers it."""
+        for name, fixture in self._scenarios():
+            for event in fixture["events"]:
+                if event["type"] == "asset.changed":
+                    self.assertNotIn("arState", event, name)
 
     def test_stale_fixture_actually_goes_backwards(self):
         fixture = json.loads((FIXTURES / "stale-and-reordered.json").read_text(encoding="utf-8"))
