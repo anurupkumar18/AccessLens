@@ -204,6 +204,46 @@ AR from the product.[^webxr][^three-xr]
 All coordinates are normalized from 0 to 1. Packs are versioned and reviewed before
 publication.
 
+#### Known gaps between this section and `packages/contracts/`
+
+Part 1's contracts landed in `df80b5d`. Running the reviewed pack and its
+fixtures through them found two correctness bugs and four additive gaps; the
+evidence is in [`PART5_CONTRACT_CONFORMANCE.md`](PART5_CONTRACT_CONFORMANCE.md)
+and reproducible with
+`python3 packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py`.
+
+The two bugs, because they contradict this document and the charter:
+
+- **`assetId` is required on every event**, which makes `source.unmatched`
+  unrepresentable. Charter A9 requires unknown content to produce an unmatched
+  state that names no asset. `session.started`, `session.ended`,
+  `capture.paused`, and `capture.resumed` have no asset either.
+- **`live-event.schema.json` omits `regionId` and `pointer`** while setting
+  `additionalProperties: false`, so it rejects events the Zod schema accepts —
+  including Part 1's own `validEvent` fixture. The JSON Schema is the artifact a
+  service validates against, so Part 4 would reject what the extension sends.
+
+The additive fields the pack emits that this schema does not name. They are
+recorded here so the contract freeze covers them; the schema above is unchanged
+until the owners agree.
+
+1. `arScene.hotspots[].cameraTarget` — a key into a new pack-level `arCameras`
+   map of `{position, target, fov}`. The AR renderer has to move the camera on a
+   region change, and that framing is reviewed instructional content.
+2. `arScene.hotspots[].highlight` — how the AR route marks the node; `"outline"`
+   in the demo pack.
+3. `hotspotId` scoped per asset, as `cell-slide-03:mitochondrion`. Several slides
+   teach the same region, so a region-derived id does not resolve to one hotspot
+   pack-wide, and `arState.hotspotId` must.
+
+Note that `arState` appears in the documented LiveEvent example above but is
+rejected by the current contract, so that example does not validate against its
+own implementation.
+
+The pack also carries a `matching` block — algorithm, hash width, distance
+ceiling, margin, and `onNoMatch: "source.unmatched"` — so the recognition
+threshold is reviewed content rather than a constant compiled into Part 2.
+
 ### Live event
 
 ```json

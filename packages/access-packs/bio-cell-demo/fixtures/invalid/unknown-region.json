@@ -1,0 +1,22 @@
+{
+  "fixture": "unknown-region",
+  "mustBeRejected": true,
+  "lastDeliveredSequence": 6,
+  "expectedRule": "region-not-in-pack",
+  "reason": "regionId is not a region of cell-slide-03 in this pack version.",
+  "event": {
+    "schemaVersion": "1.0",
+    "type": "region.changed",
+    "sessionId": "sess-demo-0001",
+    "packId": "bio-cell-demo",
+    "packVersion": 1,
+    "assetId": "cell-slide-03",
+    "regionId": "chloroplast",
+    "arState": {
+      "hotspotId": "cell-slide-03:chloroplast",
+      "action": "focus"
+    },
+    "sequence": 7,
+    "sentAt": "2026-09-15T15:00:42Z"
+  }
+}

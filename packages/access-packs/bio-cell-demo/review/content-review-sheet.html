@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cell Structure — content review</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #fbfcfe; --panel: #ffffff; --ink: #14181f; --muted: #5b6676;
+  --line: #dfe4ec; --accent: #2f5fa8; --warn-bg: #fff6e6; --warn-line: #e0a63c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151a; --panel: #1a1f26; --ink: #e8ecf2; --muted: #9aa5b4;
+    --line: #2b323c; --accent: #7aa7e8; --warn-bg: #2e2617; --warn-line: #c9962f;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 2rem 1.25rem 4rem; background: var(--bg); color: var(--ink);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; }
+h1 { font-size: 1.9rem; margin: 0 0 .25rem; letter-spacing: -.02em; }
+h2 { font-size: 1.25rem; margin: 2.5rem 0 .75rem; letter-spacing: -.01em; }
+h3 { font-size: .95rem; margin: 1.25rem 0 .5rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em; }
+p.lede { color: var(--muted); margin: 0 0 1.5rem; }
+.notice { background: var(--warn-bg); border: 1px solid var(--warn-line);
+  border-radius: 10px; padding: 1rem 1.15rem; margin: 1.5rem 0; }
+.notice strong { display: block; margin-bottom: .35rem; }
+.slide { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 1.25rem; margin: 1.5rem 0; }
+.frame { position: relative; line-height: 0; border: 1px solid var(--line);
+  border-radius: 8px; overflow: hidden; }
+.frame img { width: 100%; height: auto; display: block; }
+.box { position: absolute; border: 2px solid var(--accent); border-radius: 6px;
+  background: rgba(47,95,168,.08); }
+.box span { position: absolute; top: -1.45rem; left: -2px; background: var(--accent);
+  color: #fff; font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: .12rem .4rem; border-radius: 4px; white-space: nowrap; }
+table { width: 100%; border-collapse: collapse; margin-top: .75rem; font-size: .9rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line);
+  vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: .78rem;
+  text-transform: uppercase; letter-spacing: .05em; }
+code { font: .87em ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); }
+.order { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 0; padding: 0; list-style: none; }
+.order li { background: var(--bg); border: 1px solid var(--line); border-radius: 999px;
+  padding: .2rem .7rem; font-size: .83rem; }
+.order li b { color: var(--muted); font-weight: 600; }
+.scroll { overflow-x: auto; }
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Cell Structure — content review sheet</h1>
+<p class='lede'>Access Pack <code>bio-cell-demo</code> version 1. Every region is drawn from the same normalized bounds a student renderer receives, so what you see here is what a student gets.</p>
+<div class='notice'><strong>This content has not been reviewed by a subject-matter expert.</strong>That review is implementation-plan task A15, and it is what this page exists to support. Until it is done, the pack must not be described as expert-reviewed or accessibility-audited anywhere in the demo or the pitch.</div>
+<h2>What to check</h2>
+<ol><li>Does each box sit on the structure it names? A box in the wrong place sends every student to the wrong part of the diagram, and no automated check can catch it.</li><li>Is each <b>description</b> accurate for an introductory course?</li><li>Does each <b>plain language</b> line say the same thing more simply, rather than saying something different or less true?</li><li>Does the reading order match how you would teach the slide?</li><li>Does each AR node name the structure the region names?</li></ol>
+<div class='slide'>
+<h2>1. The Animal Cell</h2>
+<p class='lede'>An overview of the boundary, the interior, and the control centre</p>
+<div class='frame'>
+<img src='../slides/cell-slide-01.png' alt='The Animal Cell'>
+<div class='box' style='left:8.0000%;top:22.0000%;width:84.0000%;height:66.0000%'><span>Cell membrane</span></div>
+<div class='box' style='left:14.0000%;top:28.0000%;width:72.0000%;height:54.0000%'><span>Cytoplasm</span></div>
+<div class='box' style='left:30.0000%;top:38.0000%;width:22.0000%;height:30.0000%'><span>Nucleus</span></div>
+</div>
+<h3>Reading order</h3>
+<ul class='order'>
+<li><b>1</b> &nbsp;title</li>
+<li><b>2</b> &nbsp;cell-membrane</li>
+<li><b>3</b> &nbsp;cytoplasm</li>
+<li><b>4</b> &nbsp;nucleus</li>
+</ul>
+<h3>Regions and the words a student is given</h3>
+<div class='scroll'><table>
+<tr><th>Region</th><th>Description</th><th>Plain language</th><th>AR node</th><th>Camera</th></tr>
+<tr><td><b>Cell membrane</b><br><code>cell-membrane</code></td><td>The cell membrane is the outer boundary of the cell. It controls which substances enter and leave.</td><td>The outside edge of the cell. It decides what gets in and out.</td><td><code>CellMembrane</code></td><td><code>cell-overview</code></td></tr>
+<tr><td><b>Cytoplasm</b><br><code>cytoplasm</code></td><td>The cytoplasm is the fluid that fills the cell. The organelles sit in it and move through it.</td><td>The liquid inside the cell. Everything else floats in it.</td><td><code>Cytoplasm</code></td><td><code>cell-overview</code></td></tr>
+<tr><td><b>Nucleus</b><br><code>nucleus</code></td><td>The nucleus holds the cell&#x27;s DNA and directs which proteins the cell makes.</td><td>The control centre. It stores the instructions for the cell.</td><td><code>Nucleus</code></td><td><code>nucleus-closeup</code></td></tr>
+</table></div>
+</div>
+<div class='slide'>
+<h2>2. Inside the Nucleus</h2>
+<p class='lede'>Where the cell stores instructions and starts building ribosomes</p>
+<div class='frame'>
+<img src='../slides/cell-slide-02.png' alt='Inside the Nucleus'>
+<div class='box' style='left:22.0000%;top:24.0000%;width:44.0000%;height:60.0000%'><span>Nucleus</span></div>
+<div class='box' style='left:35.0000%;top:42.0000%;width:16.0000%;height:22.0000%'><span>Nucleolus</span></div>
+</div>
+<h3>Reading order</h3>
+<ul class='order'>
+<li><b>1</b> &nbsp;title</li>
+<li><b>2</b> &nbsp;nucleus</li>
+<li><b>3</b> &nbsp;nucleolus</li>
+</ul>
+<h3>Regions and the words a student is given</h3>
+<div class='scroll'><table>
+<tr><th>Region</th><th>Description</th><th>Plain language</th><th>AR node</th><th>Camera</th></tr>
+<tr><td><b>Nucleus</b><br><code>nucleus</code></td><td>The nucleus is enclosed by a double membrane with pores that let molecules pass between it and the cytoplasm.</td><td>The control centre has a wall with small openings in it.</td><td><code>Nucleus</code></td><td><code>nucleus-closeup</code></td></tr>
+<tr><td><b>Nucleolus</b><br><code>nucleolus</code></td><td>The nucleolus is a dense region inside the nucleus where ribosome parts are assembled.</td><td>A dark spot inside the control centre. It builds ribosome parts.</td><td><code>Nucleolus</code></td><td><code>nucleus-closeup</code></td></tr>
+</table></div>
+</div>
+<div class='slide'>
+<h2>3. Mitochondria and Energy</h2>
+<p class='lede'>Releasing usable energy from nutrients</p>
+<div class='frame'>
+<img src='../slides/cell-slide-03.png' alt='Mitochondria and Energy'>
+<div class='box' style='left:35.0000%;top:22.0000%;width:18.0000%;height:24.0000%'><span>Mitochondrion</span></div>
+<div class='box' style='left:10.0000%;top:55.0000%;width:80.0000%;height:30.0000%'><span>Cytoplasm</span></div>
+</div>
+<h3>Reading order</h3>
+<ul class='order'>
+<li><b>1</b> &nbsp;title</li>
+<li><b>2</b> &nbsp;mitochondrion</li>
+<li><b>3</b> &nbsp;cytoplasm</li>
+</ul>
+<h3>Regions and the words a student is given</h3>
+<div class='scroll'><table>
+<tr><th>Region</th><th>Description</th><th>Plain language</th><th>AR node</th><th>Camera</th></tr>
+<tr><td><b>Mitochondrion</b><br><code>mitochondrion</code></td><td>The mitochondrion releases usable energy from nutrients and stores it as ATP. Its inner membrane is folded to increase surface area.</td><td>This structure helps power the cell.</td><td><code>Mitochondrion</code></td><td><code>mitochondrion-closeup</code></td></tr>
+<tr><td><b>Cytoplasm</b><br><code>cytoplasm</code></td><td>The first stage of releasing energy from glucose happens in the cytoplasm, before the mitochondrion finishes the process.</td><td>The first step of getting energy happens in the liquid part.</td><td><code>Cytoplasm</code></td><td><code>cell-overview</code></td></tr>
+</table></div>
+</div>
+<div class='slide'>
+<h2>4. Building and Shipping Proteins</h2>
+<p class='lede'>Ribosome, rough endoplasmic reticulum, then Golgi apparatus</p>
+<div class='frame'>
+<img src='../slides/cell-slide-04.png' alt='Building and Shipping Proteins'>
+<div class='box' style='left:8.0000%;top:26.0000%;width:20.0000%;height:24.0000%'><span>Ribosome</span></div>
+<div class='box' style='left:37.0000%;top:40.0000%;width:26.0000%;height:30.0000%'><span>Rough endoplasmic reticulum</span></div>
+<div class='box' style='left:70.0000%;top:58.0000%;width:22.0000%;height:26.0000%'><span>Golgi apparatus</span></div>
+</div>
+<h3>Reading order</h3>
+<ul class='order'>
+<li><b>1</b> &nbsp;title</li>
+<li><b>2</b> &nbsp;ribosome</li>
+<li><b>3</b> &nbsp;rough-er</li>
+<li><b>4</b> &nbsp;golgi-apparatus</li>
+</ul>
+<h3>Regions and the words a student is given</h3>
+<div class='scroll'><table>
+<tr><th>Region</th><th>Description</th><th>Plain language</th><th>AR node</th><th>Camera</th></tr>
+<tr><td><b>Ribosome</b><br><code>ribosome</code></td><td>Ribosomes read the instructions copied from DNA and join amino acids into a protein chain.</td><td>Ribosomes put proteins together, one piece at a time.</td><td><code>Ribosome</code></td><td><code>secretory-path</code></td></tr>
+<tr><td><b>Rough endoplasmic reticulum</b><br><code>rough-er</code></td><td>The rough endoplasmic reticulum is studded with ribosomes. It folds new proteins and passes them on in small vesicles.</td><td>A folded surface covered in ribosomes. It shapes new proteins.</td><td><code>RoughER</code></td><td><code>secretory-path</code></td></tr>
+<tr><td><b>Golgi apparatus</b><br><code>golgi-apparatus</code></td><td>The Golgi apparatus finishes, sorts, and packages proteins, then sends them to where the cell needs them.</td><td>The packing and sending area for finished proteins.</td><td><code>GolgiApparatus</code></td><td><code>secretory-path</code></td></tr>
+</table></div>
+</div>
+<div class='slide'>
+<h2>5. Breaking Down and Storing</h2>
+<p class='lede'>Lysosomes recycle materials; vacuoles hold them</p>
+<div class='frame'>
+<img src='../slides/cell-slide-05.png' alt='Breaking Down and Storing'>
+<div class='box' style='left:14.0000%;top:30.0000%;width:30.0000%;height:36.0000%'><span>Lysosome</span></div>
+<div class='box' style='left:56.0000%;top:28.0000%;width:32.0000%;height:40.0000%'><span>Vacuole</span></div>
+</div>
+<h3>Reading order</h3>
+<ul class='order'>
+<li><b>1</b> &nbsp;title</li>
+<li><b>2</b> &nbsp;lysosome</li>
+<li><b>3</b> &nbsp;vacuole</li>
+</ul>
+<h3>Regions and the words a student is given</h3>
+<div class='scroll'><table>
+<tr><th>Region</th><th>Description</th><th>Plain language</th><th>AR node</th><th>Camera</th></tr>
+<tr><td><b>Lysosome</b><br><code>lysosome</code></td><td>Lysosomes contain enzymes that break down worn-out cell parts and material the cell has taken in.</td><td>Lysosomes break down old or unwanted parts of the cell.</td><td><code>Lysosome</code></td><td><code>recycling-closeup</code></td></tr>
+<tr><td><b>Vacuole</b><br><code>vacuole</code></td><td>Vacuoles are membrane-bound sacs that store water, nutrients, or waste until the cell needs or removes them.</td><td>Vacuoles are storage bags inside the cell.</td><td><code>Vacuole</code></td><td><code>recycling-closeup</code></td></tr>
+</table></div>
+</div>
+<h2>Every student-facing sentence, in one list</h2>
+<p class='lede'>The same text as above, without the pictures, for reading straight through. 24 statements.</p>
+<div class='scroll'><table>
+<tr><th>Slide</th><th>Region</th><th>Statement</th></tr>
+<tr><td><code>cell-slide-01</code></td><td><code>cell-membrane</code></td><td>The cell membrane is the outer boundary of the cell. It controls which substances enter and leave.</td></tr>
+<tr><td><code>cell-slide-01</code></td><td><code>cell-membrane</code></td><td>The outside edge of the cell. It decides what gets in and out.</td></tr>
+<tr><td><code>cell-slide-01</code></td><td><code>cytoplasm</code></td><td>The cytoplasm is the fluid that fills the cell. The organelles sit in it and move through it.</td></tr>
+<tr><td><code>cell-slide-01</code></td><td><code>cytoplasm</code></td><td>The liquid inside the cell. Everything else floats in it.</td></tr>
+<tr><td><code>cell-slide-01</code></td><td><code>nucleus</code></td><td>The nucleus holds the cell&#x27;s DNA and directs which proteins the cell makes.</td></tr>
+<tr><td><code>cell-slide-01</code></td><td><code>nucleus</code></td><td>The control centre. It stores the instructions for the cell.</td></tr>
+<tr><td><code>cell-slide-02</code></td><td><code>nucleus</code></td><td>The nucleus is enclosed by a double membrane with pores that let molecules pass between it and the cytoplasm.</td></tr>
+<tr><td><code>cell-slide-02</code></td><td><code>nucleus</code></td><td>The control centre has a wall with small openings in it.</td></tr>
+<tr><td><code>cell-slide-02</code></td><td><code>nucleolus</code></td><td>The nucleolus is a dense region inside the nucleus where ribosome parts are assembled.</td></tr>
+<tr><td><code>cell-slide-02</code></td><td><code>nucleolus</code></td><td>A dark spot inside the control centre. It builds ribosome parts.</td></tr>
+<tr><td><code>cell-slide-03</code></td><td><code>mitochondrion</code></td><td>The mitochondrion releases usable energy from nutrients and stores it as ATP. Its inner membrane is folded to increase surface area.</td></tr>
+<tr><td><code>cell-slide-03</code></td><td><code>mitochondrion</code></td><td>This structure helps power the cell.</td></tr>
+<tr><td><code>cell-slide-03</code></td><td><code>cytoplasm</code></td><td>The first stage of releasing energy from glucose happens in the cytoplasm, before the mitochondrion finishes the process.</td></tr>
+<tr><td><code>cell-slide-03</code></td><td><code>cytoplasm</code></td><td>The first step of getting energy happens in the liquid part.</td></tr>
+<tr><td><code>cell-slide-04</code></td><td><code>ribosome</code></td><td>Ribosomes read the instructions copied from DNA and join amino acids into a protein chain.</td></tr>
+<tr><td><code>cell-slide-04</code></td><td><code>ribosome</code></td><td>Ribosomes put proteins together, one piece at a time.</td></tr>
+<tr><td><code>cell-slide-04</code></td><td><code>rough-er</code></td><td>The rough endoplasmic reticulum is studded with ribosomes. It folds new proteins and passes them on in small vesicles.</td></tr>
+<tr><td><code>cell-slide-04</code></td><td><code>rough-er</code></td><td>A folded surface covered in ribosomes. It shapes new proteins.</td></tr>
+<tr><td><code>cell-slide-04</code></td><td><code>golgi-apparatus</code></td><td>The Golgi apparatus finishes, sorts, and packages proteins, then sends them to where the cell needs them.</td></tr>
+<tr><td><code>cell-slide-04</code></td><td><code>golgi-apparatus</code></td><td>The packing and sending area for finished proteins.</td></tr>
+<tr><td><code>cell-slide-05</code></td><td><code>lysosome</code></td><td>Lysosomes contain enzymes that break down worn-out cell parts and material the cell has taken in.</td></tr>
+<tr><td><code>cell-slide-05</code></td><td><code>lysosome</code></td><td>Lysosomes break down old or unwanted parts of the cell.</td></tr>
+<tr><td><code>cell-slide-05</code></td><td><code>vacuole</code></td><td>Vacuoles are membrane-bound sacs that store water, nutrients, or waste until the cell needs or removes them.</td></tr>
+<tr><td><code>cell-slide-05</code></td><td><code>vacuole</code></td><td>Vacuoles are storage bags inside the cell.</td></tr>
+</table></div>
+<footer>Generated by <code>tools/generate_review_sheet.py</code> from <code>pack.json</code>. Do not edit this file; change the content in <code>tools/deck.py</code> and regenerate. Asset sources and licences are in <code>PROVENANCE.md</code>.</footer>
+</main>
+</body>
+</html>
