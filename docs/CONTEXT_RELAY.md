@@ -5,7 +5,7 @@ this project mid-flight, and appends to on the way out. It exists so that contex
 travels between sessions and between people, and so that nothing quietly falls
 through the gap at the end of the hackathon.
 
-**State as of:** `38542ad` (Part 1 contract-freeze closure), September 15, 2026.
+**State as of:** `0771bce` (Jacob takes Part 2), September 15, 2026.
 
 This file is **append-mostly**. The tables are living state and get edited in
 place; the relay log at the bottom is append-only. Never delete a log entry, and
@@ -58,15 +58,16 @@ during the build.
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
-| 2. Instructor capture | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/instructor/` or `src/sources/screen/`. | — |
+| 2. Instructor capture | Jacob | not yet created | Owner assigned in `0771bce`. No code yet under `apps/extension/src/instructor/` or `src/sources/screen/`. Everything needed to start is listed in section 6. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
 | 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
 | 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, and a content review sheet for A15. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
 
-**The single largest risk in this project is the second column.** Three of five
-parts are unowned, and Parts 2 and 3 are on the critical path to the demo. Part 5
-exists precisely so 2, 3, and 4 can each start without waiting for the other two —
-see section 6.
+**The single largest risk in this project is still the second column**, though it
+moved today: Part 2 now has an owner. Parts 3 and 4 do not. Part 3 is the student
+experience and the required AR renderer, which is most of what the demo shows, and
+Part 4 is the transport it all runs over. Part 5 exists precisely so 2, 3, and 4
+can each start without waiting for the other two — see section 6.
 
 ---
 
@@ -81,7 +82,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 
 | ID | Thread | Owner | Blocks | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| T-01 | Parts 2, 3, and 4 have no owner. The contract freeze in `PARALLEL_WORKSTREAMS.md` cannot complete without them. | UNOWNED | Everything downstream of the shell | UNOWNED | — |
+| T-01 | **Parts 3 and 4** have no owner. Part 2 was taken by Jacob in `0771bce`. Part 3 is on the critical path to the demo — it is the student experience and the required AR renderer — and Part 4 is the transport everything runs over. The contract freeze cannot complete without both. | UNOWNED | Everything downstream of the shell | UNOWNED | Ownership board in `docs/PARALLEL_WORKSTREAMS.md` |
 | T-02 | `assetId` is `required` on every `LiveEvent`, so `source.unmatched` cannot be expressed. Violates charter A9 and breaks the runbook's 2:00–2:30 beat. | Part 1 | — | CLOSED | `c3ddc27` made `LiveEventSchema` a per-type discriminated union; `source.unmatched` is now structurally unable to name an asset |
 | T-03 | `live-event.schema.json` omitted `regionId` and `pointer` that the Zod schema accepts, so Part 1's own fixture failed Part 1's own JSON Schema. | Part 1 | — | CLOSED | `c3ddc27` mirrors the Zod matrix in the JSON Schema, with ajv tests |
 | T-04 | The event contract had no `arState`, but AR is a required renderer (A10, A12). | Part 1 + Part 3 | — | CLOSED | `c3ddc27` adds `arState {hotspotId, action}` to `region.changed`. Part 5 dropped the `camera` field it had wanted — it is derivable from the hotspot in the pack |
@@ -333,3 +334,28 @@ there being nothing a domain expert could look at. That is fixed. Finding a
 biology instructor and an accessibility professional is now the whole of the
 remaining task, and it is the kind of thing that only happens if someone is
 asked by name at a standup.
+
+### RL-010 — 2026-09-15 — Part 2 — Jacob
+
+**Landed:** `0771bce`. Took ownership of Part 2, instructor capture and
+approved-screen recognition, in the ownership board.
+**Threads touched:** T-01 — Part 2 is no longer unowned.
+**Next agent needs to know:** no Part 2 code exists yet.
+
+### RL-011 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** `tests/access_pack/test_demo_runbook.py`, which checks the runbook's
+prose against the pack it describes — every slide id, region, hotspot, AR node,
+camera, file path, fallback scenario, and simulator flag it names must resolve,
+and the measured numbers it states out loud are recomputed from the actual
+fingerprints.
+**Threads touched:** T-01 updated for Jacob; section 6's Part 2 guidance expanded
+now that it has a reader.
+**Next agent needs to know:** mutation testing found two of those tests were
+theatre. The camera check used a regex with a literal space and the runbook
+wraps, so it matched nothing and cameras were never checked at all; the
+simulator-flag check filtered found flags down to a known-good list, so an
+invented `--tempo` passed. Both looked like passing tests. If you write a guard
+here, break it on purpose before you trust it — that is now the third time on
+this project that a check which could not fail was found only by trying to make
+it fail.
