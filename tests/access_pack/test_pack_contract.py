@@ -1,0 +1,349 @@
+"""Guardrail suite for the bio-cell-demo Access Pack and its fixtures.
+
+Standard library only, so it runs in the existing documentation CI job before
+any JavaScript workspace exists. Covers implementation-plan tasks A14 (failure
+scenarios) and the content half of Part 5 in `docs/PARALLEL_WORKSTREAMS.md`.
+
+The suite asserts three things the rest of the build depends on:
+
+1. `pack.json` is publishable -- fingerprints match the PNGs on disk, every
+   region has an AR hotspot pointing at a real model node, provenance is
+   recorded.
+2. The validator actually fails when the pack is wrong. A green validator that
+   cannot go red is worth nothing, so each rule is tested against a mutation.
+3. Every fixture is consistent with the pack, and every negative fixture trips
+   exactly the contract rule it claims to.
+
+Run:  python3 -m unittest discover -s tests/access_pack -t .
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PACK_ROOT = REPO_ROOT / "packages" / "access-packs" / "bio-cell-demo"
+TOOLS = PACK_ROOT / "tools"
+sys.path.insert(0, str(TOOLS))
+
+import glb  # noqa: E402
+import imagehash  # noqa: E402
+import reference_event_check as contract  # noqa: E402
+import validate_pack  # noqa: E402
+
+PACK = json.loads((PACK_ROOT / "pack.json").read_text(encoding="utf-8"))
+FIXTURES = PACK_ROOT / "fixtures"
+
+
+class PackValidates(unittest.TestCase):
+    def test_pack_passes_every_check(self):
+        self.assertEqual(validate_pack.validate(), [])
+
+    def test_every_region_has_exactly_one_hotspot(self):
+        for asset in PACK["assets"]:
+            regions = [region["regionId"] for region in asset["regions"]]
+            hotspots = [hotspot["regionId"] for hotspot in asset["arScene"]["hotspots"]]
+            self.assertCountEqual(regions, hotspots, asset["assetId"])
+
+    def test_every_hotspot_names_a_real_model_node(self):
+        nodes = set(glb.node_names(PACK_ROOT / "models" / "cell.glb"))
+        for asset in PACK["assets"]:
+            for hotspot in asset["arScene"]["hotspots"]:
+                self.assertIn(hotspot["nodeName"], nodes, hotspot["hotspotId"])
+
+    def test_hotspot_ids_are_unique_pack_wide(self):
+        ids = [h["hotspotId"] for a in PACK["assets"] for h in a["arScene"]["hotspots"]]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_fingerprints_match_the_slides_on_disk(self):
+        for asset in PACK["assets"]:
+            recomputed = imagehash.fingerprint(PACK_ROOT / asset["mediaUri"])
+            self.assertEqual(asset["fingerprint"], recomputed, asset["assetId"])
+
+    def test_reviewed_slides_are_far_enough_apart_to_match(self):
+        margin = PACK["matching"]["minMargin"]
+        fingerprints = {a["assetId"]: a["fingerprint"] for a in PACK["assets"]}
+        ids = sorted(fingerprints)
+        for index, left in enumerate(ids):
+            for right in ids[index + 1 :]:
+                distance = imagehash.hamming_distance(fingerprints[left], fingerprints[right])
+                self.assertGreaterEqual(distance, 2 * margin, f"{left} vs {right}")
+
+    def test_unapproved_slide_is_rejected_by_the_matching_policy(self):
+        """The demo's Unmatched beat is only honest if this actually fails to match."""
+        ceiling = PACK["matching"]["maxHammingDistance"]
+        margin = PACK["matching"]["minMargin"]
+        fingerprints = {a["assetId"]: a["fingerprint"] for a in PACK["assets"]}
+        unapproved = imagehash.fingerprint(PACK_ROOT / "demo-assets" / "unapproved-photosynthesis.png")
+        ranked = sorted(
+            (imagehash.hamming_distance(unapproved, value), key) for key, value in fingerprints.items()
+        )
+        nearest = ranked[0][0]
+        self.assertGreater(nearest, ceiling, "unapproved slide came inside the match ceiling")
+        self.assertLess(ranked[1][0] - nearest, margin, "unapproved slide cleared the margin rule")
+
+    def test_pack_claims_no_review_it_has_not_had(self):
+        review = PACK["review"]
+        if review.get("externalSubjectMatterReview") is False:
+            self.assertIn("A15", review["notes"])
+
+
+class ValidatorCanFail(unittest.TestCase):
+    """Each rule is checked against a mutation, so the validator cannot rot green."""
+
+    def setUp(self):
+        self.workspace = Path(tempfile.mkdtemp())
+        self.copy = self.workspace / "bio-cell-demo"
+        shutil.copytree(PACK_ROOT, self.copy)
+        self.addCleanup(shutil.rmtree, self.workspace, True)
+        self._original_root = validate_pack.PACK_ROOT
+
+    def _validate_with(self, mutate) -> list[str]:
+        pack = json.loads((self.copy / "pack.json").read_text(encoding="utf-8"))
+        mutate(pack)
+        (self.copy / "pack.json").write_text(json.dumps(pack, indent=2), encoding="utf-8")
+        validate_pack.PACK_ROOT = self.copy
+        validate_pack.PACK_FILE = self.copy / "pack.json"
+        validate_pack.PROVENANCE = self.copy / "PROVENANCE.md"
+        validate_pack.DEMO_ASSETS = self.copy / "demo-assets"
+        try:
+            return validate_pack.validate()
+        finally:
+            validate_pack.PACK_ROOT = self._original_root
+            validate_pack.PACK_FILE = self._original_root / "pack.json"
+            validate_pack.PROVENANCE = self._original_root / "PROVENANCE.md"
+            validate_pack.DEMO_ASSETS = self._original_root / "demo-assets"
+
+    def _assert_flags(self, mutate, needle: str):
+        errors = self._validate_with(mutate)
+        self.assertTrue(
+            any(needle in error for error in errors),
+            f"expected an error containing {needle!r}, got {errors}",
+        )
+
+    def test_unmutated_copy_still_passes(self):
+        self.assertEqual(self._validate_with(lambda pack: None), [])
+
+    def test_stale_fingerprint_is_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["fingerprint"] = "dhash12:" + "0" * 33
+
+        self._assert_flags(mutate, "does not match")
+
+    def test_hotspot_on_a_missing_model_node_is_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["arScene"]["hotspots"][0]["nodeName"] = "Chloroplast"
+
+        self._assert_flags(mutate, "is not a node in")
+
+    def test_region_missing_from_reading_order_is_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["readingOrder"].remove("nucleus")
+
+        self._assert_flags(mutate, "missing from readingOrder")
+
+    def test_region_without_a_hotspot_is_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["arScene"]["hotspots"].pop()
+
+        self._assert_flags(mutate, "has no AR hotspot")
+
+    def test_out_of_range_bounds_are_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["regions"][0]["bounds"]["width"] = 1.4
+
+        self._assert_flags(mutate, "normalized between 0 and 1")
+
+    def test_bounds_running_off_the_slide_are_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["regions"][0]["bounds"]["x"] = 0.9
+            pack["assets"][0]["regions"][0]["bounds"]["width"] = 0.5
+
+        self._assert_flags(mutate, "past the right edge")
+
+    def test_prohibited_field_is_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["regions"][0]["masteryEstimate"] = 0.4
+
+        self._assert_flags(mutate, "prohibited field name")
+
+    def test_unknown_camera_reference_is_caught(self):
+        def mutate(pack):
+            pack["assets"][0]["arScene"]["defaultCamera"] = "does-not-exist"
+
+        self._assert_flags(mutate, "is not in arCameras")
+
+    def test_describing_unmatched_content_is_caught(self):
+        def mutate(pack):
+            pack["matching"]["onNoMatch"] = "best-guess"
+
+        self._assert_flags(mutate, "source.unmatched")
+
+    def test_missing_provenance_entry_is_caught(self):
+        provenance = self.copy / "PROVENANCE.md"
+        provenance.write_text(
+            provenance.read_text(encoding="utf-8").replace("slides/cell-slide-01.png", "slides/removed.png"),
+            encoding="utf-8",
+        )
+        self._assert_flags(lambda pack: None, "does not record the source and licence")
+
+    def test_near_duplicate_slides_are_caught(self):
+        def mutate(pack):
+            pack["assets"][1]["fingerprint"] = pack["assets"][0]["fingerprint"]
+
+        errors = self._validate_with(mutate)
+        self.assertTrue(any("bits apart" in error for error in errors), errors)
+
+
+class FixturesMatchThePack(unittest.TestCase):
+    def _scenarios(self):
+        for path in sorted(FIXTURES.glob("*.json")):
+            yield path.stem, json.loads(path.read_text(encoding="utf-8"))
+
+    def test_scenarios_exist_for_every_required_failure_path(self):
+        """A14 names the failure paths the demo has to survive."""
+        required = {
+            "happy-path",
+            "unmatched-and-correction",
+            "stale-and-reordered",
+            "pause-resume-stop",
+            "reconnect-latest-state",
+            "captions",
+        }
+        self.assertEqual(required, {name for name, _ in self._scenarios()})
+
+    def test_every_event_type_is_allowlisted(self):
+        for name, fixture in self._scenarios():
+            for event in fixture["events"]:
+                self.assertIn(event["type"], contract.ALLOWED_EVENT_TYPES, name)
+
+    def test_every_event_carries_only_contract_fields(self):
+        for name, fixture in self._scenarios():
+            for event in fixture["events"]:
+                unknown = set(event) - contract.KNOWN_FIELDS
+                self.assertEqual(set(), unknown, f"{name}: {unknown}")
+
+    def test_every_referenced_asset_region_and_hotspot_exists(self):
+        assets = {asset["assetId"]: asset for asset in PACK["assets"]}
+        for name, fixture in self._scenarios():
+            for event in fixture["events"]:
+                asset_id = event.get("assetId")
+                if asset_id is None:
+                    continue
+                self.assertIn(asset_id, assets, name)
+                region_id = event.get("regionId")
+                if region_id is not None:
+                    self.assertIn(
+                        region_id, {r["regionId"] for r in assets[asset_id]["regions"]}, name
+                    )
+                hotspot_id = (event.get("arState") or {}).get("hotspotId")
+                if hotspot_id is not None:
+                    self.assertIn(
+                        hotspot_id,
+                        {h["hotspotId"] for h in assets[asset_id]["arScene"]["hotspots"]},
+                        name,
+                    )
+
+    def test_pointer_coordinates_are_normalized(self):
+        for name, fixture in self._scenarios():
+            for event in fixture["events"]:
+                pointer = event.get("pointer")
+                if pointer is None:
+                    continue
+                for axis in ("x", "y"):
+                    self.assertGreaterEqual(pointer[axis], 0.0, name)
+                    self.assertLessEqual(pointer[axis], 1.0, name)
+
+    def test_ordered_scenarios_have_strictly_increasing_sequences(self):
+        for name, fixture in self._scenarios():
+            if name == "stale-and-reordered":
+                continue  # Out-of-order delivery is this fixture's whole purpose.
+            # A reconnect redelivers the latest event on purpose; that duplicate
+            # is the caught-up state, not a stream ordering violation.
+            sequences = [
+                event["sequence"] for event in fixture["events"] if "redelivery" not in event
+            ]
+            self.assertEqual(sequences, sorted(set(sequences)), name)
+
+    def test_stale_fixture_actually_goes_backwards(self):
+        fixture = json.loads((FIXTURES / "stale-and-reordered.json").read_text(encoding="utf-8"))
+        sequences = [event["sequence"] for event in fixture["events"]]
+        self.assertNotEqual(sequences, sorted(set(sequences)))
+
+    def test_unmatched_event_never_names_content(self):
+        """Charter A9: unknown content produces an unmatched state, never a description."""
+        for name, fixture in self._scenarios():
+            for event in fixture["events"]:
+                if event["type"] != "source.unmatched":
+                    continue
+                self.assertIsNone(event.get("assetId"), name)
+                self.assertIsNone(event.get("regionId"), name)
+                self.assertIsNone((event.get("arState") or {}).get("hotspotId"), name)
+
+    def test_happy_path_covers_the_runbook_demo_beats(self):
+        fixture = json.loads((FIXTURES / "happy-path.json").read_text(encoding="utf-8"))
+        changes = [event for event in fixture["events"] if event["type"] == "asset.changed"]
+        self.assertGreaterEqual(len(changes), 5, "the runbook rehearses five slide changes")
+        mitochondrion = [
+            event
+            for event in fixture["events"]
+            if event.get("regionId") == "mitochondrion"
+            and event["arState"]["hotspotId"] == "cell-slide-03:mitochondrion"
+        ]
+        self.assertTrue(mitochondrion, "the runbook's mitochondrion beat is missing")
+
+    def test_every_scenario_states_what_a_consumer_must_do(self):
+        for name, fixture in self._scenarios():
+            self.assertTrue(fixture["expectations"], name)
+
+
+class NegativeFixturesAreRejected(unittest.TestCase):
+    def _invalid(self):
+        for path in sorted((FIXTURES / "invalid").glob("*.json")):
+            yield path.stem, json.loads(path.read_text(encoding="utf-8"))
+
+    def test_each_negative_fixture_trips_its_documented_rule(self):
+        for name, fixture in self._invalid():
+            broken = contract.check_event(
+                fixture["event"], PACK, last_sequence=fixture["lastDeliveredSequence"]
+            )
+            self.assertIn(fixture["expectedRule"], broken, f"{name} -> {broken}")
+
+    def test_each_negative_fixture_explains_itself(self):
+        for name, fixture in self._invalid():
+            self.assertTrue(fixture["reason"], name)
+            self.assertTrue(fixture["mustBeRejected"], name)
+
+    def test_the_valid_stream_is_accepted_by_the_same_rules(self):
+        """The checker has to say yes to good events, not just no to bad ones."""
+        fixture = json.loads((FIXTURES / "happy-path.json").read_text(encoding="utf-8"))
+        last = 0
+        for event in fixture["events"]:
+            broken = contract.check_event(event, PACK, last_sequence=last)
+            self.assertEqual([], broken, f"sequence {event['sequence']}: {broken}")
+            last = event["sequence"]
+
+    def test_prohibited_signals_are_rejected_whatever_they_are_called(self):
+        for field in ("masteryEstimate", "attentionScore", "diagnosis", "frameData", "studentId"):
+            event = {
+                "schemaVersion": "1.0",
+                "type": "region.changed",
+                "sessionId": "s",
+                "packId": PACK["packId"],
+                "packVersion": PACK["version"],
+                "assetId": "cell-slide-03",
+                "regionId": "mitochondrion",
+                "sequence": 2,
+                "sentAt": "2026-09-15T15:00:00Z",
+                field: "x",
+            }
+            self.assertIn(f"field-not-on-contract:{field}", contract.check_event(event, PACK, 1))
+
+
+if __name__ == "__main__":
+    unittest.main()

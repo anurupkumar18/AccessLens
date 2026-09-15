@@ -1,0 +1,348 @@
+{
+  "scenario": "happy-path",
+  "description": "The demo's five scripted slide changes, ending on the mitochondrion beat.",
+  "packId": "bio-cell-demo",
+  "packVersion": 1,
+  "sessionId": "sess-demo-0001",
+  "expectations": [
+    "Every renderer updates from the same ordered stream with no extra input.",
+    "Selecting region 'mitochondrion' on cell-slide-03 focuses AR node 'Mitochondrion'.",
+    "Sequence numbers increase by exactly 1 and never repeat.",
+    "Each region.changed names a hotspot that exists in the pack."
+  ],
+  "events": [
+    {
+      "schemaVersion": "1.0",
+      "type": "session.started",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 1,
+      "sentAt": "2026-09-15T15:00:06Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "cell-overview"
+      },
+      "sequence": 2,
+      "sentAt": "2026-09-15T15:00:12Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "regionId": "cell-membrane",
+      "arState": {
+        "hotspotId": "cell-slide-01:cell-membrane",
+        "action": "focus",
+        "camera": "cell-overview"
+      },
+      "pointer": {
+        "x": 0.5,
+        "y": 0.55
+      },
+      "sequence": 3,
+      "sentAt": "2026-09-15T15:00:18Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "regionId": "cytoplasm",
+      "arState": {
+        "hotspotId": "cell-slide-01:cytoplasm",
+        "action": "focus",
+        "camera": "cell-overview"
+      },
+      "pointer": {
+        "x": 0.5,
+        "y": 0.55
+      },
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "regionId": "nucleus",
+      "arState": {
+        "hotspotId": "cell-slide-01:nucleus",
+        "action": "focus",
+        "camera": "nucleus-closeup"
+      },
+      "pointer": {
+        "x": 0.41,
+        "y": 0.53
+      },
+      "sequence": 5,
+      "sentAt": "2026-09-15T15:00:30Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-02",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "nucleus-closeup"
+      },
+      "sequence": 6,
+      "sentAt": "2026-09-15T15:00:36Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-02",
+      "regionId": "nucleus",
+      "arState": {
+        "hotspotId": "cell-slide-02:nucleus",
+        "action": "focus",
+        "camera": "nucleus-closeup"
+      },
+      "pointer": {
+        "x": 0.44,
+        "y": 0.54
+      },
+      "sequence": 7,
+      "sentAt": "2026-09-15T15:00:42Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-02",
+      "regionId": "nucleolus",
+      "arState": {
+        "hotspotId": "cell-slide-02:nucleolus",
+        "action": "focus",
+        "camera": "nucleus-closeup"
+      },
+      "pointer": {
+        "x": 0.43,
+        "y": 0.53
+      },
+      "sequence": 8,
+      "sentAt": "2026-09-15T15:00:48Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "mitochondrion-closeup"
+      },
+      "sequence": 9,
+      "sentAt": "2026-09-15T15:00:54Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "regionId": "mitochondrion",
+      "arState": {
+        "hotspotId": "cell-slide-03:mitochondrion",
+        "action": "focus",
+        "camera": "mitochondrion-closeup"
+      },
+      "pointer": {
+        "x": 0.44,
+        "y": 0.34
+      },
+      "sequence": 10,
+      "sentAt": "2026-09-15T15:01:00Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "regionId": "cytoplasm",
+      "arState": {
+        "hotspotId": "cell-slide-03:cytoplasm",
+        "action": "focus",
+        "camera": "cell-overview"
+      },
+      "pointer": {
+        "x": 0.5,
+        "y": 0.7
+      },
+      "sequence": 11,
+      "sentAt": "2026-09-15T15:01:06Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "secretory-path"
+      },
+      "sequence": 12,
+      "sentAt": "2026-09-15T15:01:12Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "regionId": "ribosome",
+      "arState": {
+        "hotspotId": "cell-slide-04:ribosome",
+        "action": "focus",
+        "camera": "secretory-path"
+      },
+      "pointer": {
+        "x": 0.18,
+        "y": 0.38
+      },
+      "sequence": 13,
+      "sentAt": "2026-09-15T15:01:18Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "regionId": "rough-er",
+      "arState": {
+        "hotspotId": "cell-slide-04:rough-er",
+        "action": "focus",
+        "camera": "secretory-path"
+      },
+      "pointer": {
+        "x": 0.5,
+        "y": 0.55
+      },
+      "sequence": 14,
+      "sentAt": "2026-09-15T15:01:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "regionId": "golgi-apparatus",
+      "arState": {
+        "hotspotId": "cell-slide-04:golgi-apparatus",
+        "action": "focus",
+        "camera": "secretory-path"
+      },
+      "pointer": {
+        "x": 0.81,
+        "y": 0.71
+      },
+      "sequence": 15,
+      "sentAt": "2026-09-15T15:01:30Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-05",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "recycling-closeup"
+      },
+      "sequence": 16,
+      "sentAt": "2026-09-15T15:01:36Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-05",
+      "regionId": "lysosome",
+      "arState": {
+        "hotspotId": "cell-slide-05:lysosome",
+        "action": "focus",
+        "camera": "recycling-closeup"
+      },
+      "pointer": {
+        "x": 0.29,
+        "y": 0.48
+      },
+      "sequence": 17,
+      "sentAt": "2026-09-15T15:01:42Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-05",
+      "regionId": "vacuole",
+      "arState": {
+        "hotspotId": "cell-slide-05:vacuole",
+        "action": "focus",
+        "camera": "recycling-closeup"
+      },
+      "pointer": {
+        "x": 0.72,
+        "y": 0.48
+      },
+      "sequence": 18,
+      "sentAt": "2026-09-15T15:01:48Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.ended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 19,
+      "sentAt": "2026-09-15T15:01:54Z"
+    }
+  ]
+}

@@ -204,6 +204,25 @@ AR from the product.[^webxr][^three-xr]
 All coordinates are normalized from 0 to 1. Packs are versioned and reviewed before
 publication.
 
+#### Proposed additive fields — pending Part 1 and Part 3 sign-off
+
+The `bio-cell-demo` pack (Part 5) emits three things this schema does not name.
+They are recorded here so the contract freeze covers them; the schema above is
+unchanged until the owners agree.
+
+1. `arScene.hotspots[].cameraTarget` — a key into a new pack-level `arCameras`
+   map of `{position, target, fov}`. The AR renderer has to move the camera on a
+   region change, and that framing is reviewed instructional content.
+2. `arScene.hotspots[].highlight` — how the AR route marks the node; `"outline"`
+   in the demo pack.
+3. `hotspotId` scoped per asset, as `cell-slide-03:mitochondrion`. Several slides
+   teach the same region, so a region-derived id does not resolve to one hotspot
+   pack-wide, and `arState.hotspotId` must.
+
+The pack also carries a `matching` block — algorithm, hash width, distance
+ceiling, margin, and `onNoMatch: "source.unmatched"` — so the recognition
+threshold is reviewed content rather than a constant compiled into Part 2.
+
 ### Live event
 
 ```json

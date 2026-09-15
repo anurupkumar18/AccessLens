@@ -1,0 +1,82 @@
+# bio-cell-demo Access Pack, AR model, and event simulator
+
+## Goal
+
+Deliver the content-and-simulator block of Part 5 in `docs/PARALLEL_WORKSTREAMS.md`
+(implementation-plan task A14) so Parts 2, 3, and 4 can each test in isolation
+before the extension shell, the student UI, or AWS exists.
+
+## Changed files
+
+- Added `packages/access-packs/bio-cell-demo/`: `pack.json`, five original slides,
+  `models/cell.glb`, the unapproved demo slide, six ordered event fixtures, ten
+  single-fault rejection fixtures, `PROVENANCE.md`, `README.md`, and `tools/`.
+- Added `tests/access_pack/test_pack_contract.py`, 34 standard-library tests.
+- Added a `pack-check` target to `Makefile` and wired it into `check`.
+- Claimed Part 5 and recorded its status in `docs/PARALLEL_WORKSTREAMS.md`.
+- Recorded two proposed additive contract fields in `docs/SYSTEM_DESIGN.md`
+  section 6 without changing the documented schema.
+- Added two risk-register rows to `docs/IMPLEMENTATION_PLAN.md`.
+- Pointed `docs/DEMO_RUNBOOK.md` at concrete assets and added fallback replays.
+
+Everything is standard library, including the validator and the tests, because the
+only CI job that exists today is the Python documentation check. No JavaScript
+workspace was created: Part 1 owns the package-manager choice.
+
+## Findings
+
+The slide fingerprint was the whole risk. An 8x8 average hash left the two closest
+reviewed slides 8 bits apart — inside the noise a rescaled capture introduces. A
+12x12 row-wise difference hash widened that to 32.
+
+The real defect was subtler. Two implementations of the same reduction disagreed on
+two slides, because neighbouring cells inside a flat region of a slide have mean
+luminances that tie exactly, and a bare greater-than turns that tie into a coin
+flip decided by floating-point summation order. Resolving ties to 0 and requiring a
+0.75-of-255 difference to set a bit dropped worst-case drift on a distorted capture
+from 38 bits to 10, and raised the worst margin from 19 to 27. The thresholds in
+`tools/deck.py` are derived from that sweep, not chosen.
+
+`hotspotId` could not be derived from `regionId`: cytoplasm appears on slides 01
+and 03, so `cytoplasm-hotspot` did not resolve to one hotspot pack-wide. The
+validator caught it. Ids are now scoped per asset.
+
+## Guardrails preserved
+
+Unknown content emits `source.unmatched` and never a description: the pack pins
+`matching.onNoMatch`, and the suite asserts the unapproved demo slide really is
+unmatchable (48 bits away against a ceiling of 26). Every region has exactly one AR
+hotspot resolving to a real node in `cell.glb`, so the AR route cannot reach less
+meaning than the other routes. The validator rejects prohibited fields anywhere in
+the pack, and the reference event checker rejects any field not on the contract, so
+a mastery, attention, or identity signal fails as an unknown field rather than
+needing to be enumerated. The pack states that no external subject-matter review
+has happened, and the validator rejects a review claim that names no reviewer.
+
+## Validation evidence
+
+- `make check` passes: memory check plus `validate_pack.py` plus 34 tests, green.
+- `tools/measure_matching.py`: across seven capture-style distortions the worst
+  reviewed frame lands 10 bits from its own fingerprint and stays 27 bits nearer to
+  it than to any other slide; the unapproved slide is rejected under both rules.
+- Twelve of the tests mutate the pack and assert the validator goes red, so a
+  validator that stopped checking would fail the suite.
+- `cell.glb` parses in an independent glTF library (`pygltflib`), exposing the ten
+  expected node names.
+
+## Blocker
+
+Two additive contract fields — `cameraTarget` and `highlight` on an AR hotspot,
+plus the pack-level `arCameras` map — need Part 1 and Part 3 sign-off during the
+contract freeze. Part 3 cannot frame the AR camera without them.
+
+## Owner
+
+Kunj Rathod, Part 5 (content, camera, and demo QA).
+
+## Next action
+
+Get the two additive fields signed off, then run the fixtures through Part 1's Zod
+contract once `packages/contracts/` lands. The camera adapter (A17) and the
+end-to-end suite (A14-A16) stay unstarted until the extension shell and
+`SessionClient` exist; the implementation plan puts camera work in Phase 6.

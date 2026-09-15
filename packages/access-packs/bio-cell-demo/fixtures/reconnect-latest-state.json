@@ -1,0 +1,108 @@
+{
+  "scenario": "reconnect-latest-state",
+  "description": "A student drops off and is caught up with latest state, not a replay.",
+  "packId": "bio-cell-demo",
+  "packVersion": 1,
+  "sessionId": "sess-demo-0001",
+  "expectations": [
+    "A reconnecting student receives only the latest state, never a replay of the whole session.",
+    "Applying the redelivered event produces the same view as having received sequence 4 live.",
+    "The view is marked stale from disconnect until the redelivered event arrives."
+  ],
+  "events": [
+    {
+      "schemaVersion": "1.0",
+      "type": "session.started",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 1,
+      "sentAt": "2026-09-15T15:00:06Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "secretory-path"
+      },
+      "sequence": 2,
+      "sentAt": "2026-09-15T15:00:12Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "regionId": "ribosome",
+      "arState": {
+        "hotspotId": "cell-slide-04:ribosome",
+        "action": "focus",
+        "camera": "secretory-path"
+      },
+      "pointer": {
+        "x": 0.18,
+        "y": 0.38
+      },
+      "sequence": 3,
+      "sentAt": "2026-09-15T15:00:18Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "regionId": "golgi-apparatus",
+      "arState": {
+        "hotspotId": "cell-slide-04:golgi-apparatus",
+        "action": "focus",
+        "camera": "secretory-path"
+      },
+      "pointer": {
+        "x": 0.81,
+        "y": 0.71
+      },
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "regionId": "golgi-apparatus",
+      "arState": {
+        "hotspotId": "cell-slide-04:golgi-apparatus",
+        "action": "focus",
+        "camera": "secretory-path"
+      },
+      "pointer": {
+        "x": 0.81,
+        "y": 0.71
+      },
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z",
+      "redelivery": "latest-state-after-reconnect"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.ended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 5,
+      "sentAt": "2026-09-15T15:00:30Z"
+    }
+  ]
+}

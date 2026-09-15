@@ -1,0 +1,128 @@
+{
+  "scenario": "stale-and-reordered",
+  "description": "Out-of-order delivery. Consumers must keep the newer state.",
+  "packId": "bio-cell-demo",
+  "packVersion": 1,
+  "sessionId": "sess-demo-0001",
+  "expectations": [
+    "Event 5 repeats sequence 3 after sequence 4; consumers drop it and keep cell-membrane focused.",
+    "Event 6 repeats sequence 4 exactly; applying it twice must be indistinguishable from once.",
+    "Part 4 rejects both at the relay; Part 3 must also drop them locally in case one slips through.",
+    "No renderer may roll back to the nucleus region."
+  ],
+  "events": [
+    {
+      "schemaVersion": "1.0",
+      "type": "session.started",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 1,
+      "sentAt": "2026-09-15T15:00:06Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "cell-overview"
+      },
+      "sequence": 2,
+      "sentAt": "2026-09-15T15:00:12Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "regionId": "nucleus",
+      "arState": {
+        "hotspotId": "cell-slide-01:nucleus",
+        "action": "focus",
+        "camera": "nucleus-closeup"
+      },
+      "pointer": {
+        "x": 0.41,
+        "y": 0.53
+      },
+      "sequence": 3,
+      "sentAt": "2026-09-15T15:00:18Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "regionId": "cell-membrane",
+      "arState": {
+        "hotspotId": "cell-slide-01:cell-membrane",
+        "action": "focus",
+        "camera": "cell-overview"
+      },
+      "pointer": {
+        "x": 0.5,
+        "y": 0.55
+      },
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "regionId": "nucleus",
+      "arState": {
+        "hotspotId": "cell-slide-01:nucleus",
+        "action": "focus",
+        "camera": "nucleus-closeup"
+      },
+      "pointer": {
+        "x": 0.41,
+        "y": 0.53
+      },
+      "sequence": 3,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-01",
+      "regionId": "cell-membrane",
+      "arState": {
+        "hotspotId": "cell-slide-01:cell-membrane",
+        "action": "focus",
+        "camera": "cell-overview"
+      },
+      "pointer": {
+        "x": 0.5,
+        "y": 0.55
+      },
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.ended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 5,
+      "sentAt": "2026-09-15T15:00:30Z"
+    }
+  ]
+}

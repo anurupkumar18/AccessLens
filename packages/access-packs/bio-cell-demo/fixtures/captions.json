@@ -1,0 +1,95 @@
+{
+  "scenario": "captions",
+  "description": "Live captions arrive alongside, and never replace, reviewed descriptions.",
+  "packId": "bio-cell-demo",
+  "packVersion": 1,
+  "sessionId": "sess-demo-0001",
+  "expectations": [
+    "Captions are additive; they never replace the reviewed region description.",
+    "Audio mode speaks only when the student asks, even while captions arrive (charter A8).",
+    "Caption text is instructor speech, not a pack description, and is labelled as such."
+  ],
+  "events": [
+    {
+      "schemaVersion": "1.0",
+      "type": "session.started",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 1,
+      "sentAt": "2026-09-15T15:00:06Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "arState": {
+        "hotspotId": null,
+        "action": "frame",
+        "camera": "mitochondrion-closeup"
+      },
+      "sequence": 2,
+      "sentAt": "2026-09-15T15:00:12Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "regionId": "mitochondrion",
+      "arState": {
+        "hotspotId": "cell-slide-03:mitochondrion",
+        "action": "focus",
+        "camera": "mitochondrion-closeup"
+      },
+      "pointer": {
+        "x": 0.44,
+        "y": 0.34
+      },
+      "sequence": 3,
+      "sentAt": "2026-09-15T15:00:18Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "caption.appended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "caption": {
+        "text": "The mitochondrion is where most of the cell's usable energy is released.",
+        "isFinal": true
+      },
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "caption.appended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "caption": {
+        "text": "Notice the folded inner membrane; the folds increase the surface area.",
+        "isFinal": true
+      },
+      "sequence": 5,
+      "sentAt": "2026-09-15T15:00:30Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.ended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 6,
+      "sentAt": "2026-09-15T15:00:36Z"
+    }
+  ]
+}
