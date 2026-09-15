@@ -18,6 +18,7 @@ deferred and gated.
 
 Current sources of truth:
 
+- `docs/CONTEXT_RELAY.md` — live state, open threads, and the relay log
 - `docs/VISION.md`
 - `docs/PROJECT_CHARTER.md`
 - `docs/IMPLEMENTATION_PLAN.md`
