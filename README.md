@@ -36,6 +36,7 @@ slices; production Canvas integration and camera mode are not implemented.
 
 ## Start here
 
+- [Context relay — start here if you are picking this up](docs/CONTEXT_RELAY.md)
 - [Product proposal](docs/ACCESSLENS_PROPOSAL.md)
 - [System design and technical stack](docs/SYSTEM_DESIGN.md)
 - [Product vision](docs/VISION.md)

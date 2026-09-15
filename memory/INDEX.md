@@ -18,6 +18,7 @@ deferred and gated.
 
 Current sources of truth:
 
+- `docs/CONTEXT_RELAY.md` — live state, open threads, and the relay log
 - `docs/VISION.md`
 - `docs/PROJECT_CHARTER.md`
 - `docs/IMPLEMENTATION_PLAN.md`
@@ -25,6 +26,11 @@ Current sources of truth:
 - `docs/SYSTEM_DESIGN.md`
 - `docs/ACCESSLENS_PROPOSAL.md`
 - `docs/TEAM_PRODUCT_DIRECTION.md`
+
+Part 1's foundation is merged into the integration branch; Part 5's pack is in
+review as PR #4. Parts 2, 3, and 4 have no owner. `docs/CONTEXT_RELAY.md` is the
+live state of the project and the register of every open thread; append to it at
+the end of any session that changes that state.
 
 The previous application, API, fixtures, plugin, and active coding-product guides
 were removed. Git history is the recovery path. Existing semantic records and
@@ -46,4 +52,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0037-five-person-workstreams.md`
+- `episodic/0039-context-relay.md`
