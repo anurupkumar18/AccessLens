@@ -26,6 +26,22 @@ Current sources of truth:
 - `docs/ACCESSLENS_PROPOSAL.md`
 - `docs/TEAM_PRODUCT_DIRECTION.md`
 
+Part 1 (foundation and contracts) is owned by Anurup Kumar; Part 5 (reviewed
+content, camera adapter, and demo QA) by Kunj Rathod. Part 5's content and
+simulator block is merged: `packages/access-packs/bio-cell-demo/` holds the
+reviewed five-slide deck, an original AR cell model with stable node names, six
+ordered event scenarios, and ten rejection fixtures, all validated by
+`make pack-check`. Parts 2, 3, and 4 can test against it today without the
+extension shell or AWS. The camera adapter remains unstarted Phase 6 scope.
+
+Part 1's foundation (`df80b5d`) is merged into that branch. Conformance between
+the pack and `packages/contracts/` is tracked by `make pack-check` and reported
+in `docs/PART5_CONTRACT_CONFORMANCE.md`: thirteen known gaps, two of which are
+contract bugs — `assetId` is required on every event, which makes the
+charter-required `source.unmatched` unrepresentable, and
+`live-event.schema.json` rejects `regionId` and `pointer` that the Zod schema
+accepts, so it fails Part 1's own fixture.
+
 The previous application, API, fixtures, plugin, and active coding-product guides
 were removed. Git history is the recovery path. Existing semantic records and
 episodic records 0001–0035 are historical Evidence Engine context, not AccessLens
@@ -46,4 +62,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0039-part1-contract-gaps.md`
+- `episodic/0040-bio-cell-demo-access-pack.md`

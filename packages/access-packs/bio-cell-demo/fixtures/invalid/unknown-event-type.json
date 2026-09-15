@@ -1,0 +1,22 @@
+{
+  "fixture": "unknown-event-type",
+  "mustBeRejected": true,
+  "lastDeliveredSequence": 6,
+  "expectedRule": "event-type-not-allowlisted",
+  "reason": "Event type is not on the allowlist in SYSTEM_DESIGN section 6.",
+  "event": {
+    "schemaVersion": "1.0",
+    "type": "student.progress",
+    "sessionId": "sess-demo-0001",
+    "packId": "bio-cell-demo",
+    "packVersion": 1,
+    "assetId": "cell-slide-03",
+    "regionId": "mitochondrion",
+    "arState": {
+      "hotspotId": "cell-slide-03:mitochondrion",
+      "action": "focus"
+    },
+    "sequence": 7,
+    "sentAt": "2026-09-15T15:00:42Z"
+  }
+}

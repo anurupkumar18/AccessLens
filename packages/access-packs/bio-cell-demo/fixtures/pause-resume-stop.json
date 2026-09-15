@@ -1,0 +1,99 @@
+{
+  "scenario": "pause-resume-stop",
+  "description": "Instructor pauses, resumes, then stops; student views follow immediately.",
+  "packId": "bio-cell-demo",
+  "packVersion": 1,
+  "sessionId": "sess-demo-0001",
+  "redeliveredEventIndices": [],
+  "expectations": [
+    "capture.paused freezes the student view immediately and shows a visible paused state.",
+    "No region.changed may appear between capture.paused and capture.resumed.",
+    "session.ended closes the live view; later events for this session are refused."
+  ],
+  "events": [
+    {
+      "schemaVersion": "1.0",
+      "type": "session.started",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 1,
+      "sentAt": "2026-09-15T15:00:06Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-02",
+      "sequence": 2,
+      "sentAt": "2026-09-15T15:00:12Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-02",
+      "regionId": "nucleolus",
+      "arState": {
+        "hotspotId": "cell-slide-02:nucleolus",
+        "action": "focus"
+      },
+      "pointer": {
+        "x": 0.43,
+        "y": 0.53
+      },
+      "sequence": 3,
+      "sentAt": "2026-09-15T15:00:18Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "capture.paused",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "capture.resumed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 5,
+      "sentAt": "2026-09-15T15:00:30Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-02",
+      "regionId": "nucleus",
+      "arState": {
+        "hotspotId": "cell-slide-02:nucleus",
+        "action": "focus"
+      },
+      "pointer": {
+        "x": 0.44,
+        "y": 0.54
+      },
+      "sequence": 6,
+      "sentAt": "2026-09-15T15:00:36Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.ended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 7,
+      "sentAt": "2026-09-15T15:00:42Z"
+    }
+  ]
+}

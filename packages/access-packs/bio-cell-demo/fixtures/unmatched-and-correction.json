@@ -1,0 +1,101 @@
+{
+  "scenario": "unmatched-and-correction",
+  "description": "The 2:00-2:30 failure beat: unknown slide, then instructor correction.",
+  "packId": "bio-cell-demo",
+  "packVersion": 1,
+  "sessionId": "sess-demo-0001",
+  "redeliveredEventIndices": [],
+  "expectations": [
+    "source.unmatched carries no assetId, regionId, description, or arState.",
+    "Student renderers show an unmatched state and keep showing it until a reviewed asset arrives.",
+    "No renderer invents a description for the unmatched slide (charter A9).",
+    "The instructor correction arrives as an ordinary asset.changed, not a special event type."
+  ],
+  "events": [
+    {
+      "schemaVersion": "1.0",
+      "type": "session.started",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 1,
+      "sentAt": "2026-09-15T15:00:06Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "sequence": 2,
+      "sentAt": "2026-09-15T15:00:12Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-03",
+      "regionId": "mitochondrion",
+      "arState": {
+        "hotspotId": "cell-slide-03:mitochondrion",
+        "action": "focus"
+      },
+      "pointer": {
+        "x": 0.44,
+        "y": 0.34
+      },
+      "sequence": 3,
+      "sentAt": "2026-09-15T15:00:18Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "source.unmatched",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 4,
+      "sentAt": "2026-09-15T15:00:24Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "asset.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "sequence": 5,
+      "sentAt": "2026-09-15T15:00:30Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-04",
+      "regionId": "rough-er",
+      "arState": {
+        "hotspotId": "cell-slide-04:rough-er",
+        "action": "focus"
+      },
+      "pointer": {
+        "x": 0.5,
+        "y": 0.55
+      },
+      "sequence": 6,
+      "sentAt": "2026-09-15T15:00:36Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.ended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 7,
+      "sentAt": "2026-09-15T15:00:42Z"
+    }
+  ]
+}
