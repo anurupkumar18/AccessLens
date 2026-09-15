@@ -34,6 +34,14 @@ ordered event scenarios, and ten rejection fixtures, all validated by
 `make pack-check`. Parts 2, 3, and 4 can test against it today without the
 extension shell or AWS. The camera adapter remains unstarted Phase 6 scope.
 
+Part 1's foundation (`df80b5d`) is merged into that branch. Conformance between
+the pack and `packages/contracts/` is tracked by `make pack-check` and reported
+in `docs/PART5_CONTRACT_CONFORMANCE.md`: thirteen known gaps, two of which are
+contract bugs — `assetId` is required on every event, which makes the
+charter-required `source.unmatched` unrepresentable, and
+`live-event.schema.json` rejects `regionId` and `pointer` that the Zod schema
+accepts, so it fails Part 1's own fixture.
+
 The previous application, API, fixtures, plugin, and active coding-product guides
 were removed. Git history is the recovery path. Existing semantic records and
 episodic records 0001–0035 are historical Evidence Engine context, not AccessLens

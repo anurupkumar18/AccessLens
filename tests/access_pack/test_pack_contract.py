@@ -33,6 +33,7 @@ sys.path.insert(0, str(TOOLS))
 
 import glb  # noqa: E402
 import imagehash  # noqa: E402
+import check_contract_conformance as conformance  # noqa: E402
 import reference_event_check as contract  # noqa: E402
 import validate_pack  # noqa: E402
 
@@ -343,6 +344,42 @@ class NegativeFixturesAreRejected(unittest.TestCase):
                 field: "x",
             }
             self.assertIn(f"field-not-on-contract:{field}", contract.check_event(event, PACK, 1))
+
+
+class ConformanceWithPart1Contracts(unittest.TestCase):
+    """The pack's standing against `packages/contracts/` cannot drift unnoticed."""
+
+    @unittest.skipUnless(conformance.CONTRACTS.exists(), "packages/contracts/ not present")
+    def test_only_documented_gaps_remain(self):
+        gaps, _ = conformance.collect_gaps()
+        self.assertEqual(
+            set(),
+            gaps - conformance.EXPECTED_GAPS,
+            "new incompatibility with the shared contract; see docs/PART5_CONTRACT_CONFORMANCE.md",
+        )
+
+    @unittest.skipUnless(conformance.CONTRACTS.exists(), "packages/contracts/ not present")
+    def test_the_conformance_checker_can_detect_a_break(self):
+        """A checker that only ever reports the same list is not checking anything."""
+        schema = conformance.load_schema("live-event.schema.json")
+        schema["required"] = schema["required"] + ["somethingNewlyRequired"]
+        event = {
+            "schemaVersion": "1.0",
+            "type": "region.changed",
+            "sessionId": "s",
+            "packId": PACK["packId"],
+            "packVersion": PACK["version"],
+            "assetId": "cell-slide-03",
+            "sequence": 1,
+            "sentAt": "2026-09-15T15:00:00Z",
+        }
+        gaps = conformance.validate(event, schema, "LiveEvent")
+        self.assertIn("LiveEvent:missing-required:somethingNewlyRequired", gaps)
+
+    def test_an_unhandled_schema_keyword_raises_instead_of_passing(self):
+        """The subset validator must not silently ignore a constraint it cannot apply."""
+        with self.assertRaises(NotImplementedError):
+            conformance.validate({}, {"type": "object", "oneOf": []}, "LiveEvent")
 
 
 if __name__ == "__main__":

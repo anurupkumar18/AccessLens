@@ -80,3 +80,31 @@ Get the two additive fields signed off, then run the fixtures through Part 1's Z
 contract once `packages/contracts/` lands. The camera adapter (A17) and the
 end-to-end suite (A14-A16) stay unstarted until the extension shell and
 `SessionClient` exist; the implementation plan puts camera work in Phase 6.
+
+## Addendum — conformance against Part 1, after merging df80b5d
+
+Part 1's foundation landed while this branch was open. Merged it, then ran the
+reviewed pack and all six fixtures through `packages/contracts/` and through the
+Zod schema in `apps/extension/src/shared/contracts.ts`. Both project suites are
+green after the merge: `make check` (37 tests) and `npm test` (3 tests).
+
+Thirteen gaps, two of which are bugs in the contract rather than gaps in the pack.
+
+`assetId` is `required` on every LiveEvent, so `source.unmatched` cannot be
+expressed at all. Charter A9 requires it to name no asset, and the demo's
+2:00-2:30 beat depends on that. Fifteen fixture events fail on this alone, and so
+do `session.started`, `session.ended`, `capture.paused`, and `capture.resumed`.
+
+`live-event.schema.json` sets `additionalProperties: false` but omits `regionId`
+and `pointer`, which the Zod schema accepts. Part 1's own `validEvent` fixture
+fails Part 1's own JSON Schema. That artifact is what a service validates
+against, where no Zod runtime exists, so Part 4 would reject exactly the events
+the extension sends.
+
+`arState` is rejected too, which means the LiveEvent example in `SYSTEM_DESIGN.md`
+section 6 does not validate against the contract implementing that document.
+
+Nothing under `packages/contracts/` was changed — Part 1 owns it.
+`tools/check_contract_conformance.py` holds the 13 known gaps in an explicit list,
+fails on any gap outside it, and prints a notice when one closes; it runs in
+`make pack-check`. The report is `docs/PART5_CONTRACT_CONFORMANCE.md`.

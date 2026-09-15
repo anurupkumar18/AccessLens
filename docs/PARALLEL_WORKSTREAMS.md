@@ -256,10 +256,27 @@ Not started, and deliberately: the camera adapter (A17) and the end-to-end suite
 (A14-A16). Both need Part 1's `SessionClient` and the extension shell, and the
 implementation plan puts camera work in Phase 6, after Phases 1-5 are demo-ready.
 
-### Two additive contract fields needing Part 1 and Part 3 sign-off
+### Contract conformance — checked against Part 1, two bugs found
 
-The pack emits two fields that [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) section 6
-does not name. Neither changes the meaning of an existing field.
+Merged `df80b5d` and ran the pack and all six fixtures through Part 1's
+contracts. Full report:
+[`PART5_CONTRACT_CONFORMANCE.md`](PART5_CONTRACT_CONFORMANCE.md); the check runs
+in `make pack-check` and holds the 13 known gaps in an explicit list, so a new
+incompatibility fails rather than going unnoticed.
+
+Two of them are bugs in the contract rather than gaps, and Part 1 should fix
+them before the freeze closes:
+
+1. `assetId` is `required` on every event, so `source.unmatched` cannot be
+   expressed. Charter A9 requires it to name no asset; the demo's 2:00-2:30 beat
+   depends on it. 15 fixture events fail on this alone.
+2. `live-event.schema.json` sets `additionalProperties: false` but omits
+   `regionId` and `pointer`, so it rejects events the Zod schema accepts —
+   including Part 1's own `validEvent` fixture. Part 4 validates against the
+   JSON Schema, not Zod.
+
+The pack also emits two AR fields that [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md)
+section 6 does not name. Neither changes the meaning of an existing field.
 
 1. `arScene.hotspots[].cameraTarget`, a key into a new pack-level `arCameras` map
    of `{position, target, fov}`. Part 3 has to move the AR camera somewhere on a
