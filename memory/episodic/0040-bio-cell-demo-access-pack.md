@@ -285,3 +285,34 @@ precisely to catch what nobody looks at.
 - 60 Python tests in 5.4s, down from 61.5s. `make check` green.
 - Three framing mutations — camera aimed away from its node, field of view
   narrowed to 11 degrees, camera placed inside its own node — each caught.
+
+## Addendum 7 — negative fixtures verified against the real contract
+
+The ten `fixtures/invalid/` events had only ever been judged by this pack's own
+`reference_event_check.py`. Nothing confirmed the authoritative contract rejects
+them, so a fixture could quietly have been valid and the test asserting nothing.
+The e2e suite now checks each against both Zod and the pack-aware rules and
+fails if any is rejected by neither.
+
+All ten are rejected. The split is the useful part: six fail on shape alone, and
+four need something the schema cannot see.
+
+The one worth acting on is `pack-version-mismatch`. Zod types `packVersion` as
+any positive integer, so a stale version passes schema validation cleanly.
+`SYSTEM_DESIGN.md` section 9 requires rendering to stop and refetch when the
+pack version differs, which means somebody has to hold the session's expected
+version and compare — and if Part 4's relay does not, every student renderer
+must, separately. That is now thread T-19.
+
+The first version of this test hard-coded a guessed three-item list and failed.
+The right response was to compute the real split rather than edit the expected
+list until it went green; the guess was wrong in a way that was itself the
+finding.
+
+## Validation evidence (addendum 7)
+
+- 12 e2e tests, 60 Python tests, `make check` green end to end.
+- Split confirmed empirically: Zod catches pointer range, unknown event type,
+  and all three prohibited-field cases; the pack-aware layer is required for
+  unknown region, hotspot/region mismatch, non-monotonic sequence, and pack
+  version mismatch.

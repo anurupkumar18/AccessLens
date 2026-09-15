@@ -119,3 +119,38 @@ def check_event(event: dict, pack: dict, last_sequence: int = 0) -> list[str]:
             broken.append("unmatched-event-names-content:arState.hotspotId")
 
     return broken
+
+
+def _main() -> int:
+    """Emit one verdict per negative fixture, for the TypeScript e2e suite.
+
+    The e2e test needs to know which invalid fixtures this pack-aware layer
+    catches, so it can assert that every one of them is rejected by *something*
+    -- either Zod on shape, or these rules on pack and stream consistency. A
+    negative fixture that nothing rejects is a test asserting nothing.
+    """
+    import json
+    import sys
+    from pathlib import Path as _Path
+
+    pack_root = _Path(__file__).resolve().parents[1]
+    pack = json.loads((pack_root / "pack.json").read_text(encoding="utf-8"))
+    verdicts = []
+    for path in sorted((pack_root / "fixtures" / "invalid").glob("*.json")):
+        fixture = json.loads(path.read_text(encoding="utf-8"))
+        verdicts.append(
+            {
+                "fixture": fixture["fixture"],
+                "expectedRule": fixture["expectedRule"],
+                "broken": check_event(
+                    fixture["event"], pack, last_sequence=fixture["lastDeliveredSequence"]
+                ),
+                "event": fixture["event"],
+            }
+        )
+    json.dump(verdicts, sys.stdout, indent=2)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())

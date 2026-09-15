@@ -161,3 +161,82 @@ describe('fixture replay through InMemorySessionClient', () => {
     }
   });
 });
+
+describe('negative fixtures are actually rejected', () => {
+  interface InvalidVerdict {
+    fixture: string;
+    expectedRule: string;
+    broken: string[];
+    event: Record<string, unknown>;
+  }
+
+  const verdicts: InvalidVerdict[] = JSON.parse(
+    execFileSync('python3', [join(PACK, 'tools/reference_event_check.py')], { encoding: 'utf8' }),
+  );
+
+  it('loads every negative fixture', () => {
+    expect(verdicts.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('rejects every one of them, by shape or by pack consistency', () => {
+    /**
+     * A negative fixture that nothing rejects is a test asserting nothing. Each
+     * must fail either Zod (wrong shape for its event type) or the pack-aware
+     * rules (names something this pack does not contain, or moves the stream
+     * backwards) -- a distinction JSON Schema cannot make, because it cannot
+     * see the pack.
+     */
+    const unrejected = verdicts.filter(
+      v => LiveEventSchema.safeParse(v.event).success && v.broken.length === 0,
+    );
+    expect(unrejected.map(v => v.fixture)).toEqual([]);
+  });
+
+  it('each one trips the specific rule it documents', () => {
+    for (const verdict of verdicts) {
+      const zodRejects = !LiveEventSchema.safeParse(verdict.event).success;
+      const documented = verdict.broken.includes(verdict.expectedRule);
+      expect(
+        documented || zodRejects,
+        `${verdict.fixture} claims rule "${verdict.expectedRule}" but tripped [${verdict.broken}]`,
+      ).toBe(true);
+    }
+  });
+
+  it('records which rejections need pack awareness, for Part 4', () => {
+    /**
+     * Part 4 validates server-side against the JSON Schema, where there is no
+     * reviewed pack and no per-session stream state to consult. These four are
+     * rejections the relay cannot make from the schema alone.
+     *
+     * `pack-version-mismatch` is the one worth noticing: the schema types
+     * `packVersion` as any positive integer, so a stale version passes cleanly.
+     * SYSTEM_DESIGN section 9 requires rendering to stop and refetch when the
+     * pack version differs, so somebody has to hold the session's expected
+     * version and compare. If the relay does not, every student renderer must.
+     */
+    const needsPackOrStream = verdicts
+      .filter(v => LiveEventSchema.safeParse(v.event).success)
+      .map(v => v.fixture)
+      .sort();
+    expect(needsPackOrStream).toEqual([
+      'hotspot-region-mismatch',
+      'non-monotonic-sequence',
+      'pack-version-mismatch',
+      'unknown-region',
+    ]);
+  });
+
+  it('the schema alone still catches every prohibited-field case', () => {
+    /** Charter A2 and A7 must not depend on anyone loading the pack. */
+    for (const name of [
+      'raw-frame-payload',
+      'prohibited-mastery-signal',
+      'prohibited-student-identity',
+      'student-published-instructor-event',
+    ]) {
+      const verdict = verdicts.find(v => v.fixture === name)!;
+      expect(LiveEventSchema.safeParse(verdict.event).success, name).toBe(false);
+    }
+  });
+});
