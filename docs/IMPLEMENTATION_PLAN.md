@@ -159,6 +159,8 @@ Phase 6 begins only after Phases 1–5 are demo-ready.
 | Canvas approval is unavailable | Use session codes and checked-in mock content; production Canvas remains deferred. |
 | Accessibility claims exceed evidence | Validate with design partners and label prototype evidence honestly. |
 | Camera consumes the schedule | Camera is Phase 6 and cannot block the extension demo. |
+| Slide fingerprints flip on flat artwork | Neighbouring cells of a flat slide region tie exactly, so a bare greater-than comparison is decided by floating-point rounding and by compression noise. The pack's hash resolves ties to 0 and requires a 0.75-level difference to set a bit; measured worst-case drift on a distorted capture fell about fourfold, from 38 bits to 10 of 132. Any reimplementation of the matcher must keep the tie rule. |
+| A near-duplicate slide silently breaks matching | `validate_pack.py` fails when two reviewed slides sit closer than twice the configured margin, so the problem surfaces when the slide is added rather than during the demo. |
 
 ## 6. Immediate next task
 

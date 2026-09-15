@@ -1,0 +1,22 @@
+{
+  "fixture": "pack-version-mismatch",
+  "mustBeRejected": true,
+  "lastDeliveredSequence": 6,
+  "expectedRule": "pack-version-mismatch",
+  "reason": "packVersion does not match the reviewed pack; rendering must stop and refetch.",
+  "event": {
+    "schemaVersion": "1.0",
+    "type": "region.changed",
+    "sessionId": "sess-demo-0001",
+    "packId": "bio-cell-demo",
+    "packVersion": 2,
+    "assetId": "cell-slide-03",
+    "regionId": "mitochondrion",
+    "arState": {
+      "hotspotId": "cell-slide-03:mitochondrion",
+      "action": "focus"
+    },
+    "sequence": 7,
+    "sentAt": "2026-09-15T15:00:42Z"
+  }
+}
