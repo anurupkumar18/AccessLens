@@ -14,7 +14,7 @@ listed as deferred in the implementation plan are intentionally outside the
 
 | Part | Owner | Primary outcome |
 | --- | --- | --- |
-| 1. Foundation and contracts | **Name: ____________________** | Installable extension shell and stable shared interfaces |
+| 1. Foundation and contracts | **Name: Anurup Kumar ** | Installable extension shell and stable shared interfaces |
 | 2. Instructor capture | **Name: ____________________** | Consent-based screen sharing, slide matching, and correction |
 | 3. Student experience and AR | **Name: ____________________** | Synchronized accessible modes and required AR view |
 | 4. AWS live service | **Name: ____________________** | Secure temporary sessions and ordered WebSocket relay |
