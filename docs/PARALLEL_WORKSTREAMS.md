@@ -252,9 +252,15 @@ guardrail suite is `tests/access_pack/`.
   **done** — `PROVENANCE.md`. Internal review only; external subject-matter
   review is task A15 and the pack says so.
 
-Not started, and deliberately: the camera adapter (A17) and the end-to-end suite
-(A14-A16). Both need Part 1's `SessionClient` and the extension shell, and the
-implementation plan puts camera work in Phase 6, after Phases 1-5 are demo-ready.
+First slice of the end-to-end suite: **done** — `tests/e2e/fixture-replay.test.ts`
+replays the fixtures through Part 1's real `InMemorySessionClient`, covers
+session close and reconnect idempotence, and cross-checks the Python conformance
+tool against Zod so the two validators cannot drift apart unnoticed.
+
+Not started, and deliberately: the camera adapter (A17) and the rest of the
+end-to-end suite (A14-A16) — the failure-path, axe, screen-reader, and rehearsal
+work needs the student renderers, and the implementation plan puts camera work in
+Phase 6, after Phases 1-5 are demo-ready.
 
 ### Contract conformance — checked against Part 1, two bugs found
 

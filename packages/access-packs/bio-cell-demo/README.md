@@ -86,6 +86,14 @@ same region and `arState.hotspotId` has to resolve to exactly one hotspot.
 make pack-check      # from the repository root; also runs inside make check
 ```
 
+`tests/e2e/fixture-replay.test.ts` replays these fixtures through Part 1's real
+`InMemorySessionClient`, so the path from a checked-in fixture to a subscriber
+receiving a Zod-validated event is covered today, before the student renderers
+exist. It also cross-checks every event against
+`tools/check_contract_conformance.py`: that tool reimplements a subset of JSON
+Schema so it can run in the Python-only checks, and a reimplementation drifts,
+so the test fails if the two validators ever disagree about a single event.
+
 `tools/validate_pack.py` recomputes every fingerprint from the PNG bytes, resolves
 every hotspot against the real node list inside `cell.glb`, rejects prohibited
 fields, and fails if `PROVENANCE.md` omits any checked-in binary. The guardrail

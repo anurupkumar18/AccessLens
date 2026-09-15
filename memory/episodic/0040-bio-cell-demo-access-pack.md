@@ -150,3 +150,39 @@ moved to 0040 to keep the sequence unambiguous.
   4 closed by Part 1 and 9 closed by Part 5 conforming.
 - The fixture test for stale ordering caught the redelivery change rather than
   silently passing, which is what it was for.
+
+## Addendum 3 — first end-to-end slice, and a drift guard
+
+Added `tests/e2e/fixture-replay.test.ts`. The student renderers do not exist, but
+`InMemorySessionClient` does, so the path from a checked-in fixture to a
+subscriber receiving a Zod-validated event is testable now. It covers ordered
+delivery, reconnect redelivery as a provable no-op, `close()` stopping delivery,
+and capability requests failing after close.
+
+The valuable part is the cross-check. `check_contract_conformance.py`
+reimplements a subset of JSON Schema so it can run in the Python-only checks,
+and a reimplementation drifts from the thing it imitates. The test runs every
+fixture event through Zod — the actual runtime authority — and fails if the two
+validators disagree about any single event. The Python tool grew a `--json` mode
+emitting one verdict per event for this.
+
+Two attempts were needed to prove the guard works. The first mutation made the
+Python checker blind to `additionalProperties`, and nothing failed: the caption
+events also trip `forbidden-property` via the `allOf` matrix, so Python still
+rejected them and the two validators still agreed. The guard was fine; the
+mutation was too weak. Mutations that actually flip a verdict — Python accepting
+everything, and Python inventing a gap on `region.changed` — both fire, in both
+directions, with the event named.
+
+Writing the test also caught a modelling error in the test itself: the first
+version replayed the reconnect redelivery *after* `session.ended` rather than at
+its real position in the stream, so it compared against the state left by a
+lifecycle event. Fixed to replay in order up to the redelivery point.
+
+`tsconfig.json` gained `tests` in `include`, so these are typechecked.
+
+## Validation evidence (addendum 3)
+
+- `make check` green: memory, pack validator, conformance, 40 Python tests, and
+  `npm run check` — typecheck, 105 vitest tests across 11 files, build.
+- Drift guard verified against two verdict-flipping mutations, restored after.

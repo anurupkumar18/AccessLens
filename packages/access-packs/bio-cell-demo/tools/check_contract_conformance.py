@@ -206,7 +206,36 @@ def collect_gaps() -> tuple[set[str], dict[str, int]]:
     return gaps, counts
 
 
+def per_event_verdicts() -> list[dict]:
+    """One verdict per fixture event, for cross-checking against Zod.
+
+    This module reimplements a subset of JSON Schema, and a reimplementation
+    drifts from the thing it imitates. `tests/e2e/fixture-replay.test.ts` runs
+    the same events through Part 1's Zod schema -- the actual runtime authority
+    -- and fails if the two ever disagree about a single event.
+    """
+    event_schema = load_schema("live-event.schema.json")
+    verdicts = []
+    for path in sorted(FIXTURES.glob("*.json")):
+        fixture = json.loads(path.read_text(encoding="utf-8"))
+        for index, event in enumerate(fixture["events"]):
+            verdicts.append(
+                {
+                    "fixture": path.stem,
+                    "index": index,
+                    "sequence": event.get("sequence"),
+                    "type": event.get("type"),
+                    "gaps": validate(event, event_schema, "LiveEvent"),
+                }
+            )
+    return verdicts
+
+
 def main() -> int:
+    if "--json" in sys.argv[1:]:
+        print(json.dumps(per_event_verdicts(), indent=2))
+        return 0
+
     if not CONTRACTS.exists():
         print("packages/contracts/ does not exist yet; nothing to check against.")
         return 0
