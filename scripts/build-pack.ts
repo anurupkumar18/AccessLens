@@ -18,7 +18,8 @@ import { PNG } from 'pngjs';
 import { AnthropicBedrock } from '@anthropic-ai/bedrock-sdk';
 import { z } from 'zod';
 import { AccessPackSchema, type AccessPack } from '../apps/extension/src/shared/contracts';
-import { fingerprintFrame } from '../apps/extension/src/sources/screen';
+import { fingerprintFrame, FINGERPRINT_ALGORITHM, FINGERPRINT_BITS, DEFAULT_MATCH_OPTIONS } from '../apps/extension/src/sources/screen';
+const DEFAULT_MATCH_OPTIONS_AS_PACK = { maxHammingDistance: DEFAULT_MATCH_OPTIONS.threshold, minMargin: DEFAULT_MATCH_OPTIONS.margin };
 
 const MODEL = 'us.anthropic.claude-sonnet-4-6';
 const REGION = 'us-east-1';
@@ -160,7 +161,8 @@ for (const file of slideFiles) {
   console.error(`  ${fingerprint}  ${draft.title}`);
 }
 
-const pack = AccessPackSchema.parse({ schemaVersion: '1.0', packId, version, title, assets });
+const matching = { algorithm: FINGERPRINT_ALGORITHM, hashBits: FINGERPRINT_BITS, ...DEFAULT_MATCH_OPTIONS_AS_PACK, onNoMatch: 'source.unmatched' as const };
+const pack = AccessPackSchema.parse({ schemaVersion: '1.0', packId, version, title, matching, assets });
 const draftPath = join(out, 'pack.draft.json');
 writeFileSync(draftPath, JSON.stringify(pack, null, 2) + '\n');
 console.error(`\nwrote ${draftPath} (${assets.length} slides).`);

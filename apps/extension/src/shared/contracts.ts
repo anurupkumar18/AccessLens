@@ -1,6 +1,36 @@
 import { z } from 'zod';
 const Bounds = z.object({ x:z.number().min(0).max(1), y:z.number().min(0).max(1), width:z.number().min(0).max(1), height:z.number().min(0).max(1) });
-export const AccessPackSchema = z.object({ schemaVersion:z.literal('1.0'), packId:z.string().min(1), version:z.number().int().positive(), title:z.string().min(1), assets:z.array(z.object({ assetId:z.string(), fingerprint:z.string(), title:z.string(), readingOrder:z.array(z.string()), regions:z.array(z.object({ regionId:z.string(), bounds:Bounds, shortDescription:z.string(), plainLanguage:z.string() })) })).min(1) }).strict();
+// Optional pack blocks carried by the reviewed bio-cell-demo pack (Part 5's
+// conformance report, gaps 1 and 2). All additive and optional; the frozen
+// required fields are unchanged. `arScene` binds regions to AR model nodes
+// (charter A11); `matching` makes the recognition threshold reviewed content.
+const Vec3 = z.tuple([z.number(), z.number(), z.number()]);
+const ArCamera = z.object({ position: Vec3, target: Vec3, fov: z.number().positive() }).strict();
+const ArHotspot = z.object({
+  hotspotId: z.string().min(1), regionId: z.string().min(1), nodeName: z.string().min(1), label: z.string().min(1),
+  cameraTarget: z.string().min(1).optional(), highlight: z.string().min(1).optional(),
+}).strict();
+const ArScene = z.object({ modelUri: z.string().min(1), defaultCamera: z.string().min(1), hotspots: z.array(ArHotspot) }).strict();
+const Matching = z.object({
+  algorithm: z.string().min(1), hashBits: z.number().int().positive(),
+  maxHammingDistance: z.number().int().nonnegative(), minMargin: z.number().int().nonnegative(),
+  onNoMatch: z.literal('source.unmatched'),
+}).strict();
+const Review = z.object({
+  status: z.string().min(1), reviewedBy: z.string().min(1), reviewedAt: z.string().min(1),
+  externalSubjectMatterReview: z.boolean(), notes: z.string().optional(),
+}).strict();
+const Region = z.object({ regionId:z.string(), label:z.string().min(1).optional(), bounds:Bounds, shortDescription:z.string(), plainLanguage:z.string() }).strict();
+const Asset = z.object({
+  assetId:z.string(), mediaUri:z.string().min(1).optional(), fingerprint:z.string(), title:z.string(), subtitle:z.string().optional(),
+  readingOrder:z.array(z.string()), regions:z.array(Region), arScene: ArScene.optional(),
+}).strict();
+export const AccessPackSchema = z.object({
+  schemaVersion:z.literal('1.0'), packId:z.string().min(1), version:z.number().int().positive(), title:z.string().min(1),
+  review: Review.optional(), matching: Matching.optional(), arCameras: z.record(z.string(), ArCamera).optional(),
+  reservedReadingOrderIds: z.array(z.string().min(1)).optional(),
+  assets:z.array(Asset).min(1),
+}).strict();
 const LiveEventBase = { schemaVersion:z.literal('1.0'), sessionId:z.string().min(1), packId:z.string().min(1), packVersion:z.number().int().positive(), sequence:z.number().int().nonnegative(), sentAt:z.string().datetime() };
 const Pointer = z.object({x:z.number().min(0).max(1),y:z.number().min(0).max(1)});
 const ArState = z.object({hotspotId:z.string().min(1), action:z.enum(['focus','highlight','clear'])});

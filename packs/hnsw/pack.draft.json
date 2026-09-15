@@ -3,10 +3,17 @@
   "packId": "hnsw-explainer",
   "version": 1,
   "title": "How HNSW Works",
+  "matching": {
+    "algorithm": "dhash12",
+    "hashBits": 132,
+    "maxHammingDistance": 26,
+    "minMargin": 14,
+    "onNoMatch": "source.unmatched"
+  },
   "assets": [
     {
       "assetId": "slide-01",
-      "fingerprint": "dhash-v1:c949494949393979",
+      "fingerprint": "dhash12:00100000000000000001011e2ac470800",
       "title": "How HNSW Works",
       "readingOrder": [
         "title",
@@ -75,7 +82,7 @@
     },
     {
       "assetId": "slide-02",
-      "fingerprint": "dhash-v1:a4d4a4cae8e88c27",
+      "fingerprint": "dhash12:00150380000c21cca88590f3106000002",
       "title": "The Nearest-Neighbor Problem",
       "readingOrder": [
         "title",
@@ -145,7 +152,7 @@
     },
     {
       "assetId": "slide-03",
-      "fingerprint": "dhash-v1:a498e09898989891",
+      "fingerprint": "dhash12:0010020040044188314620d608c000442",
       "title": "Skip Lists",
       "readingOrder": [
         "title",
@@ -203,7 +210,7 @@
     },
     {
       "assetId": "slide-04",
-      "fingerprint": "dhash-v1:a4c4eccccccccc87",
+      "fingerprint": "dhash12:00100300298e398738c71c630d630d002",
       "title": "The Layered Graph",
       "readingOrder": [
         "title",
@@ -248,7 +255,7 @@
     },
     {
       "assetId": "slide-05",
-      "fingerprint": "dhash-v1:2484eac8ccccdca7",
+      "fingerprint": "dhash12:00140300290e21c438d7102389e308002",
       "title": "Searching the Index",
       "readingOrder": [
         "title",
@@ -305,7 +312,7 @@
     },
     {
       "assetId": "slide-06",
-      "fingerprint": "dhash-v1:248598c9ac3c3897",
+      "fingerprint": "dhash12:00140300628cc3807540700f210630002",
       "title": "Inserting a Vector",
       "readingOrder": [
         "title",
@@ -387,7 +394,7 @@
     },
     {
       "assetId": "slide-07",
-      "fingerprint": "dhash-v1:24cc34b6342c2cb6",
+      "fingerprint": "dhash12:001402844c8999132640981302626600a",
       "title": "The Three Parameters",
       "readingOrder": [
         "title",
@@ -433,7 +440,7 @@
     },
     {
       "assetId": "slide-08",
-      "fingerprint": "dhash-v1:84c4b0ccb48ccc27",
+      "fingerprint": "dhash12:001003000001b0c732c4d8a3506180002",
       "title": "Recall vs. Speed",
       "readingOrder": [
         "title",

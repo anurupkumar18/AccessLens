@@ -3,10 +3,17 @@
   "packId": "bio-cell-demo",
   "version": 1,
   "title": "Cell Structure (synthetic Part 2 test pack)",
+  "matching": {
+    "algorithm": "dhash12",
+    "hashBits": 132,
+    "maxHammingDistance": 26,
+    "minMargin": 14,
+    "onNoMatch": "source.unmatched"
+  },
   "assets": [
     {
       "assetId": "slide-01",
-      "fingerprint": "dhash-v1:3f8f4f4747474fcf",
+      "fingerprint": "dhash12:5814fe1f81f03e07c0f81f03e07c0fc3f",
       "title": "The cell: an overview",
       "readingOrder": [
         "title",
@@ -28,7 +35,7 @@
     },
     {
       "assetId": "slide-02",
-      "fingerprint": "dhash-v1:7ffcfcfcfef8f8fe",
+      "fingerprint": "dhash12:181fe7fe7fcff9ff3fe7e0fc1f83f07fc",
       "title": "The cell membrane",
       "readingOrder": [
         "title",
@@ -62,7 +69,7 @@
     },
     {
       "assetId": "slide-03",
-      "fingerprint": "dhash-v1:7ffec8c8ffffffff",
+      "fingerprint": "dhash12:181ff200400801003ffffffffffffffff",
       "title": "The mitochondrion",
       "readingOrder": [
         "title",
@@ -84,7 +91,7 @@
     },
     {
       "assetId": "slide-04",
-      "fingerprint": "dhash-v1:7ffffff3e01c0c9c",
+      "fingerprint": "dhash12:181ffffffffffff1f80c000600601c420",
       "title": "The nucleus",
       "readingOrder": [
         "title",
@@ -118,7 +125,7 @@
     },
     {
       "assetId": "slide-05",
-      "fingerprint": "dhash-v1:7fbebebefbebebfb",
+      "fingerprint": "dhash12:1813f27e4fc9f93f3fbf03e07c0f81ff7",
       "title": "Ribosomes and the endoplasmic reticulum",
       "readingOrder": [
         "title",
@@ -164,7 +171,7 @@
     },
     {
       "assetId": "slide-06",
-      "fingerprint": "dhash-v1:7ffbe3e3bebebebe",
+      "fingerprint": "dhash12:181fdf81f03e07c0e7e4fc9f93f27e4fc",
       "title": "Summary",
       "readingOrder": [
         "title",
@@ -210,7 +217,7 @@
     },
     {
       "assetId": "twin-a",
-      "fingerprint": "dhash-v1:7fe4e4e4bbbbbbbb",
+      "fingerprint": "dhash12:181e738e71ce39c727bce39c738e71cf7",
       "title": "Transport across the membrane (part 1)",
       "readingOrder": [
         "title",
@@ -244,7 +251,7 @@
     },
     {
       "assetId": "twin-b",
-      "fingerprint": "dhash-v1:7fe4e4e4bbbbbbbb",
+      "fingerprint": "dhash12:181e738e71ce39c727bce39c738e71cf7",
       "title": "Transport across the membrane (part 2)",
       "readingOrder": [
         "title",

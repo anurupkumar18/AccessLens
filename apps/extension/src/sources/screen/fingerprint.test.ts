@@ -4,15 +4,27 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AccessPackSchema } from '../../shared/contracts';
-import { fingerprintFrame, matchFingerprint, DEFAULT_MATCH_OPTIONS } from './index';
+import { fingerprintFrame, matchFingerprint, matchOptionsFor, DEFAULT_MATCH_OPTIONS } from './index';
+import reviewedPackJson from '../../../../../packages/access-packs/bio-cell-demo/pack.json';
+import { PNG } from 'pngjs';
 import { loadSlideFrame, loadDemoFrame, solidFrame, testPack, SLIDE_ASSET_IDS, FIXTURE_ROOT } from './fixtures';
 
-const FORMAT = /^dhash-v1:[0-9a-f]{16}$/;
+const FORMAT = /^dhash12:[0-9a-f]{33}$/;
 const pack = AccessPackSchema.parse(testPack);
 const assetById = (id: string) => pack.assets.find(a => a.assetId === id)!;
 
 describe('fingerprint contract (A4)', () => {
-  it('produces the dhash-v1 format: prefix plus sixteen lowercase hex characters', () => {
+  it('reproduces every fingerprint in Part 5\'s reviewed pack byte for byte (the contract is theirs)', () => {
+    const reviewed = AccessPackSchema.parse(reviewedPackJson);
+    for (const asset of reviewed.assets) {
+      const png = PNG.sync.read(readFileSync(join('packages/access-packs/bio-cell-demo', asset.mediaUri!)));
+      const frame = { width: png.width, height: png.height, data: new Uint8ClampedArray(png.data.buffer, png.data.byteOffset, png.data.length) };
+      expect(fingerprintFrame(frame)).toBe(asset.fingerprint);
+    }
+    expect(matchOptionsFor(reviewed)).toEqual({ threshold: 26, margin: 14 });
+  });
+
+  it('produces the dhash12 format: prefix plus thirty-three lowercase hex characters', () => {
     expect(fingerprintFrame(loadSlideFrame('slide-01'))).toMatch(FORMAT);
     expect(fingerprintFrame(loadDemoFrame('slide-01'))).toMatch(FORMAT);
     expect(fingerprintFrame(solidFrame(64, 64, 0))).toMatch(FORMAT);
@@ -56,8 +68,10 @@ describe('matcher (A4): threshold and ambiguity margin', () => {
     expect(decision).toEqual({ kind: 'matched', assetId: 'slide-03', distance: 0 });
   });
 
-  it('exposes the tuned threshold and margin so the README and the code cannot drift', () => {
-    expect(DEFAULT_MATCH_OPTIONS).toEqual({ threshold: 10, margin: 4 });
+  it('reads threshold and margin from the pack matching block, with Part 5\'s measured values as the fallback', () => {
+    expect(DEFAULT_MATCH_OPTIONS).toEqual({ threshold: 26, margin: 14 });
+    expect(matchOptionsFor(pack)).toEqual({ threshold: 26, margin: 14 });
+    expect(() => matchOptionsFor({ ...pack, matching: { ...pack.matching!, algorithm: 'phash' } })).toThrow(/algorithm/);
   });
 });
 
