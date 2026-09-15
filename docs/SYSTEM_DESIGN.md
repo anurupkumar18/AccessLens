@@ -245,7 +245,7 @@ grade, or attention signal.
 | --- | --- | --- |
 | Extension | Chrome Manifest V3 | Instructor and student distribution surface |
 | UI | React + TypeScript + Vite | Side-panel interfaces and shared components |
-| AR rendering | Three.js + React Three Fiber + WebXR | Required synchronized scene, hotspots, and immersive AR on supported devices |
+| AR rendering | Direct Three.js + WebXR | Required synchronized scene, hotspots, immersive AR on supported devices, and explicit renderer cleanup |
 | Extension runtime | Service worker + offscreen document + content scripts | Session control, capture processing, and supported-page integration |
 | Capture | `getDisplayMedia()` or `chrome.tabCapture` after user action | Explicit instructor tab/window/screen sharing |
 | Local vision | OpenCV.js; optional MediaPipe after feasibility test | Reviewed-slide matching and normalized pointer/region detection |
