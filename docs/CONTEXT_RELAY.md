@@ -101,6 +101,9 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts` |
+| T-21 | This file claims in its own header that `scripts/relay_check.py` "runs inside `make check`". It does not. The `check` target is `memory-check pack-check extension-check`, and none of those three invoke it. Its mutation tests in `tests/relay/` are not discovered either — `pack-check` runs `unittest discover -s tests/access_pack`. So the guard added in `8b9f1f5`, and the tests guarding the guard, are both inert: a malformed relay table reaches the demo exactly as it would have before. Found while appending RL-014, by running the checker by hand because the Makefile did not. | Part 5 | Relay integrity | OPEN | `Makefile` `check` target vs. this file's header; `grep -rn relay_check Makefile` returns nothing |
+| T-22 | `make check` is **already failing** on the integration branch, before any of this branch's changes: `memory_check.py` reports the `memory/INDEX.md` "Current handoff" pointer is stale against `0041-context-relay.md`. Reproduced on a clean worktree of `1d1c72b`. This is T-18's single-pointer design predicted to conflict, now actually red — and because section 1 tells every incoming agent to run `make check` first, the first thing a new contributor sees is a failure unrelated to their work. | Part 5 | Everyone's first five minutes | OPEN | `git worktree add /tmp/base origin/accesslens-extension-ar-pivot && python3 scripts/memory_check.py` |
+| T-20 | The hackathon AWS account is verified reachable, but only with **read-only list calls** for every service Part 4 needs. Nobody has created a Lambda, a DynamoDB table, or a WebSocket API, and `iam:PassRole` is restricted to `WSParticipantRole` — which is exactly what CDK needs when it creates execution roles. A throwaway `cdk deploy` should happen early, because "the account lists the service" has already proven a bad proxy for "the account will run it" (see `docs/AWS_ACCESS_VERIFICATION.md` §3). Credentials also expire mid-event and the account is reclaimed afterwards. | Part 4 | Part 4 | OPEN | `docs/AWS_ACCESS_VERIFICATION.md` §1, §4 |
 
 ---
 
@@ -395,3 +398,28 @@ something breaks later it broke after this point. But the only reason anyone
 knows that is that someone went and looked. Until PR #5's workflow fix merges,
 assume nothing on the integration branch has been verified unless a relay entry
 says it was.
+
+### RL-014 — 2026-09-15 — Part 4 — Omar Rizwan
+
+**Landed:** `docs/AWS_ACCESS_VERIFICATION.md` — the hackathon AWS account measured
+by calling it, not by reading its service list. `aws sts get-caller-identity`
+works from a `hackathon` profile; Polly, Translate, and one Bedrock model respond;
+Lambda, DynamoDB, API Gateway v2, S3, and CloudFormation answer read-only list
+calls. No infrastructure deployed and Part 4 not claimed.
+**Threads touched:** T-20, T-21, T-22 opened. No thread closed.
+**Next agent needs to know:** `bedrock list-foundation-models` advertises thirteen
+Anthropic models in this account and **one** can be invoked —
+`us.anthropic.claude-sonnet-4-6`, and only via the `us.` inference profile. The
+rest fail two different ways that read almost identically: an explicit IAM deny
+policy for some, and a silent account entitlement gap for Opus 5 / Sonnet 5 /
+Opus 4.8 / Fable 5, which the policy never mentions. Call `converse` before
+designing around any model. The same trap is still live for the services in T-20,
+where read access has been confirmed and write access has not.
+
+Two things found on the way past, both pre-existing on `1d1c72b` and neither
+caused by this branch. `make check` is **red** before you change anything (T-22),
+which matters because section 1 tells you to run it first. And this file's own
+header claims `relay_check.py` runs inside `make check`, which it does not
+(T-21) — I only caught the claim because I ran the checker by hand. A guard that
+nothing invokes is indistinguishable from no guard, which is the same shape as
+T-07 and T-08.
