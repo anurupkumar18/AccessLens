@@ -48,7 +48,8 @@ export function App({ client = defaultClient, pack = defaultPack, host = default
           <InstructorPanel client={client} pack={pack} host={host} scheduler={scheduler} />
         ) : (
           <section>
-            <h2>Student view</h2>
+            <h2>Student</h2>
+            <p className="muted">Follows the instructor's reviewed slide. Your display preferences stay on this device.</p>
             <p>{event && 'regionId' in event ? `Following ${event.regionId} on ${event.assetId}.` : 'Waiting for instructor event.'}</p>
             <p>
               <label htmlFor="reduced-motion-toggle">

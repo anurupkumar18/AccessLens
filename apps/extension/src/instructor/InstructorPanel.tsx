@@ -12,24 +12,43 @@ interface Props {
   ids?: IdGenerator;
 }
 
-function describe(state: ControllerSnapshot, pack: AccessPack): string {
+type Tone = 'idle' | 'live' | 'ok' | 'warn';
+
+interface Banner { glyph: string; label: string; tone: Tone; sentence: string }
+
+/** One banner per state: glyph and label carry the meaning, colour only reinforces it. */
+function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
   const where = state.current.kind === 'matched'
     ? ` Current slide: ${state.current.title}. Region: ${state.current.regionId ?? 'none'}.`
     : state.current.kind === 'unmatched'
-      ? ' Unmatched: the shared screen is not a reviewed slide. Choose the correct slide below.'
+      ? ' Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below.'
       : ' Looking for a reviewed slide.';
   switch (state.phase) {
     case 'idle':
-      return state.message ?? `Not sharing. Pack loaded: ${pack.title}. Click Start to share a tab, window, or screen.`;
+      return {
+        glyph: '○', label: 'Not sharing', tone: state.message ? 'warn' : 'idle',
+        sentence: state.message ?? `Not sharing. ${pack.title} is loaded. Click Start to share the window with your slides.`,
+      };
     case 'starting':
-      return state.message ?? 'Waiting for the browser dialog.';
+      return { glyph: '◔', label: 'Waiting for you', tone: 'live', sentence: state.message ?? 'Waiting for the browser dialog.' };
     case 'sharing':
-      return `Sharing.${where}`;
+      return {
+        glyph: state.current.kind === 'unmatched' ? '⚠' : state.current.kind === 'matched' ? '●' : '◉',
+        label: state.current.kind === 'unmatched' ? 'Sharing · Unmatched' : state.current.kind === 'matched' ? 'Sharing · Synced' : 'Sharing',
+        tone: state.current.kind === 'unmatched' ? 'warn' : state.current.kind === 'matched' ? 'ok' : 'live',
+        sentence: `Sharing.${where}`,
+      };
     case 'paused':
-      return `Paused. Students see the last shared moment.${where}`;
+      return { glyph: '❙❙', label: 'Paused', tone: 'warn', sentence: `Paused. Students see the last shared moment.${where}` };
     case 'closed':
-      return state.message ?? 'Session ended.';
+      return { glyph: '■', label: 'Session ended', tone: 'idle', sentence: state.message ?? 'Session ended.' };
   }
+}
+
+function stepIndex(state: ControllerSnapshot): number {
+  if (state.phase === 'closed') return 4;
+  if (state.phase === 'sharing' || state.phase === 'paused') return state.current.kind === 'fresh' ? 2 : 3;
+  return 1;
 }
 
 /**
@@ -54,6 +73,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
   const currentAssetId = state.current.kind === 'matched' ? state.current.assetId : null;
   const currentAsset = currentAssetId ? pack.assets.find(a => a.assetId === currentAssetId) : undefined;
   const correctionAsset = pack.assets.find(a => a.assetId === correctAsset) ?? pack.assets[0];
+  const b = banner(state, pack);
+  const step = stepIndex(state);
 
   function guarded(action: () => void): void {
     try {
@@ -75,34 +96,64 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
     guarded(() => controller.indicateRegion(indicateRegion));
   }
 
+  const steps = [
+    'Click Start and pick the window or tab showing your slides.',
+    'Read the join code to students. They enter it in their AccessLens.',
+    'Present. Reviewed slides are recognised on this device and synced; fix a wrong match below.',
+  ];
+
   return (
     <section aria-labelledby="instructor-heading">
-      <h2 id="instructor-heading">Instructor session</h2>
-      <p>Pack: {pack.title} (v{pack.version})</p>
-      <p role="status" aria-live="polite">{describe(state, pack)}</p>
+      <h2 id="instructor-heading">Instructor</h2>
+      <p className="muted">Pack: {pack.title} · v{pack.version}</p>
+
+      <div className="status" data-tone={b.tone}>
+        <span className="glyph" aria-hidden="true">{b.glyph}</span>
+        <span className="label">{b.label}</span>
+        <p role="status" aria-live="polite">{b.sentence}</p>
+      </div>
+
       {state.sessionId && (
-        <p>Join code: <strong>{state.sessionId}</strong></p>
+        <div className="join">
+          <p className="hint">Join code for students</p>
+          <code aria-label={`Join code ${state.sessionId.split('').join(' ')}`}>{state.sessionId}</code>
+        </div>
       )}
+
       <div role="group" aria-label="Capture controls">
-        {state.phase === 'idle' && <button type="button" onClick={() => { void controller.start(); }}>Start</button>}
+        {state.phase === 'idle' && <button type="button" className="primary" onClick={() => { void controller.start(); }}>Start</button>}
         {state.phase === 'sharing' && <button type="button" onClick={() => guarded(() => controller.pause())}>Pause</button>}
-        {state.phase === 'paused' && <button type="button" onClick={() => guarded(() => controller.resume())}>Resume</button>}
-        {active && <button type="button" onClick={() => guarded(() => controller.stop())}>Stop</button>}
+        {state.phase === 'paused' && <button type="button" className="primary" onClick={() => guarded(() => controller.resume())}>Resume</button>}
+        {active && <button type="button" className="stop" onClick={() => guarded(() => controller.stop())}>Stop</button>}
         {(active || (state.phase === 'idle' && state.sessionId)) && (
-          <button type="button" onClick={() => guarded(() => controller.endSession())}>End Session</button>
+          <button type="button" className="quiet" onClick={() => guarded(() => controller.endSession())}>End Session</button>
         )}
       </div>
+
+      <h3>How this works</h3>
+      <ol className="steps" aria-label="Session steps">
+        {steps.map((text, i) => {
+          const n = i + 1;
+          return (
+            <li key={n} aria-current={step === n ? 'step' : undefined} data-done={step > n}>
+              <span className="n" aria-hidden="true"><span>{n}</span></span>
+              <span>{text}</span>
+            </li>
+          );
+        })}
+      </ol>
+
       {active && (
         <form onSubmit={submitCorrection}>
-          <h3>Correct the slide</h3>
+          <h3>Fix a wrong match</h3>
           <p>
-            <label htmlFor="correct-asset">Reviewed slide</label>{' '}
+            <label htmlFor="correct-asset">Reviewed slide</label>
             <select id="correct-asset" value={correctionAsset.assetId} onChange={e => { setCorrectAsset(e.target.value); setCorrectRegion(''); }}>
               {pack.assets.map(a => <option key={a.assetId} value={a.assetId}>{a.title}</option>)}
             </select>
           </p>
           <p>
-            <label htmlFor="correct-region">Region (optional)</label>{' '}
+            <label htmlFor="correct-region">Region (optional)</label>
             <select id="correct-region" value={correctRegion} onChange={e => setCorrectRegion(e.target.value)}>
               <option value="">No region</option>
               {correctionAsset.regions.map(r => <option key={r.regionId} value={r.regionId}>{r.regionId}</option>)}
@@ -111,11 +162,12 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
           <button type="submit">Apply correction</button>
         </form>
       )}
+
       {active && currentAsset && (
         <form onSubmit={submitIndication}>
-          <h3>Indicate a region on the current slide</h3>
+          <h3>Point students at a region</h3>
           <p>
-            <label htmlFor="indicate-region">Region of {currentAsset.title}</label>{' '}
+            <label htmlFor="indicate-region">Region of {currentAsset.title}</label>
             <select id="indicate-region" value={indicateRegion} onChange={e => setIndicateRegion(e.target.value)}>
               <option value="">Choose a region</option>
               {currentAsset.regions.map(r => <option key={r.regionId} value={r.regionId}>{r.regionId}</option>)}
@@ -124,6 +176,7 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
           <button type="submit">Indicate region</button>
         </form>
       )}
+
       {formError && <p role="alert">{formError}</p>}
     </section>
   );
