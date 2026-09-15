@@ -38,6 +38,7 @@ slices; production Canvas integration and camera mode are not implemented.
 
 - [Product proposal](docs/ACCESSLENS_PROPOSAL.md)
 - [System design and technical stack](docs/SYSTEM_DESIGN.md)
+- [Visualization system: agentic slide visuals](docs/VISUALIZATION_SYSTEM.md)
 - [Product vision](docs/VISION.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Five-person parallel workstreams](docs/PARALLEL_WORKSTREAMS.md)

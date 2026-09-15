@@ -108,3 +108,7 @@ select, input[type="text"] {
 input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); vertical-align: -.15rem; }
 [role="alert"] { border-left: 4px solid var(--warn); padding: .5rem .75rem; background: var(--surface-2); border-radius: 6px; }
 .muted { color: var(--muted); }
+
+.draft-note { margin: .75rem 0 0; padding: .6rem .8rem; border-radius: 8px; border: 1px dashed var(--warn); color: var(--text); font-size: .85rem; }
+.draft-note::before { content: "\26A0  "; color: var(--warn); }
+.draft-note code { font-size: .8rem; }

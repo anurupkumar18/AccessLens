@@ -1,0 +1,55 @@
+{
+  "title": "Searching the Index",
+  "readingOrder": [
+    "title",
+    "layered-graph-diagram",
+    "steps-list",
+    "callout-box"
+  ],
+  "regions": [
+    {
+      "regionId": "title",
+      "bounds": {
+        "x": 0.04,
+        "y": 0.04,
+        "width": 0.5,
+        "height": 0.14
+      },
+      "shortDescription": "Section label reads ",
+      "plainLanguage": "The slide is titled "
+    },
+    {
+      "regionId": "layered-graph-diagram",
+      "bounds": {
+        "x": 0.13,
+        "y": 0.18,
+        "width": 0.55,
+        "height": 0.62
+      },
+      "shortDescription": "A diagram of three stacked horizontal planes labeled Layer (top), Layer (middle), and Layer (bottom). A black dot marked \"start here\" sits on the top layer; a blue line traces a path from it to another node, then a dashed blue vertical line drops through the middle layer—where two blue hops are shown among gray nodes—down to the bottom layer, ending at a blue node. An orange dot labeled \"query\" and a green dot labeled \"nearest neighbor\" sit near the bottom-left of the lowest layer.",
+      "plainLanguage": "Three stacked flat layers show a search path: it starts at the top, hops across each layer following the closest node, and ends near an orange query dot and a green nearest-neighbor dot at the bottom."
+    },
+    {
+      "regionId": "steps-list",
+      "bounds": {
+        "x": 0.57,
+        "y": 0.17,
+        "width": 0.4,
+        "height": 0.48
+      },
+      "shortDescription": "A four-step numbered list: 1 (black) Start at the entry point on the top layer. 2 (blue) Greedily hop to whichever neighbor is closest to the query. 3 (blue) When no neighbor is closer, drop down one layer and repeat. 4 (green) On layer 0, widen to a small candidate beam (efSearch) and return the best k.",
+      "plainLanguage": "Four numbered steps describe the search: start at the top, greedily hop to the nearest neighbor, drop a layer when stuck, and at the bottom layer use a wider beam to return the best results."
+    },
+    {
+      "regionId": "callout-box",
+      "bounds": {
+        "x": 0.57,
+        "y": 0.67,
+        "width": 0.4,
+        "height": 0.14
+      },
+      "shortDescription": "A light blue bordered box with text: \"Coarse layers cover distance; layer 0 does the fine positioning. Only ~dozens of nodes are visited out of millions.\"",
+      "plainLanguage": "A highlighted note explains that upper layers quickly cover large distances, while the bottom layer fine-tunes the result, visiting only about dozens of nodes out of millions."
+    }
+  ]
+}

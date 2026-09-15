@@ -6,7 +6,10 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { App } from './App';
 import { InMemorySessionClient } from '../shared/contracts';
 import { loadPreferences, resetPreferencesForTests } from '../shared/preferences';
-import { FakeCaptureHost, FakeScheduler } from '../sources/screen/fixtures';
+import { FakeCaptureHost, FakeScheduler, testPack } from '../sources/screen/fixtures';
+import { AccessPackSchema } from '../shared/contracts';
+
+const syntheticPack = AccessPackSchema.parse(testPack);
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -28,7 +31,7 @@ describe('App shell', () => {
     const client = new InMemorySessionClient();
     const host = new FakeCaptureHost();
     const root = createRoot(container);
-    act(() => root.render(<App client={client} host={host} scheduler={new FakeScheduler()} />));
+    act(() => root.render(<App client={client} pack={syntheticPack} host={host} scheduler={new FakeScheduler()} />));
 
     expect(host.calls).toEqual([]);
     const startButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start')!;
