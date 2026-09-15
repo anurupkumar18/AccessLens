@@ -359,3 +359,17 @@ invented `--tempo` passed. Both looked like passing tests. If you write a guard
 here, break it on purpose before you trust it — that is now the third time on
 this project that a check which could not fail was found only by trying to make
 it fail.
+
+### RL-012 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** AR camera framing validation in `validate_pack.py`. For every
+hotspot, the node's angular radius plus its off-axis angle from the camera's aim
+must fit inside half the field of view, and the camera must not be inside the
+node it frames. All twelve pass; the tightest is the vacuole on `cell-slide-05`
+at 15.6 of 17.5 degrees. Also cut the Python suite from 61s to 5.4s.
+**Threads touched:** none.
+**Next agent needs to know:** two things for Part 3. The pack's camera geometry
+is now verified to actually frame what each hotspot names, so if your AR view
+shows empty space the bug is in the renderer, not the content. And the vacuole
+framing uses 89% of its half field of view — if you change `recycling-closeup`,
+`make pack-check` will tell you when you have pushed the organelle out of shot.
