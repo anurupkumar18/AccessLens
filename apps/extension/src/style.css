@@ -23,12 +23,20 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); }
-main { max-width: 26rem; margin: 0 auto; padding: 1rem 1rem 2rem; }
+/* Full width: the side panel is ~360px wide; in a tab the cards flow into a
+   responsive grid instead of a centred column. */
+main { width: 100%; margin: 0; padding: 1rem clamp(1rem, 3vw, 2.5rem) 2rem; }
+.content { display: grid; gap: .75rem; }
+@media (min-width: 720px) {
+  header { flex-direction: row; align-items: baseline; gap: 1rem; }
+  nav[aria-label="Role navigation"] { max-width: 24rem; }
+  section > .panel-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1rem 2rem; align-items: start; }
+}
 
 /* Header */
 header { display: flex; flex-direction: column; gap: .15rem; padding: .25rem 0 .75rem; }
 header h1 { margin: 0; font-size: 1.35rem; letter-spacing: .01em; }
-header h1::before { content: "◐ "; color: var(--accent); }
+header h1::before { content: "\25D0  "; color: var(--accent); }
 header p { margin: 0; color: var(--muted); font-size: .9rem; }
 
 /* Role navigation as a segmented control */
@@ -87,7 +95,7 @@ ol.steps li .n { display: inline-grid; place-items: center; width: 1.6rem; heigh
 ol.steps li[aria-current="step"] { color: var(--text); }
 ol.steps li[aria-current="step"] .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 ol.steps li[data-done="true"] .n { border-color: var(--ok); color: var(--ok); }
-ol.steps li[data-done="true"] .n::before { content: "✓"; }
+ol.steps li[data-done="true"] .n::before { content: "\2713"; }
 ol.steps li[data-done="true"] .n span { display: none; }
 
 /* Forms */

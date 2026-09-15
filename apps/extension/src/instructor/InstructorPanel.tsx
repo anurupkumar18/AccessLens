@@ -106,7 +106,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
     <section aria-labelledby="instructor-heading">
       <h2 id="instructor-heading">Instructor</h2>
       <p className="muted">Pack: {pack.title} · v{pack.version}</p>
-
+      <div className="panel-grid">
+      <div>
       <div className="status" data-tone={b.tone}>
         <span className="glyph" aria-hidden="true">{b.glyph}</span>
         <span className="label">{b.label}</span>
@@ -130,6 +131,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
         )}
       </div>
 
+      </div>
+      <div>
       <h3>How this works</h3>
       <ol className="steps" aria-label="Session steps">
         {steps.map((text, i) => {
@@ -178,6 +181,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
       )}
 
       {formError && <p role="alert">{formError}</p>}
+      </div>
+      </div>
     </section>
   );
 }
