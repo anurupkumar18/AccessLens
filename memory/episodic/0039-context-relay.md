@@ -65,3 +65,34 @@ Kunj Rathod, Part 5, acting cross-cutting.
 Get names against T-01, T-07, T-08, T-12, and T-13 at the next standup. Run
 `make freeze-check` at feature freeze; it must exit 0 before the repository is
 handed over.
+
+## Addendum — after merging c3ddc27
+
+Three threads closed by Part 1's hardening pass (T-02, T-03, T-04) and one
+escalated: `access-pack.schema.json` now sets `additionalProperties: false` on
+the asset object, which makes `arScene` illegal, so the pack cannot carry the AR
+scene that charter A10 requires (T-05).
+
+T-08 turned out to be worse than recorded rather than fixed. `c3ddc27` wired
+`npm run check` into `make check`, but `.github/workflows/check.yml` has no
+`setup-node` and no `npm ci`, so the shared check now *fails* in CI with
+`sh: vitest: command not found`. Reproduced by hiding `node_modules` locally.
+Nobody noticed because of T-07: CI does not run on the integration branch at
+all. Two gaps that were each survivable on their own combined into a check that
+is green locally and broken everywhere else.
+
+Fixed both in this branch: the workflow installs Node and runs `npm ci`, and its
+push trigger now includes `accesslens-extension-ar-pivot`.
+
+Three new threads opened. T-16: `caption.appended` is base-only in the new
+discriminated union, so a caption event cannot carry a caption. T-17: two
+workstreams numbered an episodic record `0038` on the same day, and the
+numbering has no allocation scheme. T-18: `memory/INDEX.md` has one "current
+handoff" pointer that `memory_check.py` requires to name the newest record, so
+with parallel branches whichever PR merges second always conflicts there.
+
+## Validation evidence (addendum)
+
+- `make check` green end to end, including `npm run check`.
+- `scripts/relay_check.py`: 5 parts, 18 threads, 14 unsettled, 5 log entries.
+- The CI failure was reproduced before fixing it, not inferred from reading.

@@ -5,7 +5,7 @@ this project mid-flight, and appends to on the way out. It exists so that contex
 travels between sessions and between people, and so that nothing quietly falls
 through the gap at the end of the hackathon.
 
-**State as of:** `df80b5d` (Part 1 foundation), September 15, 2026.
+**State as of:** `c3ddc27` (Part 1 hardening), September 15, 2026.
 
 This file is **append-mostly**. The tables are living state and get edited in
 place; the relay log at the bottom is append-only. Never delete a log entry, and
@@ -57,11 +57,11 @@ during the build.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `df80b5d` | Extension shell, Zod + JSON Schema contracts, `InMemorySessionClient`. Contract has two open bugs, T-02 and T-03. | `npm test` (3 tests); `dist/` loads unpacked |
+| 1. Foundation and contracts | Anurup Kumar | merged as `c3ddc27` | Shell split into `src/shell/`, per-type discriminated-union event contract, local preferences, ajv contract tests. T-02 and T-03 closed by this. | `npm run check`; `dist/` loads unpacked |
 | 2. Instructor capture | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/instructor/` or `src/sources/screen/`. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
 | 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
-| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, 37 tests. Camera adapter and E2E deliberately not started (T-10, T-11). | `make pack-check` |
+| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, 40 tests. Events conformed to the `c3ddc27` contract. Camera adapter and E2E deliberately not started (T-10, T-11). | `make pack-check` |
 
 **The single largest risk in this project is the second column.** Three of five
 parts are unowned, and Parts 2 and 3 are on the critical path to the demo. Part 5
@@ -82,18 +82,21 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | ID | Thread | Owner | Blocks | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | T-01 | Parts 2, 3, and 4 have no owner. The contract freeze in `PARALLEL_WORKSTREAMS.md` cannot complete without them. | UNOWNED | Everything downstream of the shell | UNOWNED | — |
-| T-02 | `assetId` is `required` on every `LiveEvent`, so `source.unmatched` cannot be expressed. Violates charter A9 and breaks the runbook's 2:00–2:30 beat. 15 fixture events fail on it. | Part 1 | Parts 2, 3, 4, 5 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §1 |
-| T-03 | `live-event.schema.json` sets `additionalProperties: false` but omits `regionId` and `pointer`, which the Zod schema accepts. Part 1's own `validEvent` fixture fails Part 1's own JSON Schema. | Part 1 | Part 4 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
-| T-04 | The event contract has no `arState`, but AR is a required renderer (A10, A12) and `SYSTEM_DESIGN.md` §6's own example includes it. | Part 1 + Part 3 | Part 3 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §2 |
-| T-05 | `AccessPackSchema` is strict at the top level and rejects the pack's `review`, `matching`, `arCameras`, and `reservedReadingOrderIds` blocks. | Part 1 | Part 5 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §4 |
-| T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract. | Part 1 + Part 3 | Part 3 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §4 |
+| T-02 | `assetId` is `required` on every `LiveEvent`, so `source.unmatched` cannot be expressed. Violates charter A9 and breaks the runbook's 2:00–2:30 beat. | Part 1 | — | CLOSED | `c3ddc27` made `LiveEventSchema` a per-type discriminated union; `source.unmatched` is now structurally unable to name an asset |
+| T-03 | `live-event.schema.json` omitted `regionId` and `pointer` that the Zod schema accepts, so Part 1's own fixture failed Part 1's own JSON Schema. | Part 1 | — | CLOSED | `c3ddc27` mirrors the Zod matrix in the JSON Schema, with ajv tests |
+| T-04 | The event contract had no `arState`, but AR is a required renderer (A10, A12). | Part 1 + Part 3 | — | CLOSED | `c3ddc27` adds `arState {hotspotId, action}` to `region.changed`. Part 5 dropped the `camera` field it had wanted — it is derivable from the hotspot in the pack |
+| T-05 | `access-pack.schema.json` now sets `additionalProperties: false` on the **asset** object too, which makes `arScene` illegal. AR is a required renderer and `SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack cannot carry the scene the MVP requires. Also blocks `mediaUri`, `subtitle`, region `label`, and the four root blocks. | Part 1 | Part 3, Part 5 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §1–2 |
+| T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract, which cannot express it until T-05 lets the pack carry `arScene`. | Part 1 + Part 3 | Part 3 | BLOCKED | Blocked on T-05 |
 | T-07 | CI does not run on the integration branch. `.github/workflows/check.yml` pushes only on `[main, master]`, and no check ran on PR #4. The branch the whole hackathon lives on is unwatched. | UNOWNED | Everyone | UNOWNED | `gh pr checks 4` reports no checks |
-| T-08 | Part 1's `npm run check` never runs in CI. `make check` is Python-only, so the extension tests and build are not verified on any PR. | UNOWNED | Part 1 | UNOWNED | `.github/workflows/check.yml` runs `make check` only |
+| T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | IN PROGRESS | Reproduced by hiding `node_modules` and running `npm run check`; fix in PR #5 |
 | T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack. The pack must not be described as expert-reviewed or accessibility-audited until this closes. | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/PROVENANCE.md` |
 | T-10 | A17 camera adapter not started. Phase 6 by plan; must not delay or destabilise the screen-sharing demo. | Part 5 | Nothing | ACCEPTED | `docs/IMPLEMENTATION_PLAN.md` §3 Phase 6 |
 | T-11 | End-to-end suite (A14–A16 integration, axe, screen-reader, rehearsals) not started; needs the shell and a real `SessionClient`. | Part 5 | Demo readiness | BLOCKED | Blocked on Parts 1–4 wiring |
 | T-12 | `codex/live-workspace-foundation` is 3 commits ahead and 64 behind, last touched 2026-08-28, from the superseded Evidence Engine product. Salvage or delete before the repo is handed over. | UNOWNED | Nothing | UNOWNED | `git log origin/codex/live-workspace-foundation` |
 | T-13 | Nobody owns merging `accesslens-extension-ar-pivot` into `master`, and no moment is defined for it. The build rule forbids merging to `master` during the hackathon, so this must happen deliberately at the end. | UNOWNED | Final handover | UNOWNED | `docs/PARALLEL_WORKSTREAMS.md`, merge and branch rules |
+| T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
+| T-17 | Two episodic records were numbered `0038` by different workstreams on the same day. Part 5's moved to `0040`. The numbering has no allocation scheme, so it will collide again with five people appending. | UNOWNED | Nothing | UNOWNED | `memory/episodic/0038-part1-hardening.md` vs the renamed `0040-…` |
+| T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record. With parallel branches, whichever PR merges second always conflicts there. Minor but guaranteed, every time. | UNOWNED | Nothing | UNOWNED | Conflicted on both the #4 and #5 merges of `c3ddc27` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts` |
 
@@ -235,3 +238,35 @@ unrecorded, and four of them unowned.
 the technical threads. Three of five parts have no owner, CI does not run on the
 integration branch or on PR #4, and nobody owns the final merge to `master`. Those
 need a person's name against them at the next standup, not more code.
+
+### RL-004 — 2026-09-15 — Part 1 — Anurup Kumar
+
+**Landed:** `c3ddc27`. `LiveEventSchema` rebuilt as a per-type discriminated
+union, mirrored in `live-event.schema.json` with ajv tests; `access-pack.schema.json`
+now validates the full asset and region shape; local-only student preferences;
+`main.tsx` split into `src/shell/{App,RoleNav,ErrorBoundary}`; `make check` wired
+to run `npm run check`.
+**Threads touched:** T-02, T-03, T-04 closed. T-05 widened — the new asset-level
+`additionalProperties: false` makes `arScene` illegal. T-08 addressed in the
+Makefile but see RL-005.
+**Next agent needs to know:** the event contract is a discriminated union now, so
+adding a field means adding it to the right branch of the union *and* to the
+matching `allOf`/`if`/`then` entry in the JSON Schema. Both are checked.
+
+### RL-005 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** merged `c3ddc27` into PR #4 and brought the fixtures into line with
+the new contract. Four things left the wire — `arState` on `asset.changed`,
+`arState.camera`, the `source.unmatched` diagnostics, and the `redelivery`
+marker — because each was either derivable from the pack or a transport fact
+rather than instructional state. Event-level gaps went from 9 to 2. The
+conformance checker now implements `allOf`/`if`/`then`.
+**Threads touched:** T-02, T-03, T-04 confirmed closed against the fixtures.
+T-05 rewritten and escalated. T-08 taken and in progress. T-16, T-17, T-18
+opened.
+**Next agent needs to know:** two things. `make check` is currently broken in CI
+— `c3ddc27` wired `npm run check` into it but the workflow installs no Node
+dependencies, so it dies on `vitest: command not found`. PR #5 fixes that. And
+the conformance checker's unsupported-keyword guard is the reason this pass
+found anything: when the schema became an `allOf` matrix the check *stopped*
+rather than reporting that everything still conformed. Keep that guard.
