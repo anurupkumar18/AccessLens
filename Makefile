@@ -1,7 +1,10 @@
-.PHONY: check memory-check
+.PHONY: check memory-check extension-check
 
 memory-check:
 	python3 scripts/memory_check.py
 
-check: memory-check
-	@echo "AccessLens documentation reset validated. Extension checks will be added with Phase 1."
+extension-check:
+	npm run check
+
+check: memory-check extension-check
+	@echo "AccessLens documentation and extension checks passed."

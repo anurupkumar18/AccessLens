@@ -46,4 +46,4 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0037-five-person-workstreams.md`
+- `episodic/0038-part1-hardening.md`
