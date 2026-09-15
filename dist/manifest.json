@@ -1,0 +1,1 @@
+{"manifest_version":3,"name":"AccessLens","version":"0.1.0","description":"Instructor-authorized accessible lesson companion","permissions":["storage","sidePanel"],"action":{"default_title":"Open AccessLens"},"side_panel":{"default_path":"index.html"},"background":{"service_worker":"service-worker.js","type":"module"}}

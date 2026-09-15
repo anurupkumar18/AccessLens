@@ -1,0 +1,4 @@
+import type { AccessPack, LiveEvent } from './contracts';
+export const validPack:AccessPack={schemaVersion:'1.0',packId:'bio-cell-demo',version:1,title:'Cell Structure',assets:[{assetId:'cell-slide-03',fingerprint:'reviewed-local-match-fingerprint',title:'Cell membrane and organelles',readingOrder:['title','mitochondrion'],regions:[{regionId:'mitochondrion',bounds:{x:.35,y:.22,width:.18,height:.24},shortDescription:'The mitochondrion releases usable energy for the cell.',plainLanguage:'This structure helps power the cell.'}]}]};
+export const validEvent:LiveEvent={schemaVersion:'1.0',type:'region.changed',sessionId:'demo-session',packId:'bio-cell-demo',packVersion:1,assetId:'cell-slide-03',regionId:'mitochondrion',pointer:{x:.42,y:.31},sequence:1,sentAt:'2026-09-15T15:00:00Z'};
+export const invalidEvent={...validEvent,pointer:{x:2,y:.31}};
