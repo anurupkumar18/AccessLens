@@ -61,7 +61,7 @@ during the build.
 | 2. Instructor capture | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/instructor/` or `src/sources/screen/`. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
 | 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
-| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, 40 tests. Events conformed to the `c3ddc27` contract. Camera adapter and E2E deliberately not started (T-10, T-11). | `make pack-check` |
+| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures. First E2E slice replays fixtures through Part 1's real `InMemorySessionClient` and cross-checks the two validators. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
 
 **The single largest risk in this project is the second column.** Three of five
 parts are unowned, and Parts 2 and 3 are on the critical path to the demo. Part 5
@@ -91,7 +91,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | IN PROGRESS | Reproduced by hiding `node_modules` and running `npm run check`; fix in PR #5 |
 | T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack. The pack must not be described as expert-reviewed or accessibility-audited until this closes. | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/PROVENANCE.md` |
 | T-10 | A17 camera adapter not started. Phase 6 by plan; must not delay or destabilise the screen-sharing demo. | Part 5 | Nothing | ACCEPTED | `docs/IMPLEMENTATION_PLAN.md` §3 Phase 6 |
-| T-11 | End-to-end suite (A14–A16 integration, axe, screen-reader, rehearsals) not started; needs the shell and a real `SessionClient`. | Part 5 | Demo readiness | BLOCKED | Blocked on Parts 1–4 wiring |
+| T-11 | End-to-end suite. First slice landed now that `SessionClient` is frozen: `tests/e2e/fixture-replay.test.ts` covers fixture replay, reconnect idempotence, and session close. The rest — failure paths through a real UI, axe, screen-reader, rehearsals — still needs the student renderers. | Part 5 | Demo readiness | IN PROGRESS | `tests/e2e/fixture-replay.test.ts`, 7 tests |
 | T-12 | `codex/live-workspace-foundation` is 3 commits ahead and 64 behind, last touched 2026-08-28, from the superseded Evidence Engine product. Salvage or delete before the repo is handed over. | UNOWNED | Nothing | UNOWNED | `git log origin/codex/live-workspace-foundation` |
 | T-13 | Nobody owns merging `accesslens-extension-ar-pivot` into `master`, and no moment is defined for it. The build rule forbids merging to `master` during the hackathon, so this must happen deliberately at the end. | UNOWNED | Final handover | UNOWNED | `docs/PARALLEL_WORKSTREAMS.md`, merge and branch rules |
 | T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
@@ -158,7 +158,10 @@ python3 packages/access-packs/bio-cell-demo/tools/simulate_events.py \
 `models/cell.glb` has ten stable node names; every region resolves to exactly one
 hotspot with a `nodeName` and a `cameraTarget` into the pack's `arCameras`. Each
 fixture carries an `expectations` list saying what a correct consumer does with it.
-Mind T-04: `arState` is what you need and the contract does not accept it yet.
+`arState {hotspotId, action}` is on `region.changed` as of `c3ddc27`, so T-04 is
+closed — but mind **T-05**: the pack schema currently forbids `arScene`, which is
+what binds a region to a model node. `tests/e2e/fixture-replay.test.ts` is a
+worked example of driving `InMemorySessionClient` from a fixture; copy its setup.
 
 **Part 4 — AWS relay.** `fixtures/*.json` are ordered payloads for fixture
 WebSocket clients; `fixtures/invalid/` holds ten events with exactly one fault
@@ -299,3 +302,19 @@ workstreams produced four `memory/INDEX.md` conflicts and two episodic
 renumberings in a single afternoon. With five parts active that becomes
 constant friction on every merge, and it is the kind of friction that gets
 "fixed" by someone skipping the memory record entirely.
+
+### RL-008 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** the first end-to-end slice, `tests/e2e/fixture-replay.test.ts`. It
+replays the reviewed fixtures through Part 1's real `InMemorySessionClient` and
+covers ordered delivery, reconnect redelivery as a provable no-op, `close()`
+stopping delivery, and capability requests failing after close. It also
+cross-checks every event against `check_contract_conformance.py`, so the Python
+reimplementation of JSON Schema and the authoritative Zod schema cannot drift
+apart unnoticed.
+**Threads touched:** T-11 moved from BLOCKED to IN PROGRESS.
+**Next agent needs to know:** if you are picking up Part 3, that file is a
+worked example of driving the session client from a fixture — copy its setup
+rather than inventing one. Also: proving a guard works needs a mutation that
+actually flips a verdict. The first mutation tried here changed nothing
+observable, and a weaker engineer would have read that as "the guard passes".
