@@ -15,7 +15,7 @@ listed as deferred in the implementation plan are intentionally outside the
 | Part | Owner | Primary outcome |
 | --- | --- | --- |
 | 1. Foundation and contracts | **Name: Anurup Kumar ** | Installable extension shell and stable shared interfaces |
-| 2. Instructor capture | **Name: ____________________** | Consent-based screen sharing, slide matching, and correction |
+| 2. Instructor capture | **Name: Jacob ** | Consent-based screen sharing, slide matching, and correction |
 | 3. Student experience and AR | **Name: ____________________** | Synchronized accessible modes and required AR view |
 | 4. AWS live service | **Name: ____________________** | Secure temporary sessions and ordered WebSocket relay |
 | 5. Content, camera, and demo QA | **Name: ____________________** | Reviewed biology pack, advanced camera adapter, and integrated demo |
@@ -74,7 +74,7 @@ shared schema without notifying all five owners and updating its contract tests.
 
 ## Part 2 — Instructor capture and approved-screen recognition
 
-**Name: ____________________**
+**Name: Jacob**
 
 **Implementation-plan tasks:** A3, A4, and A5
 
