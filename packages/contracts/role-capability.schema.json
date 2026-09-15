@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RoleCapability",
+  "description": "Signed instructor/student role capability (SYSTEM_DESIGN.md Allowed MVP data; A6). Part 1 owns this shape; Part 4 owns issuing and signing the opaque token.",
+  "type": "object",
+  "required": ["schemaVersion", "sessionId", "role", "issuedAt", "expiresAt", "token"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "role": { "enum": ["instructor", "student"] },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "token": { "type": "string", "minLength": 1 }
+  }
+}

@@ -1,7 +1,10 @@
 # Part 5 conformance report against the Part 1 contracts
 
 **Checked against:** `packages/contracts/*.schema.json` and
-`apps/extension/src/shared/contracts.ts` as of **`c3ddc27`**.
+`apps/extension/src/shared/contracts.ts` as of **`38542ad`**.
+`38542ad` added `RoleCapabilitySchema` and widened `SessionClient`; it left
+`AccessPackSchema` and `LiveEventSchema` untouched, so the gap list below is
+unchanged from `c3ddc27`.
 **Reproduce:** `python3 packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py`
 (runs in `make pack-check`).
 
