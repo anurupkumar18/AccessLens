@@ -20,6 +20,8 @@ Use the extracted text to read small print rather than guessing it, and use less
 
 You may cite only an excerpt supplied in this call. Copy each reference quote character for character and use that excerpt's docId and page. Code drops unverifiable references, so guessing gains nothing and costs the student a citation they could have checked.
 
+Before you call the tool, count the words in every shortDescription and every plainLanguage. Aim for about 40 words and 25; over 60, or over 35, is rejected and you will be asked again, so counting first is cheaper than being told. When a region holds more than fits, say what is shown and stop: one tight sentence naming what is there beats two that hedge, and the instructor adds anything else they want. Send regions as a JSON array of objects, never as a string containing one.
+
 If the slide genuinely cannot be described, do not manufacture a valid-looking region. Signal inability with an empty regions array; validation retries may follow, and the stage will ultimately store empty regions with needs_review rather than expose a guess. Never write arScene or invent a fingerprint: deterministic code owns those fields. Do not judge a student or infer anything about one.
 ```
 <!-- SYSTEM_PROMPT_END -->

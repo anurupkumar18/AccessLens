@@ -21,6 +21,13 @@ import { AnthropicBedrock } from '@anthropic-ai/bedrock-sdk';
 export const AGENT_MODEL = 'us.anthropic.claude-sonnet-4-6';
 export const AGENT_REGION = process.env.AWS_REGION ?? 'us-east-1';
 export const MAX_ATTEMPTS = 3;
+/**
+ * Generous on purpose. A six-region slide with two descriptions per region is
+ * comfortably over 2000 output tokens, and the prototype's 2048 was low enough
+ * that the densest slides of the test deck truncated every single time.
+ * Output tokens are the cheapest part of this pipeline; a re-run is not.
+ */
+export const DEFAULT_MAX_TOKENS = 8192;
 
 export type AgentRole = 'deck-analyst' | 'pack-author' | 'viz-planner' | 'adapter' | 'generator' | 'critic';
 
@@ -43,7 +50,10 @@ export function promptDir(): string {
  */
 export function loadSystemPrompt(role: AgentRole, dir = promptDir()): string {
   const raw = readFileSync(join(dir, `${role}.md`), 'utf8');
-  const marked = /<!--\s*system-prompt\s*-->\s*```(?:\w+)?\n([\s\S]*?)```/.exec(raw);
+  // Accept either delimiter style; the prompt files use START/END markers and
+  // an older draft used a single lowercase marker. A prompt that silently
+  // failed to extract would send an empty system prompt to a live stage.
+  const marked = /<!--\s*(?:system-prompt|SYSTEM_PROMPT_START)\s*-->\s*```(?:\w+)?\n([\s\S]*?)```/.exec(raw);
   if (marked) return marked[1].trim();
   const firstFence = /```(?:\w+)?\n([\s\S]*?)```/.exec(raw);
   if (firstFence) return firstFence[1].trim();
@@ -74,15 +84,30 @@ export interface AgentResult<T> {
 }
 
 export class AgentStageError extends Error {
-  constructor(readonly role: AgentRole, readonly attempts: number, readonly issues: string[][], message: string) {
+  // Plain fields rather than constructor parameter properties: node's
+  // strip-only TypeScript mode cannot compile the latter, and these modules
+  // are loaded directly by scripts and by the evaluation suite.
+  readonly role: AgentRole;
+  readonly attempts: number;
+  readonly issues: string[][];
+
+  constructor(role: AgentRole, attempts: number, issues: string[][], message: string) {
     super(message);
     this.name = 'AgentStageError';
+    this.role = role;
+    this.attempts = attempts;
+    this.issues = issues;
   }
 }
 
 /** The Bedrock surface this module needs, so tests can supply a fake. */
 export interface MessagesClient {
-  messages: { create(body: Record<string, unknown>): Promise<{ content: { type: string; name?: string; input?: unknown }[] }> };
+  messages: {
+    create(body: Record<string, unknown>): Promise<{
+      content: { type: string; name?: string; input?: unknown }[];
+      stop_reason?: string | null;
+    }>;
+  };
 }
 
 let shared: MessagesClient | undefined;
@@ -102,6 +127,45 @@ export function toolInputSchema(schema: z.ZodTypeAny): Record<string, unknown> {
   const json = z.toJSONSchema(schema, { io: 'input' }) as Record<string, unknown>;
   delete json.$schema;
   return json;
+}
+
+/**
+ * Repair one observed tool-use quirk before validating.
+ *
+ * Bedrock occasionally returns a structured tool argument as a JSON *string*
+ * rather than as a value -- observed against real slides, where `regions` came
+ * back as a string on 2 of 8 slides and burned all three attempts producing
+ * the same unhelpful issue ("expected array, received string") every time,
+ * because the retry note said nothing the model could act on. Parsing it is a
+ * transport-level repair, not a leniency: the parsed value still has to
+ * satisfy the schema in full, and anything that does not parse is left exactly
+ * as it came so the validation error stays honest.
+ */
+export interface CoercionResult { value: unknown; unparsed: string[]; }
+
+export function coerceJsonStrings(input: unknown): unknown {
+  return coerceJsonStringsDetailed(input).value;
+}
+
+export function coerceJsonStringsDetailed(input: unknown): CoercionResult {
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) return { value: input, unparsed: [] };
+  const out: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+  const unparsed: string[] = [];
+  for (const [key, value] of Object.entries(out)) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) continue;
+    try {
+      out[key] = JSON.parse(trimmed);
+    } catch {
+      // It looked like JSON and was not -- usually a cut-off array. Record it
+      // so the retry note can say that, instead of letting the schema report
+      // "expected array, received string", which tells the model nothing it
+      // can act on and burns the attempt.
+      unparsed.push(key);
+    }
+  }
+  return { value: out, unparsed };
 }
 
 /** Flatten Zod issues into lines short enough to append to a retry turn. */
@@ -143,12 +207,24 @@ export async function runAgentStage<T extends z.ZodTypeAny>(
 
     const response = await client.messages.create({
       model: AGENT_MODEL,
-      max_tokens: call.maxTokens ?? 4096,
+      max_tokens: call.maxTokens ?? DEFAULT_MAX_TOKENS,
       system,
       tools: [tool],
       tool_choice: { type: 'tool', name: call.toolName },
       messages: [{ role: 'user', content: turn }],
     });
+
+    // A stage that ran out of output tokens returns its tool input truncated,
+    // which arrives as a partial JSON *string* rather than a value. Left
+    // unnamed, that surfaces as "expected array, received string" and burns
+    // all three attempts saying nothing the model can act on -- observed on
+    // the two densest slides of the test deck, both times to exhaustion. Say
+    // what actually happened and ask for something that fits.
+    if (response.stop_reason === 'max_tokens') {
+      issues.push([`<root>: the answer was cut off at the ${call.maxTokens ?? DEFAULT_MAX_TOKENS}-token limit`]);
+      retryNote = `Your previous answer was cut off before it finished, so it could not be read. Produce fewer regions, or shorter descriptions, so the whole ${call.toolName} call fits well within the limit.`;
+      continue;
+    }
 
     const toolUse = response.content.find(b => b.type === 'tool_use' && b.name === call.toolName);
     if (!toolUse) {
@@ -157,14 +233,28 @@ export async function runAgentStage<T extends z.ZodTypeAny>(
       continue;
     }
 
-    const parsed = call.schema.safeParse(toolUse.input);
+    const coerced = coerceJsonStringsDetailed(toolUse.input);
+    const parsed = call.schema.safeParse(coerced.value);
     if (parsed.success) return { value: parsed.data, attempts: attempt, issues };
 
-    const lines = issueLines(parsed.error);
+    const lines = coerced.unparsed.length
+      ? coerced.unparsed.map(k => `${k}: was sent as a text string containing incomplete JSON. Send ${k} as a real JSON array of objects, not as a string, and keep it short enough to finish.`)
+      : issueLines(parsed.error);
     issues.push(lines);
+    // Resend-with-edits, not regenerate. A bare "fix these problems" makes the
+    // model produce a fresh answer, which fixes the flagged field and breaks a
+    // different one -- observed as an attempt oscillating between two regions,
+    // each overrunning in turn, until the budget ran out. Handing back its own
+    // answer and naming the fields to change makes the repair local.
+    const previous = JSON.stringify(coerced.value);
     retryNote = [
-      `Your previous ${call.toolName} call failed validation. Fix exactly these problems and call the tool again:`,
+      `Your previous ${call.toolName} call failed validation:`,
       ...lines.map(l => `- ${l}`),
+      ``,
+      `Here is exactly what you sent:`,
+      previous.length <= 12_000 ? previous : '(too long to repeat, which is itself part of the problem)',
+      ``,
+      `Call ${call.toolName} again with that same answer, changing only the fields named above and leaving every other field byte-for-byte identical. Do not rewrite anything that was not flagged.`,
     ].join('\n');
   }
 

@@ -121,9 +121,22 @@ export function checkPackAuthorSlide(slide: DraftSlide, where: string): Violatio
  * easiest to lose and most expensive to lose, so the eval suite feeds a blank
  * slide and asserts it here.
  */
+/**
+ * Words that report an absence. A model that says a blank slide is blank has
+ * done the right thing, however many words it takes -- the failure this rule
+ * exists to catch is a confident paragraph about content that is not there,
+ * not an accurate report that there is nothing. An earlier version of this
+ * check flagged "The slide appears entirely white with no visible text,
+ * diagrams, or other content" purely for being twelve words long, which would
+ * have pushed the prompt toward being less informative rather than more
+ * honest.
+ */
+const REPORTS_ABSENCE = /\b(blank|empty|no visible|nothing|entirely white|all white|no content|no text|appears white|featureless|unmarked)\b/iu;
+
 export function checkUndescribableSlide(slide: DraftSlide, where: string): Violation[] {
   if (slide.regions.length === 0) return ok;
-  const invented = slide.regions.filter(r => words(r.shortDescription) > 8);
+  const invented = slide.regions.filter(r =>
+    words(r.shortDescription) > 8 && !REPORTS_ABSENCE.test(r.shortDescription));
   if (invented.length === 0) return ok;
   return [{
     rule: 'undescribable.invented',

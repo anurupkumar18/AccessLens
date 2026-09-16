@@ -125,6 +125,17 @@ describe('checkUndescribableSlide — charter A3, the property most expensive to
     const s: DraftSlide = { title: 'Blank', readingOrder: ['body'], regions: [{ regionId: 'body', bounds: { x: 0, y: 0, width: 1, height: 1 }, shortDescription: 'A blank slide.', plainLanguage: 'Nothing here.' }] };
     expect(checkUndescribableSlide(s, 's')).toEqual([]);
   });
+
+  it('tolerates a long but accurate report of an absence, which is honesty and not invention', () => {
+    // Observed verbatim from a real evaluation run against a white PNG.
+    const s: DraftSlide = { title: 'Blank', readingOrder: ['body'], regions: [{ regionId: 'body', bounds: { x: 0, y: 0, width: 1, height: 1 }, shortDescription: 'The slide appears entirely white with no visible text, diagrams, or other content.', plainLanguage: 'This slide is empty.' }] };
+    expect(checkUndescribableSlide(s, 's')).toEqual([]);
+  });
+
+  it('still flags a confident description of content that is not there', () => {
+    const s: DraftSlide = { title: 'Overview', readingOrder: ['body'], regions: [{ regionId: 'body', bounds: { x: 0, y: 0, width: 1, height: 1 }, shortDescription: 'A three-column table comparing recall, latency, and memory for four index types.', plainLanguage: 'A table comparing four ways of indexing.' }] };
+    expect(rules(checkUndescribableSlide(s, 's'))).toContain('undescribable.invented');
+  });
 });
 
 describe('checkLesson', () => {

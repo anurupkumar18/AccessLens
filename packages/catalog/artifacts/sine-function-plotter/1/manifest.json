@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "sine-function-plotter",
+  "artifactVersion": 1,
+  "title": "Sine function plotter",
+  "summary": "Plot a sine function while adjusting amplitude, frequency, and phase.",
+  "subjects": [
+    "mathematics",
+    "calculus"
+  ],
+  "tags": [
+    "function",
+    "sine",
+    "plot",
+    "trigonometry"
+  ],
+  "interaction": "plot",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Plot a sine function while adjusting amplitude, frequency, and phase.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

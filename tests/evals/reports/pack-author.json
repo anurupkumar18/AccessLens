@@ -1,0 +1,110 @@
+{
+  "role": "pack-author",
+  "model": "us.anthropic.claude-sonnet-4-6",
+  "startedAt": "2026-09-16T03:48:51.014Z",
+  "cases": [
+    {
+      "caseId": "slide-01",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 3,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "How HNSW Works",
+        "references": 0
+      }
+    },
+    {
+      "caseId": "slide-02",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "regions": 4,
+        "title": "The Nearest-Neighbor Problem",
+        "references": 0
+      }
+    },
+    {
+      "caseId": "slide-03",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 3,
+      "violations": [],
+      "facts": {
+        "attemptIssues": "[[\"regions: was sent as a text string containing incomplete JSON. Send regions as a real JSON array of objects, not as a string, and keep it short enough to finish.\"],[\"regions.2.shortDescription: shortDescription is 68 words; the cap is 60. Rewrite it shorter.\"],[\"regions: was sent as a text string containing incomplete JSON. Send regions as a real JSON array of objects, not as a string, and keep it short enough to finish.\"]]"
+      },
+      "error": "pack-author produced no schema-valid output in 3 attempts for slide-03"
+    },
+    {
+      "caseId": "slide-04",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 3,
+      "violations": [],
+      "facts": {
+        "attemptIssues": "[[\"regions.1.shortDescription: shortDescription is 64 words; the cap is 60. Rewrite it shorter.\"],[\"regions.0.shortDescription: shortDescription is 61 words; the cap is 60. Rewrite it shorter.\",\"regions.1.shortDescription: shortDescription is 61 words; the cap is 60. Rewrite it shorter.\"],[\"regions.1.shortDescription: shortDescription is 64 words; the cap is 60. Rewrite it shorter.\"]]"
+      },
+      "error": "pack-author produced no schema-valid output in 3 attempts for slide-04"
+    },
+    {
+      "caseId": "slide-05",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Searching the Index",
+        "references": 0
+      }
+    },
+    {
+      "caseId": "slide-06",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 3,
+      "violations": [],
+      "facts": {
+        "regions": 4,
+        "title": "Inserting a Vector",
+        "references": 0
+      }
+    },
+    {
+      "caseId": "slide-07",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "The Three Parameters",
+        "references": 0
+      }
+    },
+    {
+      "caseId": "slide-08",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Recall vs. Speed",
+        "references": 0
+      }
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "errored": 2,
+    "cleanRate": "6/6 (100%)",
+    "heldOutCleanRate": "n/a",
+    "tunedCleanRate": "6/6 (100%)",
+    "meanAttempts": "2.17",
+    "violationsByRule": {}
+  }
+}
