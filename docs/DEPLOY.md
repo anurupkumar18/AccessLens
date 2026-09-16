@@ -184,8 +184,10 @@ aws stepfunctions describe-execution --region us-east-1 \
 where `STATE_MACHINE_ARN` is the `StateMachineArn` output of `make deploy`.
 `status` is `RUNNING` until the job reaches review, then stays `RUNNING`
 while it waits for the instructor: the machine polls the job record every
-few seconds and continues to publish once `POST /v1/jobs/{id}/review` and
-`POST /v1/jobs/{id}/publish` have been called.
+few seconds and ends with `SUCCEEDED` once `POST /v1/jobs/{id}/review` and
+`POST /v1/jobs/{id}/publish` have been called. The publish route is the
+only writer of `packs/`, `media/` and `artifacts/`; the machine observes
+the record flipping to `published` and does not publish anything itself.
 
 Once the job is at `review`, the draft the instructor would see:
 

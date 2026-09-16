@@ -396,10 +396,9 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
       Type: 'Choice',
       // The HTTP publish route is the only publisher: it checks every asset
       // was reviewed (hard rule 2), writes packs/, media/ and artifacts/, and
-      // flips the record to published. The workflow only observes that. An
-      // earlier shape also ran a Publish stage when the poll caught the
-      // record at `publishing`, which would have written a second version
-      // whenever the poll landed inside the route's write window.
+      // flips the record to published. The workflow only observes that, so
+      // there is exactly one writer of published prefixes and no second
+      // version can appear from a poll landing mid-publication.
       Choices: [
         { Variable: '$.reviewRecord.Item.status.S', StringEquals: 'published', Next: 'WorkflowComplete' },
         { Variable: '$.reviewRecord.Item.status.S', StringEquals: 'failed', Next: 'WorkflowFailed' },

@@ -334,3 +334,31 @@ author knows the enum changed underneath it.
 **Why this needs the user.** Merging Part 4's CDK app is a cross-part edit,
 and the rules restrict those to named cases. The recommendation is (a); the
 lead has not merged.
+
+## D10 — two publishers, one seam: the route now owns publication — NOTED
+
+**What real job 6 showed.** Review accepted all eight assets (the first
+time review succeeded, after D-less fixes for the missing job-record slides
+in `09893e7`). Publish then failed with `AccessDenied: s3:PutObject` on
+`media/hnsw-explainer/1/slide-01.png`. The route's IAM grant carried a
+comment saying the state machine's Publish stage did the writing, while
+the route's code published itself and the workflow *also* ran a Publish
+Lambda whenever its 3-second poll caught the record at `publishing`.
+
+**Why that is structural, not a missing permission.** Two writers of the
+published prefixes with a race window between them means a second pack
+version could appear from timing alone, and the reviewer's request would
+return a `packUrl` that the workflow then superseded. Hard rule 2 (nothing
+reaches `packs/`, `media/`, `artifacts/` without recorded approval) wants
+exactly one gate, and the route is where the approval record lives.
+
+**What changed (`5e586ea`).** The workflow waits for `published` or
+`failed` and has no Publish stage; the Publish Lambda, its boundary code
+and its ARN are removed; the route's role may `PutObject` only under
+`packs/*`, `media/*` and `artifacts/*`. The runbook says the same.
+
+**Residual.** The route publishes inside one API request, so a very large
+pack (hundreds of slides with audio) could approach the API Lambda's
+timeout. The decks this product targets are tens of slides; if that
+changes, the answer is a publish job the route starts and the client
+polls, still with the route as the single gate.
