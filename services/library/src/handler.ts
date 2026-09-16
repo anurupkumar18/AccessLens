@@ -100,7 +100,9 @@ export async function handler(event: IndexDocumentEvent): Promise<DocumentRecord
         vectors: { forProfile: id => vectors.store(id) },
         chunks,
       }),
-      onExtracted: pages => persistDraftFacts({ dynamo, factsTable: config.factsTable, event, pages }),
+      onExtracted: process.env.COURSE_ASSISTANT_ENABLED === 'true'
+        ? pages => persistDraftFacts({ dynamo, factsTable: config.factsTable, event, pages })
+        : undefined,
     });
   } finally {
     rmSync(workDir, { recursive: true, force: true });

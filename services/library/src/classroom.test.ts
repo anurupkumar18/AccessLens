@@ -28,6 +28,16 @@ describe('approval-gated class assistant', () => {
     await expect(redeemInvite({ token: invite.token, studentSub: 'student-1' }, d)).rejects.toMatchObject({ code: 'not-found' });
   });
 
+  it('uses the adapter atomic redemption seam when one is provided', async () => {
+    const d = deps();
+    const consume = vi.fn(async ({ membership }: { membership: { profileId: string; studentSub: string; role: 'student'; joinedAt: string } }) => membership);
+    d.redeemMembership = consume;
+    const invite = await createInvite({ profileId: 'class-1', ownerSub: 'instructor', expiresInHours: 4, maxRedemptions: 1 }, d);
+    await expect(redeemInvite({ token: invite.token, studentSub: 'student-1' }, d)).resolves.toMatchObject({ studentSub: 'student-1' });
+    expect(consume).toHaveBeenCalledOnce();
+    expect((d.memberships as Map<string, unknown>).size).toBe(0);
+  });
+
   it('purges all class-specific membership, invite, and fact records', async () => {
     const d = deps();
     const invite = await createInvite({ profileId: 'class-1', ownerSub: 'instructor', expiresInHours: 4, maxRedemptions: 2 }, d);
@@ -61,8 +71,7 @@ describe('approval-gated class assistant', () => {
     await archiveProfile({ profileId: 'class-1', ownerSub: 'instructor' }, d);
     await expect(askClass({ profileId: 'class-1', studentSub: 'student-1', question: 'How does Dijkstra work?' }, d)).resolves.toEqual({ status: 'declined', reason: 'class-archived' });
     const disabled = deps(false);
-    const second = await createInvite({ profileId: 'class-1', ownerSub: 'instructor', expiresInHours: 24, maxRedemptions: 1 }, disabled);
-    await redeemInvite({ token: second.token, studentSub: 'student-2' }, disabled);
-    await expect(askClass({ profileId: 'class-1', studentSub: 'student-2', question: 'How does Dijkstra work?' }, disabled)).resolves.toEqual({ status: 'declined', reason: 'course-assistant-disabled' });
+    await expect(createInvite({ profileId: 'class-1', ownerSub: 'instructor', expiresInHours: 24, maxRedemptions: 1 }, disabled)).rejects.toMatchObject({ code: 'conflict' });
+    await expect(createFact({ profileId: 'class-1', ownerSub: 'instructor', kind: 'recap', title: 'No persistence', body: 'Disabled means no new fact.', occurredOn: '2026-09-16', timeZone: 'America/Denver', citation: { docId: 'notes', title: 'Notes', page: 1, quote: 'Disabled means no new fact.' } }, disabled)).rejects.toMatchObject({ code: 'conflict' });
   });
 });

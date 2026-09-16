@@ -123,7 +123,10 @@ export class AccessLensAuthoringStack extends Stack {
     this.memberships.addGlobalSecondaryIndex({ indexName: 'profileId-index', partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
     this.facts = this.table('ClassFacts', { partitionKey: { name: 'factId', type: dynamodb.AttributeType.STRING } });
     this.facts.addGlobalSecondaryIndex({ indexName: 'profileId-index', partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
-    this.libraryExtension = new LibraryExtension(this, 'CourseLibrary', { root: ROOT, library: this.library, documents: this.documents, facts: this.facts });
+    this.libraryExtension = new LibraryExtension(this, 'CourseLibrary', {
+      root: ROOT, library: this.library, documents: this.documents, facts: this.facts,
+      courseAssistantEnabled: ['true', '1'].includes(String(this.node.tryGetContext('courseAssistantEnabled')).toLowerCase()),
+    });
 
     const viewerOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.viewer);
     const packsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.packs);
@@ -477,7 +480,8 @@ export class AccessLensAuthoringStack extends Stack {
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:PutItem'], resources: [this.invites.tableArn] }));
         break;
       case 'redeemInvite':
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Scan', 'dynamodb:PutItem'], resources: [this.invites.tableArn, this.memberships.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Scan', 'dynamodb:GetItem'], resources: [this.invites.tableArn, this.memberships.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:TransactWriteItems'], resources: [this.invites.tableArn, this.memberships.tableArn, this.profiles.tableArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
         break;
       case 'archiveProfile':

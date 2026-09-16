@@ -13,6 +13,7 @@ export interface LibraryExtensionProps {
   library: s3.Bucket;
   documents: dynamodb.Table;
   facts: dynamodb.Table;
+  courseAssistantEnabled: boolean;
 }
 
 /** The one embedding model this account may call (hard rule 12), from Lambda only. */
@@ -50,6 +51,7 @@ export class LibraryExtension extends Construct {
       VECTOR_BUCKET: this.vectorBucketName,
       DOCUMENTS_TABLE: props.documents.tableName,
       FACTS_TABLE: props.facts.tableName,
+      COURSE_ASSISTANT_ENABLED: props.courseAssistantEnabled ? 'true' : 'false',
     };
 
     this.indexer = new lambda.DockerImageFunction(this, 'IndexerFunction', {

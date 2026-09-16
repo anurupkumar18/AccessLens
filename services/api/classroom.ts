@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import type { ClassFact, ClassInvite, ClassMembership } from '../shared/api';
 import type { ClassAssistantModel, ClassroomDeps } from '../library/src/classroom';
 import { RouteError, type RecordStore } from '../library/src/routes/types';
@@ -60,6 +60,26 @@ export async function classroomDeps(): Promise<ClassroomDeps> {
     invites: new DynamoStore<ClassInvite>(invitesTable, 'inviteId', value => value.inviteId),
     memberships: new DynamoStore<ClassMembership>(membershipsTable, 'membershipId', value => `${value.profileId}:${value.studentSub}`, 'profileId-index'),
     facts: new DynamoStore<ClassFact>(factsTable, 'factId', value => value.factId, 'profileId-index'),
+    redeemMembership: async ({ invite, membership, now }) => {
+      const membershipId = `${membership.profileId}:${membership.studentSub}`;
+      try {
+        await ddb.send(new TransactWriteCommand({
+          TransactItems: [
+            { ConditionCheck: { TableName: required('PROFILES_TABLE'), Key: { profileId: membership.profileId }, ConditionExpression: 'archiveState = :active', ExpressionAttributeValues: { ':active': 'active' } } },
+            { Put: { TableName: membershipsTable, Item: { ...membership, membershipId }, ConditionExpression: 'attribute_not_exists(membershipId)' } },
+            { Update: { TableName: invitesTable, Key: { inviteId: invite.inviteId }, UpdateExpression: 'SET redemptions = redemptions + :one', ConditionExpression: 'attribute_not_exists(revokedAt) AND expiresAt > :now AND redemptions < maxRedemptions', ExpressionAttributeValues: { ':one': 1, ':now': now.toISOString() } } },
+          ],
+        }));
+        return membership;
+      } catch (error) {
+        // A same-student retry races only with itself; return the one durable
+        // membership it created. Other failed conditions stay indistinguishable.
+        const name = error && typeof error === 'object' && 'name' in error ? String((error as { name: unknown }).name) : '';
+        if (name !== 'TransactionCanceledException') throw error;
+        const existing = await ddb.send(new GetCommand({ TableName: membershipsTable, Key: { membershipId } }));
+        return existing.Item as ClassMembership | undefined;
+      }
+    },
     retrieve: (profileId, query, k) => library.retrieve(profileId, query, k),
     enabled: process.env.COURSE_ASSISTANT_ENABLED === 'true', model: await model(),
   };

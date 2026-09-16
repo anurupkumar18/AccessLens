@@ -21,12 +21,15 @@ export interface ClassroomDeps {
   invites: RecordCollection<ClassInvite>;
   memberships: RecordCollection<ClassMembership>;
   facts: RecordCollection<ClassFact>;
+  /** Production adapters atomically consume an invite and create membership. */
+  redeemMembership?(input: { invite: ClassInvite; membership: ClassMembership; now: Date }): Promise<ClassMembership | undefined>;
   retrieve(profileId: string, query: string, k: number): Promise<Excerpt[]>;
   enabled: boolean;
   model?: ClassAssistantModel;
 }
 
 export async function createInvite(input: { profileId: string; ownerSub: string; expiresInHours: number; maxRedemptions: number }, deps: ClassroomDeps): Promise<ClassInvite> {
+  requireEnabled(deps);
   await requireOwner(input.profileId, input.ownerSub, deps);
   const now = deps.now();
   const invite: ClassInvite = {
@@ -39,6 +42,7 @@ export async function createInvite(input: { profileId: string; ownerSub: string;
 }
 
 export async function redeemInvite(input: { token: string; studentSub: string }, deps: ClassroomDeps): Promise<ClassMembership> {
+  requireEnabled(deps);
   const invite = (await storeValues(deps.invites)).find(value => value.token === input.token);
   const now = deps.now();
   if (!invite || invite.revokedAt || new Date(invite.expiresAt) <= now || invite.redemptions >= invite.maxRedemptions) {
@@ -49,6 +53,11 @@ export async function redeemInvite(input: { token: string; studentSub: string },
   const known = (await storeValues(deps.memberships, invite.profileId)).find(value => value.profileId === invite.profileId && value.studentSub === input.studentSub);
   if (known) return known;
   const membership: ClassMembership = { profileId: invite.profileId, studentSub: input.studentSub, role: 'student', joinedAt: now.toISOString() };
+  if (deps.redeemMembership) {
+    const claimed = await deps.redeemMembership({ invite, membership, now });
+    if (!claimed) throw new RouteError('not-found', 'invite not found');
+    return claimed;
+  }
   await storePut(deps.memberships, membershipKey(membership.profileId, membership.studentSub), membership);
   await storePut(deps.invites, invite.inviteId, { ...invite, redemptions: invite.redemptions + 1 });
   return membership;
@@ -83,6 +92,7 @@ export async function purgeClassMetadata(profileId: string, deps: ClassroomDeps)
 }
 
 export async function createFact(input: Omit<ClassFact, 'factId' | 'profileId' | 'createdAt' | 'publishedAt' | 'supersedesFactId' | 'status'> & { profileId: string; ownerSub: string }, deps: ClassroomDeps): Promise<ClassFact> {
+  requireEnabled(deps);
   const profile = await requireOwner(input.profileId, input.ownerSub, deps);
   if (profile.archiveState !== 'active') throw new RouteError('conflict', 'archived classes cannot receive new facts');
   const fact: ClassFact = {
@@ -138,6 +148,10 @@ async function requireProfile(profileId: string, deps: ClassroomDeps): Promise<P
   const profile = await storeGet(deps.profiles, profileId);
   if (!profile) throw new RouteError('not-found', 'class not found');
   return profile;
+}
+
+function requireEnabled(deps: ClassroomDeps): void {
+  if (!deps.enabled) throw new RouteError('conflict', 'course assistant is not enabled');
 }
 
 async function requireOwner(profileId: string, ownerSub: string, deps: ClassroomDeps): Promise<ProfileRecord> {
