@@ -209,6 +209,23 @@ export const DeletedResponseSchema = z.object({ deleted: z.literal(true), id: z.
 // ---------------------------------------------------------------------------
 // Approval-gated class membership and cited student assistance (AL-056)
 
+/**
+ * A durable, instructor-visible record of a class purge. The record never
+ * contains source material, student identities, questions, or answers.
+ */
+export const ClassDeletionJobSchema = z.object({
+  jobId: z.string().min(1),
+  profileId: z.string().min(1),
+  status: z.enum(['queued', 'running', 'succeeded', 'failed']),
+  requestedAt: z.string().datetime(),
+  startedAt: z.string().datetime().optional(),
+  completedAt: z.string().datetime().optional(),
+  /** Deliberately stable codes: worker errors must not expose course data. */
+  error: z.enum(['dispatch_failed', 'purge_failed']).optional(),
+}).strict();
+export type ClassDeletionJob = z.infer<typeof ClassDeletionJobSchema>;
+export const ClassDeletionJobResponseSchema = z.object({ deletion: ClassDeletionJobSchema }).strict();
+
 export const ClassMembershipSchema = z.object({
   profileId: z.string().min(1),
   studentSub: z.string().min(1),
@@ -357,7 +374,8 @@ export const ROUTES: RouteSpec[] = [
 
   { method: 'POST',   path: '/v1/profiles', operationId: 'createProfile', summary: 'Create a course profile', request: CreateProfileRequestSchema, response: ProfileResponseSchema, successStatus: 201, auth: 'bearer' },
   { method: 'GET',    path: '/v1/profiles/{profileId}', operationId: 'getProfile', summary: 'Profile with document list and index status', response: ProfileResponseSchema, successStatus: 200, auth: 'bearer' },
-  { method: 'DELETE', path: '/v1/profiles/{profileId}', operationId: 'deleteProfile', summary: 'Delete the profile, its documents, files, and vectors', response: DeletedResponseSchema, successStatus: 200, auth: 'bearer' },
+  { method: 'DELETE', path: '/v1/profiles/{profileId}', operationId: 'deleteProfile', summary: 'Immediately archive a class and queue its durable source, vector, and metadata purge', response: ClassDeletionJobResponseSchema, successStatus: 202, auth: 'bearer' },
+  { method: 'GET',    path: '/v1/profiles/{profileId}/deletion', operationId: 'getDeletionJob', summary: 'Read durable purge status for an archived class', response: ClassDeletionJobResponseSchema, successStatus: 200, auth: 'bearer' },
   { method: 'POST',   path: '/v1/profiles/{profileId}/documents', operationId: 'registerDocument', summary: 'Register an uploaded file and start indexing', request: RegisterDocumentRequestSchema, response: DocumentRecordSchema, successStatus: 202, auth: 'bearer' },
   { method: 'GET',    path: '/v1/profiles/{profileId}/documents/{docId}', operationId: 'getDocument', summary: 'Document status and page count', response: DocumentRecordSchema, successStatus: 200, auth: 'bearer' },
   { method: 'DELETE', path: '/v1/profiles/{profileId}/documents/{docId}', operationId: 'deleteDocument', summary: 'Remove the document and its vectors', response: DeletedResponseSchema, successStatus: 200, auth: 'bearer' },

@@ -625,7 +625,54 @@ paths:
             type: string
     delete:
       operationId: deleteProfile
-      summary: 'Delete the profile, its documents, files, and vectors'
+      summary: 'Immediately archive a class and queue its durable source, vector, and metadata purge'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '202':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/deleteProfileResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/profiles/{profileId}/deletion':
+    get:
+      operationId: getDeletionJob
+      summary: 'Read durable purge status for an archived class'
       security:
         -
           bearerAuth: []
@@ -635,7 +682,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/deleteProfileResponse'
+                $ref: '#/components/schemas/getDeletionJobResponse'
         '400':
           description: 'Invalid request'
           content:
@@ -2975,15 +3022,92 @@ components:
     deleteProfileResponse:
       type: object
       properties:
-        deleted:
-          type: boolean
-          const: true
-        id:
-          type: string
-          minLength: 1
+        deletion:
+          type: object
+          properties:
+            jobId:
+              type: string
+              minLength: 1
+            profileId:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              enum:
+                - queued
+                - running
+                - succeeded
+                - failed
+            requestedAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            startedAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            completedAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            error:
+              type: string
+              enum:
+                - dispatch_failed
+                - purge_failed
+          required:
+            - jobId
+            - profileId
+            - status
+            - requestedAt
+          additionalProperties: false
       required:
-        - deleted
-        - id
+        - deletion
+      additionalProperties: false
+    getDeletionJobResponse:
+      type: object
+      properties:
+        deletion:
+          type: object
+          properties:
+            jobId:
+              type: string
+              minLength: 1
+            profileId:
+              type: string
+              minLength: 1
+            status:
+              type: string
+              enum:
+                - queued
+                - running
+                - succeeded
+                - failed
+            requestedAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            startedAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            completedAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            error:
+              type: string
+              enum:
+                - dispatch_failed
+                - purge_failed
+          required:
+            - jobId
+            - profileId
+            - status
+            - requestedAt
+          additionalProperties: false
+      required:
+        - deletion
       additionalProperties: false
     registerDocumentResponse:
       type: object

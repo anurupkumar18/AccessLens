@@ -50,6 +50,7 @@ const API_HANDLER_BY_OPERATION: Record<string, string> = {
   createProfile: 'createProfile.ts',
   getProfile: 'getProfile.ts',
   deleteProfile: 'deleteProfile.ts',
+  getDeletionJob: 'getDeletionJob.ts',
   registerDocument: 'registerDocument.ts',
   getDocument: 'getDocument.ts',
   deleteDocument: 'deleteDocument.ts',
@@ -77,7 +78,9 @@ export class AccessLensAuthoringStack extends Stack {
   readonly invites: dynamodb.Table;
   readonly memberships: dynamodb.Table;
   readonly facts: dynamodb.Table;
+  readonly deletionJobs: dynamodb.Table;
   readonly libraryExtension: LibraryExtension;
+  readonly deleteClassWorker: nodejs.NodejsFunction;
   readonly distribution: cloudfront.Distribution;
   readonly api: apigateway.HttpApi;
   stateMachine!: sfn.StateMachine;
@@ -123,10 +126,17 @@ export class AccessLensAuthoringStack extends Stack {
     this.memberships.addGlobalSecondaryIndex({ indexName: 'profileId-index', partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
     this.facts = this.table('ClassFacts', { partitionKey: { name: 'factId', type: dynamodb.AttributeType.STRING } });
     this.facts.addGlobalSecondaryIndex({ indexName: 'profileId-index', partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
+    // One durable record per class makes repeated deletion requests idempotent.
+    this.deletionJobs = this.table('ClassDeletionJobs', { partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
     this.libraryExtension = new LibraryExtension(this, 'CourseLibrary', {
       root: ROOT, library: this.library, documents: this.documents, facts: this.facts,
       courseAssistantEnabled: ['true', '1'].includes(String(this.node.tryGetContext('courseAssistantEnabled')).toLowerCase()),
     });
+    this.deleteClassWorker = this.nodeFunction('DeleteClassWorker', 'deleteClassWorker.ts', {
+      ...this.libraryEnvironment(),
+      DELETION_JOBS_TABLE: this.deletionJobs.tableName,
+    }, Duration.minutes(5));
+    this.grantDeleteWorker(this.deleteClassWorker);
 
     const viewerOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.viewer);
     const packsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.packs);
@@ -289,12 +299,12 @@ export class AccessLensAuthoringStack extends Stack {
     return table;
   }
 
-  private nodeFunction(id: string, file: string, environment: Record<string, string> = {}): nodejs.NodejsFunction {
+  private nodeFunction(id: string, file: string, environment: Record<string, string> = {}, timeout = Duration.seconds(15)): nodejs.NodejsFunction {
     const fn = new nodejs.NodejsFunction(this, `${id}Function`, {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: `${ROOT}/services/api/${file}`,
       handler: 'handler',
-      timeout: Duration.seconds(15),
+      timeout,
       memorySize: 512,
       environment,
       bundling: {
@@ -343,7 +353,6 @@ export class AccessLensAuthoringStack extends Stack {
         return { INSTRUCTORS_TABLE: this.instructors.tableName, JOBS_TABLE: this.jobs.tableName, ASSET_BASE_URL: `https://${this.distribution.domainName}`, ...this.libraryEnvironment() };
       case 'createProfile':
       case 'getProfile':
-      case 'deleteProfile':
       case 'registerDocument':
       case 'getDocument':
       case 'deleteDocument':
@@ -356,6 +365,14 @@ export class AccessLensAuthoringStack extends Stack {
       case 'publishFact':
       case 'studentAsk':
         return this.libraryEnvironment();
+      case 'deleteProfile':
+        return {
+          ...this.libraryEnvironment(),
+          DELETION_JOBS_TABLE: this.deletionJobs.tableName,
+          DELETION_WORKER_FUNCTION: this.deleteClassWorker.functionName,
+        };
+      case 'getDeletionJob':
+        return { DELETION_JOBS_TABLE: this.deletionJobs.tableName };
       default:
         return {};
     }
@@ -437,14 +454,13 @@ export class AccessLensAuthoringStack extends Stack {
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`] }));
         break;
       case 'deleteProfile':
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem'], resources: [this.profiles.tableArn] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:DeleteItem'], resources: [this.documents.tableArn] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Scan', 'dynamodb:DeleteItem'], resources: [this.invites.tableArn] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query', 'dynamodb:DeleteItem'], resources: [`${this.memberships.tableArn}/index/profileId-index`, `${this.facts.tableArn}/index/profileId-index`, this.memberships.tableArn, this.facts.tableArn] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.library.bucketArn] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:DeleteObject'], resources: [this.library.arnForObjects('library/*')] }));
-        this.libraryExtension.grantVectors(fn, ['s3vectors:DeleteIndex', 's3vectors:DeleteVectors']);
+        // The public request can only archive and queue. Material purge runs
+        // under the worker's separate principal below.
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], resources: [this.profiles.tableArn, this.deletionJobs.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['lambda:InvokeFunction'], resources: [this.deleteClassWorker.functionArn] }));
+        break;
+      case 'getDeletionJob':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.deletionJobs.tableArn] }));
         break;
       case 'registerDocument':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
@@ -509,6 +525,16 @@ export class AccessLensAuthoringStack extends Stack {
 
   private output(name: string, value: string): void {
     new CfnOutput(this, name, { value, description: `AccessLens ${name}` });
+  }
+
+  /** Least-privilege teardown permissions belong to the trusted worker only. */
+  private grantDeleteWorker(fn: lambda.Function): void {
+    fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem'], resources: [this.profiles.tableArn, this.documents.tableArn, this.deletionJobs.tableArn] }));
+    fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`, `${this.memberships.tableArn}/index/profileId-index`, `${this.facts.tableArn}/index/profileId-index`] }));
+    fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Scan', 'dynamodb:DeleteItem'], resources: [this.invites.tableArn, this.memberships.tableArn, this.facts.tableArn] }));
+    fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.library.bucketArn] }));
+    fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:DeleteObject'], resources: [this.library.arnForObjects('library/*')] }));
+    this.libraryExtension.grantVectors(fn, ['s3vectors:DeleteIndex', 's3vectors:DeleteVectors']);
   }
 }
 
