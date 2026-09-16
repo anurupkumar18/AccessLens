@@ -59,6 +59,17 @@ class FakeStore implements ObjectStore {
   }
 }
 
+function validArtifactManifest(): Record<string, unknown> {
+  return {
+    schemaVersion: '1.0', artifactId: 'graph-stepper', artifactVersion: 1,
+    title: 'Graph stepper', summary: 'A graph.', subjects: ['computer-science'], tags: ['graph'],
+    interaction: 'stepper', provenance: { kind: 'generated', generatedBy: 'test', jobId: 'job-1' },
+    parameters: { type: 'object', properties: {} }, defaultParameters: {}, libraries: [],
+    accessibility: { description: 'A graph.', keyboard: 'Use arrows.' },
+    render: { entry: 'index.html', minWidth: 480, minHeight: 320 },
+  };
+}
+
 function storeWithStagedMedia(): FakeStore {
   const store = new FakeStore();
   for (const key of [
@@ -142,8 +153,8 @@ describe('publishPack', () => {
 
   it('copies a staged approved artifact without touching an earlier pack version', async () => {
     const store = storeWithStagedMedia();
-    store.objects.set('staging/job-1/artifacts/graph-stepper/1/manifest.json', new Uint8Array([1]));
-    store.objects.set('staging/job-1/artifacts/graph-stepper/1/index.html', new Uint8Array([2]));
+    store.objects.set('staging/job-1/artifacts/graph-stepper/1/manifest.json', new TextEncoder().encode(JSON.stringify(validArtifactManifest())));
+    store.objects.set('staging/job-1/artifacts/graph-stepper/1/index.html', new TextEncoder().encode('<!doctype html>'));
     const result = await publishPack({
       job: job({ decisions: [{ assetId: 'slide-01', visualization: 'approve' }] }),
       deck,
@@ -152,6 +163,20 @@ describe('publishPack', () => {
     }, store);
     expect(result.pack.assets[0].visualization?.artifactId).toBe('graph-stepper');
     expect(store.copies).toContainEqual({ source: 'staging/job-1/artifacts/graph-stepper/1/index.html', destination: 'artifacts/graph-stepper/1/index.html' });
+  });
+
+  it('rejects an approved artifact whose manifest is invalid before any published write', async () => {
+    const store = storeWithStagedMedia();
+    store.objects.set('staging/job-1/artifacts/graph-stepper/1/manifest.json', new TextEncoder().encode('{"not":"a manifest"}'));
+    store.objects.set('staging/job-1/artifacts/graph-stepper/1/index.html', new TextEncoder().encode('<!doctype html>'));
+    await expect(publishPack({
+      job: job({ decisions: [{ assetId: 'slide-01', visualization: 'approve' }] }),
+      deck,
+      assets: [stagedAsset('slide-01', { visualization: { artifactId: 'graph-stepper', artifactVersion: 1, parameters: {} } }), stagedAsset('slide-02', { readingOrder: ['title', 'graph'], regions: [stagedAsset('slide-02').regions[0]] })],
+      publicBaseUrl: 'https://cdn.example.test',
+    }, store)).rejects.toThrow(/manifest/i);
+    expect(store.writes).toEqual([]);
+    expect(store.copies).toEqual([]);
   });
 
   it('validates the finished pack before writing the pack key', async () => {

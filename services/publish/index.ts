@@ -6,7 +6,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { AccessPackSchema, type AccessPack } from '../../apps/extension/src/shared/contracts';
+import { AccessPackSchema, ArtifactManifestSchema, type AccessPack } from '../../apps/extension/src/shared/contracts';
 import { JobRecordSchema, type Deck, type JobRecord, type ReviewDecision } from '../shared/jobs';
 
 export type PackAsset = AccessPack['assets'][number];
@@ -249,16 +249,29 @@ async function preflightPlan(store: ObjectStore, media: readonly CopyPlan[], art
   for (const root of artifactRoots) {
     const sourceKeys = await store.list(root);
     if (sourceKeys.length === 0) throw new PublishValidationError(`approved artifact has no staged objects under ${root}`);
+    let sawManifest = false;
     for (const source of sourceKeys) {
       const relative = source.slice(root.length).replace(/^\/+/, '');
       if (!relative || relative.includes('..')) throw new PublishValidationError(`invalid staged artifact key ${source}`);
-      await store.read(source);
+      const body = await store.read(source);
+      // The staged manifest is what the viewer will trust once it sits under
+      // artifacts/. Parse it here, before any public write, so a malformed or
+      // unblessed artifact can never be approved into the published tree.
+      if (relative === 'manifest.json') {
+        sawManifest = true;
+        try {
+          ArtifactManifestSchema.parse(JSON.parse(new TextDecoder().decode(body)));
+        } catch (error) {
+          throw new PublishValidationError(`approved artifact manifest at ${source} is invalid`, { cause: error });
+        }
+      }
       artifacts.push({
         source,
         destination: `artifacts/${root.slice(root.indexOf('/artifacts/') + '/artifacts/'.length)}${relative}`,
         contentType: source.endsWith('.json') ? CONTENT_TYPES.json : CONTENT_TYPES.artifact,
       });
     }
+    if (!sawManifest) throw new PublishValidationError(`approved artifact has no manifest.json under ${root}`);
   }
   return [...media, ...artifacts];
 }
