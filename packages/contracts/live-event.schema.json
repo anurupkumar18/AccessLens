@@ -24,6 +24,7 @@
         "caption.appended",
         "capture.paused",
         "capture.resumed",
+        "capture.stopped",
         "source.unmatched",
         "session.ended"
       ]
@@ -168,6 +169,7 @@
               "session.started",
               "capture.paused",
               "capture.resumed",
+              "capture.stopped",
               "source.unmatched",
               "session.ended"
             ]

@@ -39,7 +39,7 @@ describe('AccessLens contracts',()=>{
       expect(LiveEventSchema.safeParse({...base, type:'region.changed', regionId:'mitochondrion'}).success).toBe(false);
     });
 
-    it.each(['session.started','capture.paused','capture.resumed','session.ended','source.unmatched'])(
+    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
       'accepts base-only fields for %s',
       (type) => {
         expect(LiveEventSchema.safeParse({...base, type}).success).toBe(true);
@@ -67,7 +67,7 @@ describe('AccessLens contracts',()=>{
       }).success).toBe(false);
     });
 
-    it.each(['session.started','capture.paused','capture.resumed','caption.appended','session.ended','source.unmatched'])(
+    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
       'rejects %s carrying an assetId',
       (type) => {
         expect(LiveEventSchema.safeParse({...base, type, assetId:'cell-slide-03'}).success).toBe(false);

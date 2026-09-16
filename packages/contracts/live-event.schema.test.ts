@@ -30,7 +30,7 @@ describe('live-event.schema.json contract matrix', () => {
     expect(validate({...base, type:'region.changed', assetId:'cell-slide-03'})).toBe(false);
   });
 
-  it.each(['session.started','capture.paused','capture.resumed','session.ended','source.unmatched'])(
+  it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
     'accepts base-only fields for %s',
     (type) => {
       expect(validate({...base, type})).toBe(true);
@@ -50,7 +50,7 @@ describe('live-event.schema.json contract matrix', () => {
     expect(validate({...base, type:'region.changed', assetId:'a', regionId:'r', caption:{text:'x', isFinal:true}})).toBe(false);
   });
 
-  it.each(['session.started','capture.paused','capture.resumed','caption.appended','session.ended','source.unmatched'])(
+  it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
     'rejects %s carrying an assetId, never inventing a match',
     (type) => {
       expect(validate({...base, type, assetId:'cell-slide-03'})).toBe(false);

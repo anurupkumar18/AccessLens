@@ -59,6 +59,21 @@ describe('StudentExperience', () => {
     expect(container?.textContent).toContain('Focus view');
   });
 
+  it('renders capture stopped as a non-live state', () => {
+    const stoppedEvent = {
+      schemaVersion: '1.0' as const,
+      type: 'capture.stopped' as const,
+      sessionId: 'demo-session',
+      packId: 'bio-cell-demo',
+      packVersion: 1,
+      sequence: 2,
+      sentAt: '2026-09-15T15:00:01Z',
+    };
+    renderExperience(stoppedEvent);
+    expect(container?.querySelector('.connection-pill')?.textContent).toBe('stopped');
+    expect(container?.textContent).toContain('Instructor stopped sharing. Showing the last reviewed moment.');
+  });
+
   it('switches to AR through the accessible mode tabs', async () => {
     const harness = renderExperience();
     const arTab = Array.from(container!.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent === 'AR') as HTMLButtonElement;

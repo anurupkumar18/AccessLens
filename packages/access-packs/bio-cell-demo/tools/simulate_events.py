@@ -44,6 +44,7 @@ EVENT_TYPES = (
     "caption.appended",
     "capture.paused",
     "capture.resumed",
+    "capture.stopped",
     "source.unmatched",
     "session.ended",
 )
@@ -200,10 +201,15 @@ def scenario_pause_resume_stop(pack: dict) -> tuple[Builder, list[str]]:
     builder.emit("capture.paused")
     builder.emit("capture.resumed")
     builder.region_changed("cell-slide-02", "nucleus", _region_centre(pack, "cell-slide-02", "nucleus"))
+    builder.emit("capture.stopped")
+    builder.emit("session.started")
+    builder.region_changed("cell-slide-02", "nucleus", _region_centre(pack, "cell-slide-02", "nucleus"))
     builder.emit("session.ended")
     return builder, [
         "capture.paused freezes the student view immediately and shows a visible paused state.",
         "No region.changed may appear between capture.paused and capture.resumed.",
+        "capture.stopped freezes the last reviewed moment but leaves the temporary session open for a later explicit Start.",
+        "A later session.started resumes the same join code and monotonic event stream.",
         "session.ended closes the live view; later events for this session are refused.",
     ]
 

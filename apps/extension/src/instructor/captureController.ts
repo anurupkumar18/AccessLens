@@ -72,7 +72,7 @@ export const UNMATCHED_DEBOUNCE = 3;
 export const SHARING_REQUIRED_MESSAGE =
   'Sharing is required for live sync. Click Start and choose a tab, window, or screen.';
 
-type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'source.unmatched' | 'session.ended' }
+type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
   | { type: 'asset.changed'; assetId: string }
   | { type: 'region.changed'; assetId: string; regionId: string };
 
@@ -177,7 +177,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     phase = 'idle';
     resetRecognition();
     message = 'Stopped sharing. The session is still open: Start again to share, or End Session to close it.';
-    emit({ type: 'session.ended' });
+    emit({ type: 'capture.stopped' });
     notify();
   }
 
@@ -248,6 +248,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     endSession() {
       if (phase === 'sharing' || phase === 'paused') endSharing();
       if (phase === 'closed') return;
+      if (sessionId !== null) emit({ type: 'session.ended' });
       client.close();
       sessionId = null;
       phase = 'closed';

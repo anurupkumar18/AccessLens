@@ -8,6 +8,8 @@
   "expectations": [
     "capture.paused freezes the student view immediately and shows a visible paused state.",
     "No region.changed may appear between capture.paused and capture.resumed.",
+    "capture.stopped freezes the last reviewed moment but leaves the temporary session open for a later explicit Start.",
+    "A later session.started resumes the same join code and monotonic event stream.",
     "session.ended closes the live view; later events for this session are refused."
   ],
   "events": [
@@ -88,12 +90,49 @@
     },
     {
       "schemaVersion": "1.0",
-      "type": "session.ended",
+      "type": "capture.stopped",
       "sessionId": "sess-demo-0001",
       "packId": "bio-cell-demo",
       "packVersion": 1,
       "sequence": 7,
       "sentAt": "2026-09-15T15:00:42Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.started",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 8,
+      "sentAt": "2026-09-15T15:00:48Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "region.changed",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "assetId": "cell-slide-02",
+      "regionId": "nucleus",
+      "arState": {
+        "hotspotId": "cell-slide-02:nucleus",
+        "action": "focus"
+      },
+      "pointer": {
+        "x": 0.44,
+        "y": 0.54
+      },
+      "sequence": 9,
+      "sentAt": "2026-09-15T15:00:54Z"
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "session.ended",
+      "sessionId": "sess-demo-0001",
+      "packId": "bio-cell-demo",
+      "packVersion": 1,
+      "sequence": 10,
+      "sentAt": "2026-09-15T15:01:00Z"
     }
   ]
 }

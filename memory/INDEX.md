@@ -69,6 +69,10 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0050-stop-versus-end-session-lifecycle.md` (Part 1/cross-cutting: `capture.stopped` separates stopped sharing from terminal session end; locally verified and awaiting contract review/deploy)
+- `episodic/0049-agent-first-delivery-system.md` (Part 1: repository-native tickets, claims, immutable updates, generated agent context, and validation)
+- `episodic/0048-remove-t29-implementation-block.md` (Part 1: T-29 becomes a non-blocking agenda for tomorrow's in-person meeting)
+- `episodic/0047-anurup-alignment-response.md` (Part 1: Anurup's signed T-29 response; follow-up decision removed the implementation block)
 - `episodic/0046-team-alignment-check.md` (cross-cutting: committed the hidden critique/revision docs, opened T-29 blocking further work until every contributor responds)
 - `episodic/0045-fix-false-stale-connection.md` (cross-cutting: fixed a false "Connection interrupted" alarm the team hit live-testing)
 - `episodic/0044-wire-live-relay-and-launch-test.md` (cross-cutting: wired the deployed relay into the shell, launch-tested the full stack)

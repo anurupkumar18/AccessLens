@@ -55,6 +55,7 @@ export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ ...LiveEventBase, type:z.literal('caption.appended'), caption:Caption }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.paused') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.resumed') }).strict(),
+  z.object({ ...LiveEventBase, type:z.literal('capture.stopped') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('source.unmatched') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('session.ended') }).strict(),
 ]);
