@@ -31,7 +31,7 @@ const SONNET_RESOURCES = (stack: Stack) => [
 ];
 
 /**
- * Stage 1 to stage 4 plus review and publish (spec section 8), as one Step
+ * Stage 1 to stage 4 plus the review wait (spec section 8), as one Step
  * Functions Standard workflow over the Lambdas below. The definition itself
  * is services/publish/workflow.ts; this construct only provides the ARNs and
  * the least privilege each stage needs. Visualization stages (5 to 8) are
@@ -70,17 +70,11 @@ export class PipelineExtensionPoints extends Construct {
     const audio = this.stageFunction('Audio', 'services/audio/index.ts', props);
     audio.addToRolePolicy(new iam.PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }));
 
-    // Stage 10. The one function that may write outside staging/.
-    const publish = this.stageFunction('Publish', 'services/publish/index.ts', props);
-    props.packs.grantReadWrite(publish);
-    props.jobs.grantReadWriteData(publish);
-
     const definition = authoringStateMachine({
       ingest: ingest.functionArn,
       analyst: analyst.functionArn,
       packAuthor: packAuthor.functionArn,
       audio: audio.functionArn,
-      publish: publish.functionArn,
     });
 
     const logGroup = new logs.LogGroup(this, 'AuthoringLogs', {
@@ -98,7 +92,7 @@ export class PipelineExtensionPoints extends Construct {
     // The definition drives the job record directly (dynamodb:updateItem and
     // getItem service integrations), so the machine's role needs the table.
     props.jobs.grantReadWriteData(this.stateMachine);
-    for (const fn of [ingest, analyst, packAuthor, audio, publish]) fn.grantInvoke(this.stateMachine);
+    for (const fn of [ingest, analyst, packAuthor, audio]) fn.grantInvoke(this.stateMachine);
   }
 
   /** A Sonnet-calling stage: Bedrock on the two allowed models and nothing else beyond its bucket. */

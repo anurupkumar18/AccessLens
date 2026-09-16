@@ -21,7 +21,6 @@ export interface AuthoringLambdaArns {
   critic?: string;
   /** Writes one staged asset and one compact per-slide progress result. */
   recordVisualization?: string;
-  publish: string;
 }
 
 interface State {
@@ -395,22 +394,25 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
     },
     ReviewOutcome: {
       Type: 'Choice',
+      // The HTTP publish route is the only publisher: it checks every asset
+      // was reviewed (hard rule 2), writes packs/, media/ and artifacts/, and
+      // flips the record to published. The workflow only observes that. An
+      // earlier shape also ran a Publish stage when the poll caught the
+      // record at `publishing`, which would have written a second version
+      // whenever the poll landed inside the route's write window.
       Choices: [
-        { Variable: '$.reviewRecord.Item.status.S', StringEquals: 'publishing', Next: 'MarkPublishing' },
-        // The HTTP publish route may complete deterministic publication before
-        // this poll observes `publishing`; that is still a successful workflow.
         { Variable: '$.reviewRecord.Item.status.S', StringEquals: 'published', Next: 'WorkflowComplete' },
+        { Variable: '$.reviewRecord.Item.status.S', StringEquals: 'failed', Next: 'WorkflowFailed' },
       ],
       Default: 'WaitForInstructor',
     },
-    MarkPublishing: statusUpdate('publishing', 'Publish'),
-    Publish: catchToFailed(lambdaTask(arns.publish, 'WorkflowComplete', '$.publish')),
     WorkflowComplete: { Type: 'Succeed' },
+    WorkflowFailed: { Type: 'Fail', Error: 'JobFailed', Cause: 'The job record was marked failed during review' },
     MarkFailed: statusUpdate('failed'),
   };
 
   return {
-    Comment: 'AccessLens authoring pipeline: ingest, analyst, per-slide description/audio, visualization, review, publish',
+    Comment: 'AccessLens authoring pipeline: ingest, analyst, per-slide description/audio, visualization, review; publication is the HTTP route',
     StartAt: 'MarkIngesting',
     States: states,
   };

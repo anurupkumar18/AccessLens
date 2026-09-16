@@ -280,10 +280,15 @@ export class AccessLensAuthoringStack extends Stack {
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject', 's3:PutObject', 's3:ListBucket'], resources: [this.packs.arnForObjects('staging/*'), this.packs.bucketArn] }));
         break;
       case 'publishJob':
-        // The route only flips the job to publishing; the state machine's
-        // Publish stage is what writes packs/, media/, and artifacts/.
+        // The one principal that may write outside staging/. It does so only
+        // after publishPack has checked every asset's review decision (hard
+        // rule 2), and only under the three published prefixes.
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:UpdateItem'], resources: [this.jobs.tableArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject', 's3:ListBucket'], resources: [this.packs.arnForObjects('*'), this.packs.bucketArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({
+          actions: ['s3:PutObject'],
+          resources: [this.packs.arnForObjects('packs/*'), this.packs.arnForObjects('media/*'), this.packs.arnForObjects('artifacts/*')],
+        }));
         break;
       case 'getJob':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.jobs.tableArn] }));

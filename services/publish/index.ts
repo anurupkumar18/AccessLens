@@ -5,8 +5,6 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { AccessPackSchema, ArtifactManifestSchema, type AccessPack } from '../../apps/extension/src/shared/contracts';
 import { JobRecordSchema, type Deck, type JobRecord, type ReviewDecision } from '../shared/jobs';
 
@@ -402,82 +400,3 @@ export function createS3ObjectStore(options: S3ObjectStoreOptions): ObjectStore 
     },
   };
 }
-
-export interface PublishEvent {
-  jobId: string;
-  jobsTableName?: string;
-  packsBucket?: string;
-  publicBaseUrl?: string;
-  reviewedBy?: string;
-}
-
-interface DynamoTransport { send(command: unknown): Promise<unknown> }
-
-export interface PublishHandlerOptions {
-  s3?: ObjectStore;
-  dynamodb?: DynamoTransport;
-  /** Fetch the job from DynamoDB; tests can inject a direct lookup. */
-  loadJob?: (jobId: string) => Promise<JobRecord>;
-  /** Test seam for the same staged data route uses. */
-  loadDeckAndAssets?: (job: JobRecord) => Promise<{ deck: Deck; assets: readonly StagedAsset[] }>;
-  now?: () => string;
-}
-
-async function loadJSON(store: ObjectStore, key: string): Promise<unknown> {
-  const bytes = await store.read(key);
-  return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-}
-
-/** Lambda boundary for stage 10. The default AWS clients are created here, not at module load. */
-export async function handlePublish(event: PublishEvent, options: PublishHandlerOptions = {}): Promise<PublishResult> {
-  const bucket = event.packsBucket ?? process.env.PACKS_BUCKET;
-  if (!bucket && !options.s3) throw new Error('Missing required PACKS_BUCKET environment variable');
-  const s3 = options.s3 ?? createS3ObjectStore({
-    client: new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' }),
-    bucket: bucket!,
-  });
-  // Same rule as the S3 store above: the table client exists only at the
-  // Lambda boundary, and only when a test has not injected loadJob.
-  const dynamodb = options.dynamodb ?? (options.loadJob ? undefined : DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION ?? 'us-east-1' })));
-  const loadJob = options.loadJob ?? (async (jobId: string) => {
-    const tableName = event.jobsTableName ?? process.env.JOBS_TABLE;
-    if (!tableName) throw new Error('Missing required JOBS_TABLE environment variable');
-    const response = await dynamodb!.send(new GetCommand({ TableName: tableName, Key: { jobId } })) as { Item?: unknown };
-    if (!response.Item) throw new Error(`job ${jobId} was not found`);
-    return JobRecordSchema.parse(response.Item);
-  });
-  const job = await loadJob(event.jobId);
-  const loadDeckAndAssets = options.loadDeckAndAssets ?? (async (record: JobRecord) => {
-    const deck = (await loadJSON(s3, `staging/${record.jobId}/deck.json`)) as Deck;
-    const assets = await Promise.all(deck.slides.map(async slide => (await loadJSON(s3, `staging/${record.jobId}/draft/${slide.assetId}.json`)) as StagedAsset));
-    return { deck, assets };
-  });
-  const { deck, assets } = await loadDeckAndAssets(job);
-  const result = await publishPack({
-    job,
-    deck,
-    assets,
-    publicBaseUrl: event.publicBaseUrl ?? process.env.PUBLIC_BASE_URL,
-    reviewedBy: event.reviewedBy,
-    publishedAt: options.now?.() ?? new Date().toISOString(),
-  }, s3);
-
-  if (dynamodb) {
-    const tableName = event.jobsTableName ?? process.env.JOBS_TABLE;
-    if (!tableName) throw new Error('Missing required JOBS_TABLE environment variable');
-    await dynamodb.send(new UpdateCommand({
-      TableName: tableName,
-      Key: { jobId: job.jobId },
-      UpdateExpression: 'SET #status = :status, #publishedVersion = :publishedVersion, #updatedAt = :updatedAt',
-      ExpressionAttributeNames: { '#status': 'status', '#publishedVersion': 'publishedVersion', '#updatedAt': 'updatedAt' },
-      ExpressionAttributeValues: { ':status': 'published', ':publishedVersion': result.version, ':updatedAt': options.now?.() ?? new Date().toISOString() },
-    }));
-  }
-  return result;
-}
-
-export async function handler(event: PublishEvent): Promise<PublishResult> {
-  return handlePublish(event);
-}
-
-export { GetCommand, UpdateCommand };

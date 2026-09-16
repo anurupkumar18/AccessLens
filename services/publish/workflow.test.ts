@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { authoringStateMachine } from './workflow';
 
 describe('authoringStateMachine', () => {
-  const definition = authoringStateMachine({ ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio', publish: 'arn:publish' }) as any;
+  const definition = authoringStateMachine({ ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio' }) as any;
   it('maps slides with concurrency five', () => {
     const map = Object.values(definition.States).find((state: any) => state.Type === 'Map') as any;
     expect(map).toBeDefined();
@@ -34,7 +34,7 @@ describe('authoringStateMachine', () => {
 });
 
 describe('authoringStateMachine without visualization Lambdas', () => {
-  const spine = authoringStateMachine({ ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio', publish: 'arn:publish' }) as {
+  const spine = authoringStateMachine({ ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio' }) as {
     States: Record<string, { Type: string; Resource?: string; Next?: string; Parameters?: Record<string, unknown>; ItemSelector?: Record<string, unknown>; Catch?: unknown; ItemProcessor?: { States: Record<string, { Type: string; Resource?: string; Next?: string; Parameters?: Record<string, unknown> }> } }>;
   };
   const slide = spine.States.SlideMap.ItemProcessor!.States;
@@ -82,7 +82,7 @@ describe('authoringStateMachine without visualization Lambdas', () => {
 
 describe('authoringStateMachine with visualization Lambdas', () => {
   const full = authoringStateMachine({
-    ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio', publish: 'arn:publish',
+    ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio',
     planner: 'arn:planner', route: 'arn:route', adapter: 'arn:adapter', generator: 'arn:generator', critic: 'arn:critic', recordVisualization: 'arn:record',
   }) as { States: Record<string, { ItemProcessor?: { States: Record<string, { Type: string; Resource?: string; Next?: string }> } }> };
   const slide = full.States.SlideMap.ItemProcessor!.States;
