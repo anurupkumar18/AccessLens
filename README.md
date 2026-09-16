@@ -19,6 +19,8 @@ their chosen modes:
 - **Hear:** concise audio description;
 - **Focus:** one region or relationship at a time;
 - **Read:** structured text, read-aloud, or approved language support;
+- **Dyslexic:** student-controlled spacing, line length, and dyslexic-friendly
+  typography for the same reviewed text;
 - **Locate:** spatial directions or haptics; and
 - **Explore in AR:** a synchronized spatial model of the current concept, with
   keyboard, touch, voice, and non-immersive equivalents.

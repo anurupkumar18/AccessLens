@@ -195,18 +195,28 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       notify();
       const openedHere = sessionId === null;
       const id = sessionId ?? ids.sessionId();
+      // Invoke the browser chooser before any awaited session/network work so
+      // Chrome retains the Start button's transient user activation. This is
+      // what makes window and entire-screen sharing reliable; tab sharing was
+      // the only path that appeared to work when create() ran first.
       try {
+        // Invoke the chooser before the first awaited operation so the browser
+        // keeps the Start button's transient user activation for tab/window/
+        // screen capture.
+        const streamPromise = host.requestStream();
         if (openedHere) {
           try {
             await client.create(id);
           } catch {
+            const granted = await streamPromise.catch(() => null);
+            granted?.stop();
             phase = 'idle';
             message = 'Could not open a session. Check the connection and try Start again.';
             notify();
             return;
           }
         }
-        const granted = await host.requestStream();
+        const granted = await streamPromise;
         sessionId = id;
         stream = granted;
         unsubscribeEnded = granted.onEnded(() => endSharing());

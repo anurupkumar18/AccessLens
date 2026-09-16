@@ -4,6 +4,7 @@ import type { StudentPreferences } from '../shared/preferences';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { AudioView } from '../renderers/AudioView';
+import { DyslexicTextView } from '../renderers/DyslexicTextView';
 import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
 
 const CellArView = React.lazy(async () => {
@@ -23,6 +24,7 @@ const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
   { id: 'audio', label: 'Hear' },
+  { id: 'dyslexic', label: 'Dyslexic' },
   { id: 'ar', label: 'AR' },
 ];
 
@@ -140,6 +142,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
             <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />

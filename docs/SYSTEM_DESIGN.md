@@ -144,6 +144,8 @@ Each student extension loads the same reviewed pack but applies local preference
 
 - Focus mode crops or reconstructs the current approved region.
 - Structured mode follows the reviewed reading order.
+- Dyslexic mode presents the same reviewed text with student-controlled spacing,
+  line length, and dyslexic-friendly typography.
 - Caption mode displays instructor-approved or live caption segments.
 - Audio mode speaks concise reviewed descriptions only when requested.
 - Locate mode translates normalized position into screen-relative language or

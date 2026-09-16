@@ -82,7 +82,7 @@ describe('StudentExperience', () => {
   it('offers the AR tab only when the pack carries an AR scene', () => {
     renderExperience(validEvent, validPack);
     const tabs = Array.from(container!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
-    expect(tabs).toEqual(['Focus', 'Read', 'Hear']);
+    expect(tabs).toEqual(['Focus', 'Read', 'Hear', 'Dyslexic']);
     expect(container!.querySelector('#mode-tab-ar')).toBeNull();
   });
 
@@ -95,6 +95,18 @@ describe('StudentExperience', () => {
     ));
     expect(container.textContent).toContain('Focus view');
     expect(container.textContent).not.toContain('Synchronized AR');
+  });
+
+  it('offers a local Dyslexic text mode with an explicit toggle', async () => {
+    const harness = renderExperience();
+    const tab = Array.from(container!.querySelectorAll('[role="tab"]')).find((item) => item.textContent === 'Dyslexic') as HTMLButtonElement;
+    await act(async () => tab.click());
+    expect(harness.preferences.mode).toBe('dyslexic');
+    expect(container?.textContent).toContain('Dyslexic-friendly text');
+    const toggle = container!.querySelector('.dyslexic-toggle') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    await act(async () => toggle.click());
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('switches to AR through the accessible mode tabs', async () => {
