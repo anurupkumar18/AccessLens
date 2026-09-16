@@ -8,6 +8,8 @@ import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pac
 import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
 import { RoleNav, type Role } from './RoleNav';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ThemeToggle } from './ThemeToggle';
+import { Wordmark } from './Wordmark';
 import { createDefaultClient } from './createDefaultClient';
 
 // Part 4's real relay when VITE_ACCESSLENS_WS_URL is configured (.env.local);
@@ -71,18 +73,20 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
   return (
     <ErrorBoundary>
       <main>
-        <header>
-          <div>
-            <h1>AccessLens</h1>
-            <p>Accessible, instructor-authorized lesson sharing</p>
+        <header className="masthead">
+          <div className="topbar">
+            <span className="mark" aria-hidden="true" />
+            <RoleNav role={role} onSelect={setRole} />
+            <ThemeToggle />
+            {fullTabUrl && (
+              <a className="full-tab-link" href={fullTabUrl} target="_blank" rel="noopener">
+                Open in a full tab
+              </a>
+            )}
           </div>
-          {fullTabUrl && (
-            <a className="full-tab-link" href={fullTabUrl} target="_blank" rel="noopener">
-              Open in a full tab
-            </a>
-          )}
+          <Wordmark />
+          <p className="tagline">Accessible, instructor-authorized lesson sharing</p>
         </header>
-        <RoleNav role={role} onSelect={setRole} />
         {role === 'instructor' ? (
           <>
             {!pack && (

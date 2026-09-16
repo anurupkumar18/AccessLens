@@ -103,11 +103,15 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
   ];
 
   return (
-    <section aria-labelledby="instructor-heading">
+    <section className="instructor" aria-labelledby="instructor-heading">
+      <div className="section-rule">
+        <p className="eyebrow"><span aria-hidden="true">/ </span>Instructor console</p>
+        <span className="rule-mark" aria-hidden="true" />
+      </div>
       <h2 id="instructor-heading">Instructor</h2>
-      <p className="muted">Pack: {pack.title} · v{pack.version}</p>
+      <p className="muted">Pack: <mark>{pack.title}</mark> · v{pack.version}</p>
       <div className="panel-grid">
-      <div>
+      <div className="console">
       <div className="status" data-tone={b.tone}>
         <span className="glyph" aria-hidden="true">{b.glyph}</span>
         <span className="label">{b.label}</span>
@@ -132,7 +136,7 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
       </div>
 
       </div>
-      <div>
+      <div className="guide">
       <h3>How this works</h3>
       <ol className="steps" aria-label="Session steps">
         {steps.map((text, i) => {

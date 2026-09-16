@@ -81,13 +81,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       aria-labelledby="student-title"
       style={{ fontSize: `${preferences.textScale}rem` }}
     >
-      <div className="student-heading">
-        <div>
-          <p className="eyebrow">Student extension</p>
-          <h2 id="student-title">Live lesson</h2>
-        </div>
+      <div className="section-rule">
+        <p className="eyebrow"><span aria-hidden="true">/ </span>Student extension</p>
         <span className={`connection-pill ${live.status}`}>{live.status}</span>
       </div>
+      <h2 id="student-title">Live lesson</h2>
 
       <form className="join-form" onSubmit={(submitEvent) => { submitEvent.preventDefault(); void join(); }}>
         <label htmlFor="session-code">Join code from your instructor</label>
