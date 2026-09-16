@@ -115,7 +115,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-29 | Two internal critiques of this project (a harsh criterion-by-criterion scorecard, and a proposed scope-narrowing revision responding to it) existed only on one person's machine, uncommitted, since 2026-09-15, and were never seen by any of the other four contributors. Nobody can be aligned on a decision they have never seen. Compounding it: the scorecard is now 24h stale against what's actually built, and needs updating with real external research before anyone acts on it. | All five parts | Tomorrow's in-person product-direction meeting | OPEN | `docs/TEAM_ALIGNMENT_CHECK.md` is now a non-blocking meeting agenda. Anurup has responded; Jacob, Kunj, Omar, and Prachi are invited to respond before or during the meeting. Scoped implementation against the current extension-first MVP may continue. |
 | T-30 | The agent-first delivery system is additive: ticket files, claims, immutable updates, generated context, and validation must not become a second mutable product or risk register. Its initial portfolio intentionally keeps current-MVP proof P0 and durable identity/content work deferred behind human decisions. | Part 1 | Agent handoffs and release evidence | OPEN | `docs/AGENT_OPERATING_CONTEXT.md`; `docs/work/`; `make work-board-check`; AL-090 is in review |
 | T-31 | **Remote audio needs a second human reviewer.** Instructor live captions stream microphone audio to Amazon Transcribe (charter A2 exception, off by default, consent text at the control). The charter's human review gate requires a second reviewer for remote media before merge. | Omar Rizwan | Merging `ui/blacksmith-revamp` | OPEN | `docs/work/decisions/2026-09-16-transcribe-live-captions.md`; `services/ai-gateway/README.md` |
-| T-32 | **AI routes are built but not deployed.** `services/ai-gateway` (Bedrock Ask, Polly speech, Transcribe caption URLs) is in the CDK stack and passes its tests with fakes, but the hackathon credentials had expired, so nothing has been called against real AWS and `VITE_ACCESSLENS_AI_URL` is unset. | Omar Rizwan | Captions, Ask, Polly in the demo | OPEN | Deploy per `services/ai-gateway/README.md`, then `npx tsx services/ai-gateway/scripts/smoke-test.ts <AiApiUrl> <WebSocketUrl>` |
+| T-32 | **AI routes are built but not deployed.** `services/ai-gateway` (Bedrock Ask, Polly speech, Transcribe caption URLs) is in the CDK stack and passes its tests with fakes, but the hackathon credentials had expired, so nothing has been called against real AWS and `VITE_ACCESSLENS_AI_URL` is unset. | Omar Rizwan | Captions, Ask, Polly in the demo | CLOSED | Deployed 2026-09-16 (`AccessLensLiveSession.AiApiUrl`); `smoke-test.ts` all checks passed against the deployed routes (Ask answered with citation in 3.3 s, off-topic and injection declined, Polly mp3, Transcribe returned the spoken words); relay `integration-test.mjs` passed; deployed relay accepts text captions and rejects `caption-invalid` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. Shared-contract second review and deployed-relay update remain before closure. |
@@ -860,3 +860,24 @@ services, `cdk deploy`, set `VITE_ACCESSLENS_AI_URL`, then run the smoke test,
 which streams Polly speech through Transcribe with the extension's own framing.
 Chrome does not show a microphone prompt in the side panel; captions must be
 started from "Open in a full tab".
+
+### RL-036 — 2026-09-16 — Part 4 + Part 1 — Omar Rizwan
+
+**Landed:** the AI routes and the caption-carrying relay are deployed to the
+hackathon account (`cdk deploy AccessLensLiveSession`, added only the AI API,
+Lambda, role, and log group; relay code updated in place). Verified against real
+AWS: `services/ai-gateway/scripts/smoke-test.ts` and the relay
+`integration-test.mjs` both pass, and the deployed relay delivers a text
+`caption.appended` to a student while refusing one carrying audio.
+`services/ai-gateway/scripts/local-server.ts` runs the Lambda's handler on
+127.0.0.1 for testing before a deploy. Build fix: Vite inlined the caption audio
+worklet as a `data:` URL, which the extension CSP blocks (confirmed in Chromium
+with the unpacked extension), so `vite.config.ts` now never inlines
+`*.worklet.js`, and the extension-assets plugin honours `--outDir`.
+**Threads touched:** T-32 closed; T-31 still open (second reviewer for remote
+audio before merge).
+**Next agent needs to know:** captions worked on `npx vite` but would have failed
+only inside the installed extension; test voice features from the unpacked
+build, not just the dev server. Build a demo copy with endpoints via
+`npx vite build --outDir .cache/demo-extension` (gitignored) and keep the
+committed `dist/` free of endpoints. Hackathon credentials last a few hours.
