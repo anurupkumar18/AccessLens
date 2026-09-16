@@ -245,14 +245,21 @@ describe('handler', () => {
   it('answers the CORS preflight without touching the model', async () => {
     const response = await handler({ requestContext: { http: { method: 'OPTIONS' } } });
     expect(response.statusCode).toBe(204);
-    expect(response.headers['access-control-allow-origin']).toBe('*');
+    expect((response.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
     expect(send).not.toHaveBeenCalled();
   });
 
   it('returns CORS headers on every response', async () => {
     const response = await handler(http({ events: TIMELINE, pack: PACK }));
-    expect(response.headers['access-control-allow-origin']).toBe('*');
-    expect(response.headers['access-control-allow-methods']).toContain('POST');
+    expect((response.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
   });
 
   it('says nothing changed without spending a model call', async () => {
@@ -338,7 +345,11 @@ describe('handler', () => {
 
     expect(response.statusCode).toBe(502);
     expect(parse(response).error).toContain('could not reach the model');
-    expect(response.headers['access-control-allow-origin']).toBe('*');
+    expect((response.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
   });
 
   it('returns a clean 502 when the model returns nothing usable', async () => {

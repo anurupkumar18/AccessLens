@@ -142,14 +142,21 @@ describe('handler', () => {
   it('answers a CORS preflight without reading the body', async () => {
     const response = await handler({ requestContext: { http: { method: 'OPTIONS' } } });
     expect(response.statusCode).toBe(204);
-    expect(response.headers['access-control-allow-origin']).toBe('*');
-    expect(response.headers['access-control-allow-methods']).toContain('POST');
+    expect((response.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
   });
 
   it('sends CORS headers on errors too, so the extension can read them', async () => {
     const response = await post('not json at all');
     expect(response.statusCode).toBe(400);
-    expect(response.headers['access-control-allow-origin']).toBe('*');
+    expect((response.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
   });
 
   it('rejects a method it does not serve', async () => {
@@ -202,7 +209,11 @@ describe('handler', () => {
     expect(JSON.parse(response.body).error).toBe('transcription_failed');
     // The SDK message can quote the failed request, and the request is audio.
     expect(response.body).not.toContain('stream closed');
-    expect(response.headers['access-control-allow-origin']).toBe('*');
+    expect((response.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
   });
 
   it('rejects audio over the size limit with a clear 400', async () => {

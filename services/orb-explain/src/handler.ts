@@ -79,14 +79,18 @@ export interface HttpEvent {
   requestContext?: { http?: { method?: string } };
 }
 
-const CORS = {
-  // The content script runs on whatever page the student is reading, so the
-  // origin is genuinely arbitrary. The endpoint holds no user data and no
-  // credentials of the caller's, so it authorises nothing by origin.
-  'access-control-allow-origin': '*',
-  'access-control-allow-headers': 'content-type',
-  'access-control-allow-methods': 'POST,OPTIONS',
-};
+/**
+ * CORS is owned by the Function URL, not by this handler.
+ *
+ * Both used to set it, and a response carrying two `Access-Control-Allow-Origin`
+ * headers is rejected outright by browsers -- the request fails CORS and `fetch`
+ * throws, which reaches a student as "could not reach the service". It was
+ * invisible to every curl test, because curl does not enforce CORS at all.
+ *
+ * The Function URL answers the preflight itself, so OPTIONS never reaches this
+ * code. The constant stays so response shapes are unchanged; it is just empty.
+ */
+const CORS: Record<string, string> = {};
 
 const json = (status: number, body: unknown) => ({
   statusCode: status,

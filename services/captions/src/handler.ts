@@ -27,13 +27,18 @@ export const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 /** Base64 costs 4 characters per 3 bytes; +1KB of slack for padding and whitespace. */
 const MAX_AUDIO_BASE64_CHARS = Math.ceil((MAX_AUDIO_BYTES * 4) / 3) + 1024;
 
-const CORS_HEADERS: Record<string, string> = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'POST, OPTIONS',
-  'access-control-allow-headers': 'content-type',
-  'access-control-max-age': '86400',
-  vary: 'origin',
-};
+/**
+ * CORS is owned by the Function URL, not by this handler.
+ *
+ * Both used to set it, and a response carrying two `Access-Control-Allow-Origin`
+ * headers is rejected outright by browsers -- the request fails CORS and `fetch`
+ * throws, which reaches a student as "could not reach the service". It was
+ * invisible to every curl test, because curl does not enforce CORS at all.
+ *
+ * The Function URL answers the preflight itself, so OPTIONS never reaches this
+ * code. The constant stays so response shapes are unchanged; it is just empty.
+ */
+const CORS_HEADERS: Record<string, string> = {};
 
 interface FunctionUrlEvent {
   requestContext?: { http?: { method?: string } } | undefined;

@@ -326,14 +326,21 @@ describe('handler', () => {
   it('answers the CORS preflight without touching AWS', async () => {
     const result = await handler({ requestContext: { http: { method: 'OPTIONS' } } });
     expect(result.statusCode).toBe(204);
-    expect(result.headers['access-control-allow-origin']).toBe('*');
-    expect(result.headers['access-control-allow-methods']).toContain('POST');
+    expect((result.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
     expect(translateCalls).toHaveLength(0);
   });
 
   it('puts permissive CORS on real responses too', async () => {
     const result = await handler(post({ text: 'the cell', targetLang: 'es' }));
-    expect(result.headers['access-control-allow-origin']).toBe('*');
+    expect((result.headers as Record<string, string>)['access-control-allow-origin']).toBeUndefined();
+    // The Function URL sets CORS. If the handler sets it too the response
+    // carries two Access-Control-Allow-Origin headers, browsers reject it
+    // outright, and fetch throws -- which a student sees as "could not reach
+    // the service". curl never catches this, because curl ignores CORS.
   });
 
   it('marks output as reviewed-translated, never generated', async () => {

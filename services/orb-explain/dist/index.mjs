@@ -24,14 +24,7 @@ function splitSvg(reply) {
   const text = reply.replace(fence[0], "").trim();
   return { text: text || "A diagram of the concept on this page.", svg };
 }
-var CORS = {
-  // The content script runs on whatever page the student is reading, so the
-  // origin is genuinely arbitrary. The endpoint holds no user data and no
-  // credentials of the caller's, so it authorises nothing by origin.
-  "access-control-allow-origin": "*",
-  "access-control-allow-headers": "content-type",
-  "access-control-allow-methods": "POST,OPTIONS"
-};
+var CORS = {};
 var json = (status, body) => ({
   statusCode: status,
   headers: { "content-type": "application/json", ...CORS },
