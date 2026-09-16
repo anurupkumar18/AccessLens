@@ -120,7 +120,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. **The second shared-contract review is now done** (`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`): stop-retains-session and restart-resumes-session are confirmed, base-only is confirmed against media/identity/preference but **not** enforced relay-side for asset/region (T-31). The existing endpoint was independently re-probed and still rejects `capture.stopped` as `event-type-not-allowlisted`. `2d04fad` separately prevents an invalid inbound lifecycle event from silently leaving a student marked live (T-33, closed). Deployed-relay update and T-31/T-32 remain before closure. |
 | T-31 | `capture.stopped` is base-only in `LiveEventSchema` and `live-event.schema.json`, but neither `services/live-session/src/rules.ts` nor `reference_event_check.py` enforces that server-side. A `capture.stopped` carrying a real `assetId` and `regionId` is accepted and stored as the session's latest state, while the identical fields on `source.unmatched` are refused as `unmatched-event-names-content:*`. The media/identity/preference half is safe — `frameData`, `studentId`, and `preferences` all bounce off the `KNOWN_FIELDS` allowlist — so this is client-trust hardening, not a demo-blocking defect: the shipped controller's `Emittable` type cannot express it. But `rules.ts`'s own docstring states the principle it misses here, and charter A9 earned the guard for the sibling type. Fixing it is additive in two files plus a parity fixture. Same shape of gap AL-050 closed for `caption`'s field *contents* this session — this one is about `assetId`/`regionId` *pack membership* on `capture.stopped` specifically. | Part 4 + Part 5 | AL-003 deployment claim | OPEN | Verified by running `reference_event_check.check_event` directly; `docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md` |
-| T-32 | `Relay.resume()` and the `$connect` route that reaches it have **no test anywhere** — there is no `handler.test.ts`, and `relay.test.ts` never calls `resume`. This is not a dormant path: `WebSocketSessionClient` reconnects by presenting its stored capability as `$connect?sessionId=…&capability=…`, so every real network blip in the demo goes through untested code, and `resume` is also the only way a fresh connection can recover an **instructor** role. AL-004's bench does not cover it either — its "rejoining student" is a brand-new anonymous `join`, which is the other branch. | Part 4 | Reconnect claims, AL-004 evidence | OPEN | `services/live-session/test/` has no handler test; `grep -rn '\.resume(' services/live-session/test` is empty; `webSocketSessionClient.ts` builds the capability query string |
+| T-32 | `Relay.resume()` and the `$connect` route that reaches it have **no test anywhere** — there is no `handler.test.ts`, and `relay.test.ts` never calls `resume`. This is not a dormant path: `WebSocketSessionClient` reconnects by presenting its stored capability as `$connect?sessionId=…&capability=…`, so every real network blip in the demo goes through untested code, and `resume` is also the only way a fresh connection can recover an **instructor** role. AL-004's bench does not cover it either — its "rejoining student" is a brand-new anonymous `join`, which is the other branch. AL-055 (integrated from `ui/blacksmith-revamp`) works around the specific symptom client-side — a reconnecting student now sends a fresh `join` rather than trusting `resume`'s catch-up, which the deployed relay posts during `$connect` before API Gateway can deliver it — but `resume` itself, and instructor-role reconnect recovery, remain untested. | Part 4 | Reconnect claims, AL-004 evidence | OPEN | `services/live-session/test/` has no handler test; `grep -rn '\.resume(' services/live-session/test` is empty; `webSocketSessionClient.ts` builds the capability query string |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | CLOSED | Pinned to 1 by the relay, matching Part 5's reference: `sequence: 0` is refused as `sequence-not-a-positive-integer` (`services/live-session/src/rules.ts`, asserted by the parity test). The shared Zod contract still permits 0, so a client can construct one — the relay is what refuses it |
 
 ---
@@ -1239,5 +1239,29 @@ checkmark didn't need this, it already sits under `aria-hidden="true"`.
 **Threads touched:** none new.
 **Next agent needs to know:** verify the body-font fix visually during the
 next real unpacked-extension QA pass, since this environment cannot load the
-extension at its real `chrome-extension://` origin. `94f0047`'s reconnect/
-`close()`-race fixes in `webSocketSessionClient.ts` are still unevaluated.
+extension at its real `chrome-extension://` origin.
+
+### RL-055 — 2026-09-16 — cross-cutting — Codex
+
+**Landed:** AL-055, closing out the `94f0047` evaluation flagged in RL-053/
+RL-054. `services/live-session/src/client/webSocketSessionClient.ts` is
+entirely independent of `ui/blacksmith-revamp`'s UI restyle, so extracted a
+scoped diff (`git diff 94f0047~1 94f0047 -- <file> <its test>`) and applied
+it with `git apply` — clean, no conflicts, since neither branch had touched
+that file since diverging. Three fixes: reconnect sends a fresh `join`
+instead of trusting the relay's `resume` catch-up (which the deployed relay
+posts during `$connect`, before API Gateway can actually deliver it — it
+never arrives); retry extended from an effective ~9s to two minutes, plus an
+immediate retry on the browser's `online` event; `close()` now waits briefly
+for in-flight events to be acknowledged, fixing a race where a close sent
+alongside the final `session.ended` could reach the relay first and get
+that event refused.
+**Threads touched:** T-32 annotated — the specific symptom (student reconnect
+losing catch-up) is worked around client-side, but `resume()` itself and
+instructor-role reconnect recovery remain untested server-side.
+**Next agent needs to know:** this closes the `ui/blacksmith-revamp`
+evaluation. What's left on that branch (the AI gateway, its own independently-
+built captions, the dyslexic mode, the full UI restyle) is a governance
+decision for the team, not further extraction work — see RL-053.
+Real-device reconnect testing against a deployed relay is still blocked on
+AWS credentials this session doesn't have.

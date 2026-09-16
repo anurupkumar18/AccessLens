@@ -68,15 +68,22 @@ const capability = (role: 'instructor' | 'student'): RoleCapability => ({
 function make() {
   FakeSocket.instances = [];
   const timers: (() => void)[] = [];
+  const clock = { now: Date.parse('2026-09-15T15:30:00.000Z') };
+  const network = new EventTarget();
   const client = new WebSocketSessionClient({
     url: 'wss://relay.example/live',
     socketFactory: url => new FakeSocket(url) as never,
     setTimeoutFn: fn => timers.push(fn as () => void),
+    now: () => clock.now,
+    networkEvents: network,
     backoffMs: [1, 1, 1],
+    retryForMs: 60_000,
   });
   return {
     client,
     timers,
+    clock,
+    network,
     latest: () => FakeSocket.instances.at(-1)!,
     runTimers: () => {
       const queued = timers.splice(0);
@@ -209,7 +216,7 @@ describe('WebSocketSessionClient', () => {
     expect(statuses).toEqual([true, false, true]);
   });
 
-  it('reports disconnected once the backoff list is exhausted and it stops trying', () => {
+  it('reports disconnected while it is still retrying', () => {
     const h = make();
     const statuses: boolean[] = [];
     h.client.onConnectionChange(connected => statuses.push(connected));
@@ -280,7 +287,7 @@ describe('WebSocketSessionClient', () => {
     expect(FakeSocket.instances).toHaveLength(before);
   });
 
-  it('gives up reconnecting once the backoff list is exhausted', () => {
+  it('keeps retrying past the backoff list, then gives up after the retry window', () => {
     const h = make();
     h.client.create('sess-demo-0001').catch(() => {});
     h.latest().open();
@@ -289,8 +296,96 @@ describe('WebSocketSessionClient', () => {
       h.latest().drop();
       h.runTimers();
     }
-    // Three backoff entries means at most three reconnects after the original.
-    expect(FakeSocket.instances.length).toBeLessThanOrEqual(4);
+    // A drop longer than three backoff steps still recovers by itself.
+    expect(FakeSocket.instances).toHaveLength(11);
+
+    h.clock.now += 61_000;
+    h.latest().drop();
+    h.runTimers();
+    expect(FakeSocket.instances).toHaveLength(11);
+  });
+
+  it('starts retrying again when the browser comes back online', () => {
+    const h = make();
+    h.client.create('sess-demo-0001').catch(() => {});
+    h.latest().open();
+    h.latest().drop();
+    h.clock.now += 61_000;
+    h.runTimers();
+    h.latest().drop();
+    h.runTimers();
+    const before = FakeSocket.instances.length;
+
+    h.network.dispatchEvent(new Event('online'));
+    expect(FakeSocket.instances).toHaveLength(before + 1);
+  });
+
+  it('stops retrying once its capability has expired', async () => {
+    const h = make();
+    const promise = h.client.create('sess-demo-0001');
+    h.latest().open();
+    h.latest().deliver({ kind: 'capability', capability: capability('instructor') });
+    await promise;
+
+    h.clock.now = Date.parse('2026-09-15T19:00:01.000Z');
+    h.latest().drop();
+    h.runTimers();
+    expect(FakeSocket.instances).toHaveLength(1);
+  });
+
+  it('a reconnected student joins again to be caught up; an instructor does not', async () => {
+    const student = make();
+    const joined = student.client.join('sess-demo-0001');
+    student.latest().open();
+    student.latest().deliver({ kind: 'capability', capability: capability('student') });
+    await joined;
+    student.latest().drop();
+    student.runTimers();
+    student.latest().open();
+    expect(student.latest().messages()).toEqual([
+      { kind: 'join', sessionId: 'sess-demo-0001', role: 'student' },
+    ]);
+
+    const instructor = make();
+    const created = instructor.client.create('sess-demo-0001');
+    instructor.latest().open();
+    instructor.latest().deliver({ kind: 'capability', capability: capability('instructor') });
+    await created;
+    instructor.latest().drop();
+    instructor.runTimers();
+    instructor.latest().open();
+    expect(instructor.latest().messages()).toEqual([]);
+  });
+
+  it('waits for the last event to be acknowledged before sending close', async () => {
+    const h = make();
+    const promise = h.client.create('sess-demo-0001');
+    h.latest().open();
+    h.latest().deliver({ kind: 'capability', capability: capability('instructor') });
+    await promise;
+    h.timers.length = 0;
+
+    h.client.send({ type: 'session.ended', sequence: 9 });
+    h.client.close();
+    const kinds = () => h.latest().messages().map(m => m.kind);
+    expect(kinds()).toEqual(['create', 'event']);
+
+    h.latest().deliver({ kind: 'accepted' });
+    expect(kinds()).toEqual(['create', 'event', 'close']);
+  });
+
+  it('sends close anyway if the acknowledgement never comes', async () => {
+    const h = make();
+    const promise = h.client.create('sess-demo-0001');
+    h.latest().open();
+    h.latest().deliver({ kind: 'capability', capability: capability('instructor') });
+    await promise;
+    h.timers.length = 0;
+
+    h.client.send({ type: 'session.ended', sequence: 9 });
+    h.client.close();
+    h.runTimers();
+    expect(h.latest().messages().at(-1)).toEqual({ kind: 'close', sessionId: 'sess-demo-0001' });
   });
 
   it('ignores malformed frames rather than throwing into the socket callback', () => {
