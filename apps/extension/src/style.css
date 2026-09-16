@@ -370,6 +370,8 @@ input[type='range'] { accent-color: var(--ink); }
 .review-progress { margin-top: .75rem; padding: .75rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
 .review-progress p { margin: .55rem 0 0; font-size: .9em; }
 .review-content { margin-top: 1rem; }
+.camera-source { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--line-strong); border-left: 4px solid var(--warn); border-radius: var(--r-sm); background: var(--paper); }
+.camera-source h3 { margin-top: 0; }
 .student-experience.font-system { font-family: var(--sans); }
 .student-experience.font-serif { font-family: Georgia, 'Times New Roman', serif; }
 .student-experience.font-monospace { font-family: var(--mono); }
