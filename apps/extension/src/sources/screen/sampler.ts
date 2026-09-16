@@ -1,5 +1,6 @@
 import type { CaptureStream } from './captureHost';
 import { fingerprintFrame } from './fingerprint';
+import { cropToAspect } from './letterbox';
 
 export type SchedulerHandle = unknown;
 
@@ -26,6 +27,7 @@ export interface Sampler {
 
 /**
  * Bounded-rate loop over a CaptureStream. Each tick samples one frame,
+ * crops any letterbox or pillarbox bars down to the slide aspect,
  * fingerprints it, and drops it: the frame never leaves this function's
  * stack. Only the fingerprint string (or null when no frame was available)
  * reaches the callback.
@@ -43,7 +45,7 @@ export function createSampler(
     if (!running) return;
     handle = null;
     const frame = stream.sampleFrame();
-    const fingerprint = frame ? fingerprintFrame(frame) : null;
+    const fingerprint = frame ? fingerprintFrame(cropToAspect(frame)) : null;
     onSample(fingerprint);
     if (running && handle === null) handle = scheduler.schedule(tick, intervalMs);
   }

@@ -150,3 +150,17 @@ the README cannot drift from the code; `createSampler` and `Scheduler` are
 exported because the instructor module consumes them and the fakes implement
 them; `assertPackFingerprints` is exported so the controller can fail loudly
 on a pack that skipped the CLI.
+
+## Letterbox handling
+
+Presentation viewers centre the 16:9 slide inside the shared frame and pad
+the rest with bars: Google Slides present mode in a tab, Chrome's PDF
+viewer, a windowed Keynote. The dhash12 grid covers the whole frame, so the
+bars shift every block boundary. Measured on the HNSW pack, a 4:3 tab
+pushed slide-02 to distance 22 with a margin of 8 (ambiguous) and a square
+viewport matched slide-04 to the wrong slide. `cropToAspect` in
+`letterbox.ts` takes the centred 16:9 region before fingerprinting. It is
+pure geometry, never content-based, so a slide with a uniform edge is cropped
+identically to any other and the pack fingerprints stay valid. With the crop
+the same frames are within 4 bits of the pack fingerprint
+(`letterbox.test.ts`).
