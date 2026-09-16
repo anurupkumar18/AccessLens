@@ -6,4 +6,4 @@ export default defineConfig({ plugins: [react(), { name: 'extension-assets', clo
   // .worktrees/, each a full checkout. Without this, `vitest run` at the
   // repository root collects every lane's copy of every test and reports a
   // test count that has nothing to do with this tree.
-  test: { exclude: ['**/node_modules/**', '**/dist/**', '**/.worktrees/**'] } });
+  test: { exclude: ['**/node_modules/**', '**/dist/**', '**/.worktrees/**', '**/cdk.out/**'] } });

@@ -167,9 +167,13 @@ curl --fail-with-body --silent --show-error \
 The `status` moves through `ingesting` (LibreOffice/Poppler render the deck
 to PNGs and text), `describing` (the deck analyst writes `lesson.json`),
 `visualizing` (every slide is described and given Polly audio, five slides at
-a time), and settles at `review`. Expect three to six minutes for the
-eight-slide demo deck; the first run adds a container cold start of a few
-seconds. `slides` fills in as each slide finishes. No visualization stages are
+a time), and settles at `review`. Measured on the eight-slide demo deck
+(execution `9ec32fb5`, 2026-09-16): ingest 6 s, deck analyst 10 s, the
+per-slide map 26 s, so `review` in about 42 s from `StartExecution`; the
+first run of a fresh deploy adds a container cold start of a few seconds.
+Review plus publish through the API took about 35 s more, and the
+execution ended `SUCCEEDED` 77 s after it started. `slides` fills in as
+each slide finishes. No visualization stages are
 deployed yet, so every slide reports `visualizationStatus: "no-visual"` — a
 clean absence, which is the spec's designed outcome for a slide with no
 verified interactive.

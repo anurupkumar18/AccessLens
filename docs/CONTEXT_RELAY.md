@@ -62,7 +62,7 @@ during the build.
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
 | 4. AWS live service | UNOWNED | `docs/aws-access-verification` (unmerged) | Not started as a service. Recon only: the hackathon AWS account allows exactly one Bedrock model (`us.anthropic.claude-sonnet-4-6`), Polly/Translate respond, and the write path for Lambda/DynamoDB/API Gateway/S3 is unverified. No `infra/` or `services/live-session/`. | `git log origin/docs/aws-access-verification` |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
-| 6. Authoring pipeline and visualization | Jacob | `workstream/6-authoring` | Claimed. Building the single-upload authoring pipeline from `docs/VISUALIZATION_SYSTEM.md`: API-first authoring plane (`infra/`, `services/`, `apps/viewer/`), course-profile retrieval, and the pack/visualization contracts. In progress. | `docs/VISUALIZATION_SYSTEM.md`, `docs/prompts/viz-system-build.md` |
+| 6. Authoring pipeline and visualization | Jacob | `workstream/6-authoring` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, RL-026 |
 
 **The single largest risk moved again.** Parts 1, 2, 3, and 5 are all on the
 integration branch now with `make check` green (181 extension tests, 61 pack
@@ -617,3 +617,47 @@ region, plus a new standalone `ArtifactManifest` contract). `LiveEventSchema`
 gains no types; `asset.changed` and `region.changed` already carry everything
 the Visualize mode needs. Part 5's `check_contract_conformance.py` is kept
 passing in the same commit as every schema change.
+
+### RL-026 — 2026-09-16 — Part 6 — Jacob
+
+**Landed:** the authoring API is a working product on AWS. Stack
+`AccessLensAuthoring` (`us-east-1`): API Gateway + bearer token, S3 decks /
+packs / catalog / artifacts, DynamoDB jobs, CloudFront serving packs, media
+and the viewer sandbox, and a Step Functions Standard workflow
+(`services/publish/workflow.ts`) over an ingest container (LibreOffice +
+Poppler), the deck analyst, the pack author and Polly audio, five slides at
+a time. Seven real jobs were run; the last (`9ec32fb5-918f-49f0-ad9f-30b7db5eff85`)
+went upload → `review` in 42 s, was reviewed and published through the API,
+and its execution ended `SUCCEEDED` at 77 s. Pack `hnsw-explainer` versions 1
+and 2 are on CloudFront with every slide image and audio file answering 200,
+and the extension's student view renders version 2 through the Part 2
+renderers (`apps/extension/src/shell/App.published.test.tsx`, run live).
+Model-behaviour evals on Bedrock: pack author 8/8 tuned and 7/7 held-out;
+planner chooses `none` on title slides and `retrieve` elsewhere. Local
+gates: `make check` green.
+**Fixed on the way, each by a real invocation, not a guess:** ingest bundle
+had to be CommonJS (V3); the Map died on an absent `instructorHint` (V4);
+pack author, audio and publish Lambdas built no default AWS client (V3/V4);
+the workflow never wrote slides onto the job record so review rejected every
+asset (V4/V5); and two publishers (the route and a workflow stage) could
+have written a second version from a poll race, now one publisher, the
+route, with `PutObject` only under `packs/`, `media/`, `artifacts/` (D10).
+**Not deployed:** the visualization branch (planner, route, adapter,
+generator, critic, harness) — implemented, unit- and eval-tested, wired
+conditionally in the workflow, held back because the catalog it retrieves
+from is one template stamped 150 times (D6) and the harness Lambda's
+Chromium image is unbuilt. Every slide reports `visualizationStatus:
+"no-visual"`, the spec's designed absence.
+**Threads touched:** T-25, T-26, T-28 exercised (contracts additive, remote
+pack loader in `packMedia.ts` under D7, no shell entry point built since the
+product is API-only under D2). T-29 escalated to D9: `origin/master` now
+carries Part 4's own `infra/` CDK app and the IBM Plex interface rebuild
+(merged directly, no PR), so this branch's `infra/` and relay numbering
+(RL-024/025/026, T-31/T-32) collide on merge. Nothing closed; D5, D6, D9
+await the user.
+**Next agent needs to know:** `docs/VIZ_HANDOFF.md` is the runbook for
+picking this up; `docs/DEPLOY.md` §5 has the measured timings; every user
+decision is in `docs/VIZ_DECISIONS.md`. The stack is `RemovalPolicy.DESTROY`
+throughout and `make destroy` removes it. Renumber this branch's relay
+entries and threads on merge (master is at RL-035 and T-30, and PR #12
+adds three more thread ids of its own starting where master stops).
