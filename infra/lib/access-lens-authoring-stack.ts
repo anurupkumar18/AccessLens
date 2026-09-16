@@ -10,11 +10,13 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { ROUTES, type RouteSpec } from '../../services/shared/api';
 import { AgentsExtension } from './agents-extension';
 import { HarnessExtension } from './harness-extension';
 import { IngestExtension } from './ingest-extension';
+import { PipelineExtensionPoints } from './pipeline-extension';
 import { StateMachinesExtension } from './state-machines-extension';
 import { TokenParameter } from './token-parameter';
 import { VectorsExtension } from './vectors-extension';
@@ -52,6 +54,7 @@ export class AccessLensAuthoringStack extends Stack {
   readonly documents: dynamodb.Table;
   readonly distribution: cloudfront.Distribution;
   readonly api: apigateway.HttpApi;
+  stateMachine!: sfn.StateMachine;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, { env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' }, ...props });
@@ -103,7 +106,7 @@ export class AccessLensAuthoringStack extends Stack {
     this.distribution.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     const viewerDeployment = new s3deploy.BucketDeployment(this, 'ViewerDeployment', {
-      sources: [s3deploy.Source.asset(`${ROOT}/infra/viewer`)],
+      sources: [s3deploy.Source.asset(`${ROOT}/apps/viewer/dist`)],
       destinationBucket: this.viewer,
       prune: true,
       retainOnDelete: false,
@@ -136,6 +139,16 @@ export class AccessLensAuthoringStack extends Stack {
     });
     this.api.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
+    const pipeline = new PipelineExtensionPoints(this, 'Pipeline', {
+      root: ROOT,
+      decks: this.decks,
+      packs: this.packs,
+      catalog: this.catalog,
+      jobs: this.jobs,
+      publicBaseUrl: `https://${this.distribution.domainName}`,
+    });
+    this.stateMachine = pipeline.stateMachine;
+
     for (const route of ROUTES) {
       const handlerFile = API_HANDLER_BY_OPERATION[route.operationId];
       if (!handlerFile) throw new Error(`No Lambda handler mapped for ${route.operationId}`);
@@ -156,6 +169,7 @@ export class AccessLensAuthoringStack extends Stack {
     new StateMachinesExtension(this, 'StateMachinesExtension');
     new VectorsExtension(this, 'VectorsExtension');
 
+    this.output('StateMachineArn', this.stateMachine.stateMachineArn);
     this.output('ApiUrl', this.api.url ?? '');
     this.output('ViewerUrl', `https://${this.distribution.domainName}`);
     this.output('AssetBaseUrl', `https://${this.distribution.domainName}`);
@@ -216,8 +230,26 @@ export class AccessLensAuthoringStack extends Stack {
       case 'createUpload':
         return { DECKS_BUCKET: this.decks.bucketName };
       case 'createJob':
+        return {
+          JOBS_TABLE: this.jobs.tableName,
+          PACKS_BUCKET: this.packs.bucketName,
+          DECKS_BUCKET: this.decks.bucketName,
+          CATALOG_BUCKET: this.catalog.bucketName,
+          STATE_MACHINE_ARN: this.stateMachine.stateMachineArn,
+          ASSET_BASE_URL: `https://${this.distribution.domainName}`,
+        };
       case 'getJob':
         return { JOBS_TABLE: this.jobs.tableName };
+      case 'getJobDraft':
+      case 'reviewJob':
+      case 'publishJob':
+        return {
+          JOBS_TABLE: this.jobs.tableName,
+          PACKS_BUCKET: this.packs.bucketName,
+          ARTIFACTS_BUCKET: this.artifacts.bucketName,
+          ASSET_BASE_URL: `https://${this.distribution.domainName}`,
+          PUBLIC_BASE_URL: `https://${this.distribution.domainName}`,
+        };
       case 'listPackVersions':
         return { PACKS_BUCKET: this.packs.bucketName, ASSET_BASE_URL: `https://${this.distribution.domainName}` };
       case 'getPack':
@@ -236,6 +268,22 @@ export class AccessLensAuthoringStack extends Stack {
         break;
       case 'createJob':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:PutItem'], resources: [this.jobs.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.decks.bucketArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['states:StartExecution'], resources: [this.stateMachine.stateMachineArn] }));
+        break;
+      case 'getJobDraft':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.jobs.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject', 's3:ListBucket'], resources: [this.packs.arnForObjects('staging/*'), this.packs.bucketArn] }));
+        break;
+      case 'reviewJob':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:UpdateItem'], resources: [this.jobs.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject', 's3:PutObject', 's3:ListBucket'], resources: [this.packs.arnForObjects('staging/*'), this.packs.bucketArn] }));
+        break;
+      case 'publishJob':
+        // The route only flips the job to publishing; the state machine's
+        // Publish stage is what writes packs/, media/, and artifacts/.
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:UpdateItem'], resources: [this.jobs.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject', 's3:ListBucket'], resources: [this.packs.arnForObjects('*'), this.packs.bucketArn] }));
         break;
       case 'getJob':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.jobs.tableArn] }));

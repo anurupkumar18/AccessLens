@@ -3,7 +3,7 @@ import { GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCom
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
-import { getJobDraft, publishJob, reviewJob } from '../publish/routes';
+import { getJobDraft as getJobDraftRoute, publishJob as publishJobRoute_, reviewJob as reviewJobRoute_ } from '../publish/routes';
 import {
   CreateJobRequestSchema,
   CreateUploadRequestSchema,
@@ -143,7 +143,7 @@ async function resolveUploadKey(uploadId: string, filename: string): Promise<str
 export const getJobDraft: OperationHandler = async event => {
   if (!jobsTable || !packsBucket) throw new ApiHttpError(500, 'configuration_error', 'The authoring storage is not configured.');
   const jobId = pathParameter(event, 'jobId');
-  const result = await getJobDraft({ jobId }, {
+  const result = await getJobDraftRoute({ jobId }, {
     dynamodb: ddb,
     s3: createPublishStore(packsBucket),
     jobsTableName: jobsTable,
@@ -157,7 +157,7 @@ export const reviewJobRoute: OperationHandler = async event => {
   if (!jobsTable) throw new ApiHttpError(500, 'configuration_error', 'The jobs table is not configured.');
   const jobId = pathParameter(event, 'jobId');
   const request = parseRequest(ReviewRequestSchema, parseJsonBody(event));
-  const result = await reviewJob({ jobId, decisions: request.decisions }, {
+  const result = await reviewJobRoute_({ jobId, decisions: request.decisions }, {
     dynamodb: ddb,
     s3: createPublishStore(packsBucket),
     jobsTableName: jobsTable,
@@ -168,7 +168,7 @@ export const reviewJobRoute: OperationHandler = async event => {
 export const publishJobRoute: OperationHandler = async event => {
   if (!jobsTable || !packsBucket) throw new ApiHttpError(500, 'configuration_error', 'The authoring storage is not configured.');
   const jobId = pathParameter(event, 'jobId');
-  const result = await publishJob({ jobId }, {
+  const result = await publishJobRoute_({ jobId }, {
     dynamodb: ddb,
     s3: createPublishStore(packsBucket),
     jobsTableName: jobsTable,

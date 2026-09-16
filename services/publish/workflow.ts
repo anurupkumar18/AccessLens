@@ -73,6 +73,14 @@ function catchToFailed(state: State): State {
  * only the record state writes a draft asset for review.
  */
 export function authoringStateMachine(arns: AuthoringLambdaArns): object {
+  // The visualization stages (spec section 8, stages 5 to 8) are wired only
+  // when every Lambda they need exists. A definition that names a Task with
+  // an undefined Resource is not a state machine, and a first deploy of the
+  // V3/V4 spine is a legitimate, spec-legal pipeline on its own.
+  const withVisualization = Boolean(
+    arns.planner && arns.route && arns.adapter && arns.generator && arns.critic && arns.recordVisualization,
+  );
+
   const perSlideStates: Record<string, State> = {
     PackAuthor: {
       ...lambdaTask(arns.packAuthor, 'Audio', '$.packAuthor'),
@@ -103,7 +111,9 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
     VisualizationStagesPassThrough: {
       Type: 'Pass',
       ResultPath: '$.visualizationSpine',
-      Next: 'SlideComplete',
+      // With the stages wired this leads into them; without, it is the named
+      // extension point the V4 spine always had, and the slide is finished.
+      Next: withVisualization ? 'SlideComplete' : 'FinishSlide',
     },
     // Historical name retained for old execution histories and definition
     // tests. It is now a no-op transition into Planner, not a terminal state.
@@ -269,11 +279,20 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
       Parameters: {
         'assetId.$': '$.assetId',
         'descriptionStatus.$': '$.packAuthor.status',
-        'visualizationStatus.$': '$.visualization.status',
+        ...(withVisualization
+          ? { 'visualizationStatus.$': '$.visualization.status' }
+          // With no visualization stages deployed every slide is a clean
+          // no-visual (spec section 8 fail behaviour, hard rule 5 intact):
+          // nothing unrendered can reach the instructor because nothing
+          // is produced at all.
+          : { visualizationStatus: 'no-visual' }),
       },
       End: true,
     },
   };
+  if (!withVisualization) {
+    for (const name of ['SlideComplete', 'Planner', 'Route', 'VisualizationRoute', 'MaterializeCatalogArtifact', 'Adapter', 'Generator', 'Critic', 'CriticOutcome', 'RepairBudget', 'PrepareAdapterRepair', 'PrepareGeneratorRepair', 'RecordVisualization', 'RecordNoVisualization']) delete perSlideStates[name];
+  }
 
   const states: Record<string, State> = {
     MarkIngesting: statusUpdate('ingesting', 'Ingest'),

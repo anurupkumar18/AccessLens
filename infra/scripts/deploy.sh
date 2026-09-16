@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+# CloudFront serves the real viewer -- the page whose ?mode=harness check
+# gates every artifact -- so it is built fresh here rather than deployed from
+# whatever dist/ happens to be checked in.
+npx vite build --config apps/viewer/vite.config.ts
+
 npx --yes cdk deploy --app "npx tsx infra/bin/app.ts" --require-approval never --outputs-file .cdk-outputs.json
 
 node --input-type=module <<'NODE'
