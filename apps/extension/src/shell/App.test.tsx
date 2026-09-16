@@ -6,6 +6,10 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { App } from './App';
 import { InMemorySessionClient } from '../shared/contracts';
 import { loadPreferences, resetPreferencesForTests } from '../shared/preferences';
+import { FakeCaptureHost, FakeScheduler, testPack } from '../sources/screen/fixtures';
+import { AccessPackSchema } from '../shared/contracts';
+
+const syntheticPack = AccessPackSchema.parse(testPack);
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -21,20 +25,30 @@ describe('App shell', () => {
     }
   });
 
-  it('lets the student view follow a fixture event sent from the instructor view, with no network client', () => {
+  it('lets the student view follow an instructor correction, with no network client', async () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     const client = new InMemorySessionClient();
+    const host = new FakeCaptureHost();
     const root = createRoot(container);
-    act(() => root.render(<App client={client} />));
+    act(() => root.render(<App client={client} pack={syntheticPack} host={host} scheduler={new FakeScheduler()} />));
 
-    const sendButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Send fixture event')!;
-    act(() => sendButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(host.calls).toEqual([]);
+    const startButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start')!;
+    await act(async () => { startButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    expect(host.calls).toEqual(['requestStream']);
+
+    const assetSelect = container.querySelector<HTMLSelectElement>('#correct-asset')!;
+    act(() => { assetSelect.value = 'slide-04'; assetSelect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const regionSelect = container.querySelector<HTMLSelectElement>('#correct-region')!;
+    act(() => { regionSelect.value = 'nucleolus'; regionSelect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const apply = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Apply correction')!;
+    await act(async () => { apply.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
 
     const studentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
     act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    expect(container.textContent).toContain('Following mitochondrion on cell-slide-03');
+    expect(container.textContent).toContain('Following nucleolus on slide-04');
   });
 
   it('persists the student reduced-motion preference to local storage only', async () => {

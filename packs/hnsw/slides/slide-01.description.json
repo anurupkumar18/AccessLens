@@ -1,0 +1,67 @@
+{
+  "title": "How HNSW Works",
+  "readingOrder": [
+    "title",
+    "brand-label",
+    "subtitle-label",
+    "body-text",
+    "hnsw-diagram"
+  ],
+  "regions": [
+    {
+      "regionId": "brand-label",
+      "bounds": {
+        "x": 0.05,
+        "y": 0.06,
+        "width": 0.1,
+        "height": 0.05
+      },
+      "shortDescription": "Brand name 'Quantiiv' in small white text in the top-left corner.",
+      "plainLanguage": "The word 'Quantiiv' appears in the top-left corner as a brand name."
+    },
+    {
+      "regionId": "subtitle-label",
+      "bounds": {
+        "x": 0.05,
+        "y": 0.62,
+        "width": 0.45,
+        "height": 0.06
+      },
+      "shortDescription": "Blue uppercase text reading 'ENGINEERING EXPLAINER', used as a category label above the main title.",
+      "plainLanguage": "A blue label above the main title that says 'ENGINEERING EXPLAINER'."
+    },
+    {
+      "regionId": "title",
+      "bounds": {
+        "x": 0.05,
+        "y": 0.67,
+        "width": 0.55,
+        "height": 0.12
+      },
+      "shortDescription": "Large bold white heading reading 'How HNSW Works'.",
+      "plainLanguage": "The main title reads 'How HNSW Works' in large white letters."
+    },
+    {
+      "regionId": "body-text",
+      "bounds": {
+        "x": 0.05,
+        "y": 0.81,
+        "width": 0.48,
+        "height": 0.1
+      },
+      "shortDescription": "White body text reading: 'Hierarchical Navigable Small Worlds — the graph index behind fast approximate nearest-neighbor search.'",
+      "plainLanguage": "A short description that says HNSW stands for Hierarchical Navigable Small Worlds, and it is the index used for fast approximate nearest-neighbor search."
+    },
+    {
+      "regionId": "hnsw-diagram",
+      "bounds": {
+        "x": 0.78,
+        "y": 0.5,
+        "width": 0.2,
+        "height": 0.42
+      },
+      "shortDescription": "A stylized diagram showing three stacked parallelogram-shaped layers connected by a vertical dashed line. Each layer contains blue circular nodes linked by lines. The bottom layer has a green node, suggesting a point of interest at the lowest level.",
+      "plainLanguage": "A simple drawing of three flat stacked layers, each with dots connected by lines, representing the layered graph structure of HNSW. A green dot marks one node on the bottom layer."
+    }
+  ]
+}

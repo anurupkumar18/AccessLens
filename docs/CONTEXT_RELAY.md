@@ -58,16 +58,19 @@ during the build.
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
-| 2. Instructor capture | Jacob | not yet created | Owner assigned in `0771bce`. No code yet under `apps/extension/src/instructor/` or `src/sources/screen/`. Everything needed to start is listed in section 6. | — |
-| 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
-| 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
-| 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`; PR #6 open for review follow-ups | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, and runbook-versus-pack checks. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
+| 2. Instructor capture | Jacob | merged as PR #8 | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
+| 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
+| 4. AWS live service | UNOWNED | `docs/aws-access-verification` (unmerged) | Not started as a service. Recon only: the hackathon AWS account allows exactly one Bedrock model (`us.anthropic.claude-sonnet-4-6`), Polly/Translate respond, and the write path for Lambda/DynamoDB/API Gateway/S3 is unverified. No `infra/` or `services/live-session/`. | `git log origin/docs/aws-access-verification` |
+| 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
 
-**The single largest risk in this project is still the second column**, though it
-moved today: Part 2 now has an owner. Parts 3 and 4 do not. Part 3 is the student
-experience and the required AR renderer, which is most of what the demo shows, and
-Part 4 is the transport it all runs over. Part 5 exists precisely so 2, 3, and 4
-can each start without waiting for the other two — see section 6.
+**The single largest risk moved again.** Parts 1, 2, 3, and 5 are all on the
+integration branch now with `make check` green (181 extension tests, 61 pack
+tests, 24 relay tests). Nobody owns Part 4, and Part 4 is the one thing that
+turns this from "one browser profile, `BroadcastChannel`" into an actual
+multi-device demo. The other new risk is process, not code: three independent
+ID collisions (two episodic `0040`/`0041` filenames, one `T-20` thread ID) were
+found and fixed only because someone merging noticed — see T-17/T-18, still
+open.
 
 ---
 
@@ -86,10 +89,10 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-02 | `assetId` is `required` on every `LiveEvent`, so `source.unmatched` cannot be expressed. Violates charter A9 and breaks the runbook's 2:00–2:30 beat. | Part 1 | — | CLOSED | `c3ddc27` made `LiveEventSchema` a per-type discriminated union; `source.unmatched` is now structurally unable to name an asset |
 | T-03 | `live-event.schema.json` omitted `regionId` and `pointer` that the Zod schema accepts, so Part 1's own fixture failed Part 1's own JSON Schema. | Part 1 | — | CLOSED | `c3ddc27` mirrors the Zod matrix in the JSON Schema, with ajv tests |
 | T-04 | The event contract had no `arState`, but AR is a required renderer (A10, A12). | Part 1 + Part 3 | — | CLOSED | `c3ddc27` adds `arState {hotspotId, action}` to `region.changed`. Part 5 dropped the `camera` field it had wanted — it is derivable from the hotspot in the pack |
-| T-05 | `access-pack.schema.json` now sets `additionalProperties: false` on the **asset** object too, which makes `arScene` illegal. AR is a required renderer and `SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack cannot carry the scene the MVP requires. Also blocks `mediaUri`, `subtitle`, region `label`, and the four root blocks. | Part 1 | Part 3, Part 5 | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §1–2 |
+| T-05 | `access-pack.schema.json` now sets `additionalProperties: false` on the **asset** object too, which makes `arScene` illegal. AR is a required renderer and `SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack cannot carry the scene the MVP requires. Also blocks `mediaUri`, `subtitle`, region `label`, and the four root blocks. | Part 1 | Part 3, Part 5 | CLOSED | PR #8 merged; `AccessPackSchema` and `access-pack.schema.json` both widened additively (`arScene`, `mediaUri`, `subtitle`, region `label`, `review`, `matching`, `arCameras`, `reservedReadingOrderIds`). `check_contract_conformance.py` on the integration branch reports all eight of these gaps CLOSED; only two documented, intentional gaps remain (caption payload, forbidden-assetId negative fixtures). |
 | T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract, which cannot express it until T-05 lets the pack carry `arScene`. | Part 1 + Part 3 | Part 3 | BLOCKED | Blocked on T-05 |
 | T-07 | CI does not run on the integration branch. `.github/workflows/check.yml` pushes only on `[main, master]`, and no check has run on PR #4 or #5 either. The branch the whole hackathon lives on is unwatched. Manually verified green at `0771bce` (RL-013), so the risk has not bitten yet — but that was a person choosing to look, which is not a process. PR #5 fixes the trigger. | UNOWNED | Everyone | UNOWNED | `gh pr checks 4` reports no checks; RL-013 |
-| T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | IN PROGRESS | Reproduced by hiding `node_modules` and running `npm run check`; fix in PR #5 |
+| T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | IN PROGRESS | PR #5 added `setup-node` + `npm ci` but pinned Node 20; vitest 5, undici 8, and whatwg-url 17 need Node 22, so the seven jsdom test files still errored in CI (run 35037067542). PR #8's `node-version: "22"` pin merged into the integration branch with everything else (RL-017). Closes once a CI run against the integration branch head is confirmed green -- check after this merge lands. |
 | T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack, so it must not be described as expert-reviewed or accessibility-audited. The Part 5 side is now unblocked — `review/content-review-sheet.html` draws every region on its slide beside the exact words a student gets, so there is something to review. **What remains needs a person: finding the two reviewers.** | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/review/content-review-sheet.html` |
 | T-10 | A17 camera adapter not started. Phase 6 by plan; must not delay or destabilise the screen-sharing demo. | Part 5 | Nothing | ACCEPTED | `docs/IMPLEMENTATION_PLAN.md` §3 Phase 6 |
 | T-11 | End-to-end suite. First slice landed now that `SessionClient` is frozen: `tests/e2e/fixture-replay.test.ts` covers fixture replay, reconnect idempotence, and session close. The rest — failure paths through a real UI, axe, screen-reader, rehearsals — still needs the student renderers. | Part 5 | Demo readiness | IN PROGRESS | `tests/e2e/fixture-replay.test.ts`, 7 tests |
@@ -101,7 +104,9 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
 | T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
-| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts` |
+| T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. Proposed: instructor key on `create`, relay enforcement in Part 4, and a shell gate. Not built — waiting on a go from the owner. | Part 2 + Part 4 | Demo integrity | OPEN | `apps/extension/src/shell/App.tsx` role switch; `docs/PART2_HANDOFF.md` open items |
+| T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
+| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts`. Part 2's controller also starts at 1 (`captureController.test.ts`), so 1 is now the de facto answer; Part 1 still has to pin it in the schema. |
 
 ---
 
@@ -435,3 +440,46 @@ failure this document exists to catch, and it still took a person noticing.
 looked wrong — the gate had simply stopped being called. After you resolve a
 conflict in `Makefile` or `.github/workflows/`, diff the list of targets and
 triggers, not just the file.
+
+### RL-016 — 2026-09-15 — Part 2 — Jacob
+
+**Landed:** `workstream/2-instructor-capture`, PR #8. Instructor capture end to
+end: `sources/screen/` (dhash12 fingerprint, matcher, sampler, display-media
+host), `instructor/` (controller + panel), `shared/broadcastSessionClient.ts`,
+`scripts/build-pack.ts` (pptx → PNG → Sonnet 4.6 drafts → `pack.draft.json`,
+first output `packs/hnsw/`). Pack schema widened additively. Part 3 and the
+relay docs merged in. CI workflow pinned to Node 22. Record:
+`memory/episodic/0041-part2-instructor-capture.md`.
+**Threads touched:** T-05 in progress (widening on #8), T-08 in progress (Node
+22 pin on #8), T-15 annotated (controller starts at 1), T-21 and T-22 opened
+(T-20 was already taken by Kunj's relay-gate thread; renumbered during merge).
+**Next agent needs to know:** the fingerprint is Part 5's algorithm ported
+verbatim, not a shim — if you change either side, `fingerprint.test.ts` compares
+byte-for-byte against `bio-cell-demo/pack.json` and will tell you. Thresholds
+are not constants in the extension; they come from `pack.matching`. The HNSW
+pack is a draft under A3 and must not be shown as reviewed. Switching role in the
+shell disposes the capture silently, which is fine for a demo and wrong for a
+product.
+
+### RL-017 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** merged PR #6, #7, and #8 onto `accesslens-extension-ar-pivot`
+(`19770f6` fixed the stale `INDEX.md` pointer first, since it broke `make
+check` on the integration branch tip itself). PR #8's merge had two real
+conflicts -- both in this file and `memory/INDEX.md`, no application code --
+resolved by keeping both sides and renumbering: `INDEX.md`'s single pointer
+became the list T-18 already proposed, and Jacob's `T-20` (duplicate of
+Kunj's) is now `T-22`. Verified with a fresh `npm install` and `make check`:
+181 extension tests, 61 pack tests, 24 relay tests, all green; T-05 closed.
+**Threads touched:** T-05 closed. T-08 still IN PROGRESS -- Node 22 is in the
+merged workflow but not yet observed green in an actual CI run against this
+tree. T-20 and T-22 disambiguated.
+**Next agent needs to know:** three independent ID collisions were found in
+this one merge (two episodic filenames, one thread ID) and none of them were
+caught by anything automatic -- a person merging had to notice all three.
+T-17 and T-18 are not theoretical anymore. If you pick up Part 4, `Broadcast
+SessionClient` is the only working transport today; there is still no
+`infra/` or deployed service, and `docs/aws-access-verification` (unmerged)
+already knows two hard constraints worth reading before you design anything:
+only `us.anthropic.claude-sonnet-4-6` is invokable on this AWS account, and
+the write path for Lambda/DynamoDB/API Gateway/S3 is unverified.

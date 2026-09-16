@@ -42,6 +42,7 @@ implemented.
 - [Context relay — start here if you are picking this up](docs/CONTEXT_RELAY.md)
 - [Product proposal](docs/ACCESSLENS_PROPOSAL.md)
 - [System design and technical stack](docs/SYSTEM_DESIGN.md)
+- [Visualization system: agentic slide visuals](docs/VISUALIZATION_SYSTEM.md)
 - [Product vision](docs/VISION.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Five-person parallel workstreams](docs/PARALLEL_WORKSTREAMS.md)

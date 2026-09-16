@@ -1,0 +1,56 @@
+{
+  "title": "Skip Lists",
+  "readingOrder": [
+    "title",
+    "subtitle-label",
+    "intro-text",
+    "skip-list-diagram",
+    "footer-note"
+  ],
+  "regions": [
+    {
+      "regionId": "subtitle-label",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.055,
+        "width": 0.22,
+        "height": 0.04
+      },
+      "shortDescription": "Small blue uppercase label reads: \"THE CORE IDEA, IN 1-D\".",
+      "plainLanguage": "A small label at the top says \"THE CORE IDEA, IN 1-D\"."
+    },
+    {
+      "regionId": "intro-text",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.155,
+        "width": 0.82,
+        "height": 0.115
+      },
+      "shortDescription": "Two sentences of body text: \"Sparse 'express lanes' sit above the full list. Start on the top lane and take big jumps; drop down a lane whenever the next jump would overshoot. Finding 31 takes 3 hops instead of scanning 7 nodes.\"",
+      "plainLanguage": "The text explains that skip lists use fast upper lanes to jump ahead, dropping to lower lanes when a jump goes too far, finding 31 in just 3 hops."
+    },
+    {
+      "regionId": "skip-list-diagram",
+      "bounds": {
+        "x": 0.12,
+        "y": 0.28,
+        "width": 0.78,
+        "height": 0.55
+      },
+      "shortDescription": "A three-level skip list diagram with levels L0, L1, and L2. L0 is the full linked list: H, 3, 7, 12, 19, 25, 31, 42, 57. L1 contains H, 7, 25, and 42. L2 contains H and 25. Blue highlighted nodes mark the search path through H→25 (L2), down to 25 (L1), where a dashed arrow to 42 is labeled \"overshoots\" in red, then down to 25 (L0), stepping to node 31 highlighted in green and labeled \"found\" in green.",
+      "plainLanguage": "The diagram shows three rows of linked boxes (levels L0–L2). The search jumps along the top rows to node 25, skips node 42 because it is too big, then steps right on the bottom row to find node 31, shown in green."
+    },
+    {
+      "regionId": "footer-note",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.83,
+        "width": 0.72,
+        "height": 0.05
+      },
+      "shortDescription": "Footer text reads: \"HNSW applies the same 'coarse first, fine last' idea to a proximity graph in high-dimensional space.\" with the word \"graph\" in bold.",
+      "plainLanguage": "A note at the bottom says HNSW uses this same coarse-to-fine idea, but on a graph in high-dimensional space."
+    }
+  ]
+}

@@ -66,4 +66,12 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0041-context-relay.md`
+Parallel workstreams number their own episodic records (T-17), so there is no
+longer one single "latest" file. Each part's newest record:
+
+- `episodic/0042-merge-parts-1-2-3-5.md` (cross-cutting: merged PRs #6/#7/#8 onto the integration branch)
+- `episodic/0041-part2-instructor-capture.md` (Part 2: instructor capture)
+- `episodic/0041-context-relay.md` (cross-cutting: relay log and open threads)
+- `episodic/0040-part3-student-ar.md` (Part 3: student experience and AR, merged into Part 2's branch)
+- `episodic/0040-bio-cell-demo-access-pack.md` (Part 5: reviewed pack)
+- `episodic/0039-part1-contract-gaps.md` (Part 1: foundation and contracts)
