@@ -1,0 +1,23 @@
+{
+  "fixture": "prohibited-mastery-signal",
+  "mustBeRejected": true,
+  "lastDeliveredSequence": 6,
+  "expectedRule": "field-not-on-contract:masteryEstimate",
+  "reason": "Carries a learner inference. No grade, mastery, or attention signal may exist (charter A7).",
+  "event": {
+    "schemaVersion": "1.0",
+    "type": "region.changed",
+    "sessionId": "sess-demo-0001",
+    "packId": "bio-cell-demo",
+    "packVersion": 1,
+    "assetId": "cell-slide-03",
+    "regionId": "mitochondrion",
+    "arState": {
+      "hotspotId": "cell-slide-03:mitochondrion",
+      "action": "focus"
+    },
+    "sequence": 7,
+    "sentAt": "2026-09-15T15:00:42Z",
+    "masteryEstimate": 0.62
+  }
+}

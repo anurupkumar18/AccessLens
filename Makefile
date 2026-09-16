@@ -1,34 +1,30 @@
-API_DIR := apps/api
-WEB_DIR := apps/web
-
-.PHONY: setup dev test lint typecheck check smoke demo memory-check
-
-setup:
-	cd $(API_DIR) && uv sync --dev
-	cd $(WEB_DIR) && pnpm install --ignore-scripts
-
-dev:
-	@echo "Run 'cd apps/api && uv run uvicorn app.main:app --reload' and 'cd apps/web && pnpm dev' in separate terminals."
-
-test:
-	cd $(API_DIR) && uv run pytest
-	cd $(WEB_DIR) && pnpm test
-
-lint:
-	cd $(API_DIR) && uv run ruff check .
-	cd $(WEB_DIR) && pnpm lint
-
-typecheck:
-	cd $(API_DIR) && uv run mypy app
-	cd $(WEB_DIR) && pnpm typecheck
+.PHONY: check memory-check pack-check relay-check extension-check freeze-check deploy-preflight
 
 memory-check:
 	python3 scripts/memory_check.py
 
-smoke:
-	cd $(API_DIR) && uv run pytest tests/test_api.py -q
+pack-check:
+	python3 packages/access-packs/bio-cell-demo/tools/validate_pack.py
+	python3 packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py
+	python3 packages/access-packs/bio-cell-demo/tools/generate_review_sheet.py --check
+	python3 -m unittest discover -s tests/access_pack
 
-check: memory-check lint typecheck test smoke
+relay-check:
+	python3 scripts/relay_check.py
+	python3 -m unittest discover -s tests/relay
 
-demo: check
-	@echo "Demo ready: start API and web, then follow docs/DEMO_RUNBOOK.md."
+extension-check:
+	npm run check
+
+# Handover gate. Run at feature freeze: fails while any part is unowned or any
+# thread is neither closed with evidence nor consciously accepted.
+freeze-check:
+	python3 scripts/relay_check.py --freeze
+
+check: memory-check pack-check relay-check extension-check
+	@echo "AccessLens documentation, Access Pack, relay, and extension checks passed."
+
+# Is the repository ready to deploy the demo? Reports per part; run the script
+# directly with --aws to also probe the account.
+deploy-preflight:
+	python3 scripts/deploy_preflight.py

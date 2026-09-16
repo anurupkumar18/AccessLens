@@ -1,0 +1,44 @@
+{
+  "title": "The Three Parameters",
+  "readingOrder": [
+    "title",
+    "card-m",
+    "card-efconstruction",
+    "card-efsearch"
+  ],
+  "regions": [
+    {
+      "regionId": "card-m",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.18,
+        "width": 0.305,
+        "height": 0.65
+      },
+      "shortDescription": "Card headed 'M — Links per node'. Body text: 'Graph connectivity. Higher M → better recall and more robust graphs, but memory and build time grow linearly with it.' Footer: 'Typical: 12 – 48 · fixed at build'.",
+      "plainLanguage": "The M parameter sets how many links each node has. A higher M means better results but uses more memory and takes longer to build. Typical range is 12 to 48, set once at build time."
+    },
+    {
+      "regionId": "card-efconstruction",
+      "bounds": {
+        "x": 0.365,
+        "y": 0.18,
+        "width": 0.305,
+        "height": 0.65
+      },
+      "shortDescription": "Card headed 'efConstruction — Build-time beam width'. Body text: 'How many candidates are examined when choosing each new node's neighbors. Higher → better graph quality, slower indexing.' Footer: 'Typical: 100 – 400 · fixed at build'.",
+      "plainLanguage": "The efConstruction parameter controls how many options are checked when building the graph. A higher value makes a better graph but slows down indexing. Typical range is 100 to 400, set once at build time."
+    },
+    {
+      "regionId": "card-efsearch",
+      "bounds": {
+        "x": 0.675,
+        "y": 0.18,
+        "width": 0.305,
+        "height": 0.65
+      },
+      "shortDescription": "Card headed 'efSearch — Query-time beam width', highlighted with a light blue background. Body text: 'How many candidates the layer-0 search keeps alive. The knob you turn in production — raise it for recall, lower it for latency.' Footer in blue: 'Typical: k – 512 · tunable per query'.",
+      "plainLanguage": "The efSearch parameter controls how many candidates are tracked during a search. Raising it improves accuracy; lowering it reduces response time. Typical range is k to 512, and it can be changed for each query."
+    }
+  ]
+}

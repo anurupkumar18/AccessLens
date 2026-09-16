@@ -1,0 +1,80 @@
+{
+  "title": "Inserting a Vector",
+  "readingOrder": [
+    "title",
+    "section-label",
+    "step-1-heading",
+    "level-probability-chart",
+    "step-2-heading",
+    "graph-diagram",
+    "pruning-note"
+  ],
+  "regions": [
+    {
+      "regionId": "section-label",
+      "bounds": {
+        "x": 0.05,
+        "y": 0.04,
+        "width": 0.2,
+        "height": 0.05
+      },
+      "shortDescription": "Small blue uppercase label reading \"BUILD TIME\" above the slide title.",
+      "plainLanguage": "A small label at the top says \"BUILD TIME\"."
+    },
+    {
+      "regionId": "step-1-heading",
+      "bounds": {
+        "x": 0.05,
+        "y": 0.17,
+        "width": 0.42,
+        "height": 0.15
+      },
+      "shortDescription": "Step 1 card headed \"1 · Draw a random top level\" with body text: \"Exponential distribution — the hierarchy emerges from a coin flip, no balancing needed.\" A footnote reads \"Probabilities shown for M = 16\".",
+      "plainLanguage": "Step 1 says: pick a random level using an exponential distribution, like a coin flip, so no manual balancing is needed."
+    },
+    {
+      "regionId": "level-probability-chart",
+      "bounds": {
+        "x": 0.05,
+        "y": 0.32,
+        "width": 0.42,
+        "height": 0.38
+      },
+      "shortDescription": "Horizontal bar chart showing node probability by level. Level 0: full-width blue bar, 100%. Level ≥ 1: very short blue bar, ~6%. Level ≥ 2: near-invisible bar, ~0.4%.",
+      "plainLanguage": "A bar chart shows that every node appears at Level 0 (100%), only about 6% reach Level 1 or higher, and about 0.4% reach Level 2 or higher."
+    },
+    {
+      "regionId": "step-2-heading",
+      "bounds": {
+        "x": 0.46,
+        "y": 0.17,
+        "width": 0.49,
+        "height": 0.15
+      },
+      "shortDescription": "Step 2 card headed \"2 · Search down, then link to the M nearest\" with body text: \"A normal search finds the neighborhood; the new node connects to its M closest nodes on each layer it belongs to.\"",
+      "plainLanguage": "Step 2 says: search the graph to find the closest existing nodes, then connect the new node to its M nearest neighbors on each layer it joins."
+    },
+    {
+      "regionId": "graph-diagram",
+      "bounds": {
+        "x": 0.49,
+        "y": 0.32,
+        "width": 0.46,
+        "height": 0.42
+      },
+      "shortDescription": "A diagram of a layered graph. An orange node labeled \"new vector\" sits on a layer plane and is connected by blue edges to three blue neighbor nodes. Grey nodes and grey edges show the rest of the graph. A caption reads \"M = 3 new links, on every layer it joins\".",
+      "plainLanguage": "A diagram shows a new orange node being linked to three nearby blue nodes inside a layered graph structure, illustrating that M equals 3 new connections are made on each layer."
+    },
+    {
+      "regionId": "pruning-note",
+      "bounds": {
+        "x": 0.46,
+        "y": 0.73,
+        "width": 0.49,
+        "height": 0.1
+      },
+      "shortDescription": "Footer text: \"If a neighbor exceeds its link budget, its worst edge is pruned — degree stays bounded.\"",
+      "plainLanguage": "A note explains that if a neighbor already has too many connections, its weakest link is removed to keep the number of connections under control."
+    }
+  ]
+}

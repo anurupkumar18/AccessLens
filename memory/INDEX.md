@@ -1,30 +1,78 @@
 # Shared memory index
 
-## Loading budget
+## Current state
 
-Load this index, the relevant semantic records, and one current episodic handoff. Do not load the entire history unless investigating a specific regression.
+On September 15, 2026, the product owner explicitly selected **AccessLens** as the
+main hackathon direction and superseded the Evidence Engine coding-practice product.
+AccessLens is an extension-first accessibility system: an instructor explicitly
+shares a tab, window, or screen; local matching emits temporary semantic events;
+student extensions automatically render the same live moment through Focus,
+structured-text, caption, audio, or spatial modes.
 
-## Semantic records
+AR is a required student-extension renderer in the hackathon MVP. Camera input is
+the advanced source adapter for labs and other physical content that cannot be
+screen-shared; every student does not need a camera. The MVP uses one checked-in
+biology deck, one instructor extension, two student extensions, a synchronized AR
+cell model, and an AWS WebSocket relay. Production Canvas integration remains
+deferred and gated.
 
-- `semantic/architecture.md` — layer boundaries and module map
-- `semantic/contracts.md` — public API and fixture contract
+Current sources of truth:
+
+- `docs/CONTEXT_RELAY.md` — live state, open threads, and the relay log
+- `docs/VISION.md`
+- `docs/PROJECT_CHARTER.md`
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/PARALLEL_WORKSTREAMS.md`
+- `docs/SYSTEM_DESIGN.md`
+- `docs/ACCESSLENS_PROPOSAL.md`
+- `docs/TEAM_PRODUCT_DIRECTION.md`
+
+Part 1 (foundation and contracts) is owned by Anurup Kumar, Part 2 (instructor
+capture) by Jacob, and Part 5 (content, camera, and demo QA) by Kunj Rathod.
+Parts 3 and 4 have no owner. Part 5's pack merged as `a881f11`:
+`packages/access-packs/bio-cell-demo/` holds the reviewed five-slide deck, an
+original AR cell model, six ordered event scenarios, and ten rejection fixtures,
+all validated by `make pack-check`.
+
+Both contract bugs Part 5 reported are fixed: `c3ddc27` made `LiveEventSchema` a
+per-type discriminated union, so `source.unmatched` is structurally unable to
+name an asset, and the JSON Schema now mirrors it. Ten conformance gaps remain,
+all requests to widen the contract, reported in
+`docs/PART5_CONTRACT_CONFORMANCE.md`. The most serious is that
+`access-pack.schema.json` forbids `arScene`, so the pack cannot carry the AR
+scene charter A10 requires.
+
+`docs/CONTEXT_RELAY.md` is the live state of the project and the register of
+every open thread; append to it at the end of any session that changes that
+state.
+
+The previous application, API, fixtures, plugin, and active coding-product guides
+were removed. Git history is the recovery path. Existing semantic records and
+episodic records 0001–0035 are historical Evidence Engine context, not AccessLens
+requirements.
+
+## Historical semantic records
+
+- `semantic/architecture.md` — superseded coding-engine layer map
+- `semantic/contracts.md` — superseded FastAPI contract
+
+Do not update or reinterpret these as AccessLens contracts outside a reviewed PR.
+The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Long-term records
 
-- `long-term/public-data.md` — non-negotiable data boundary
-
-## Current state (living summary — update this block whenever you close out an episodic record; do not just repoint below and leave this stale)
-
-Evidence Engine (revision 8 of the plan) is an MCP server, target 4-tool surface `start_challenge`/`submit_prediction`/`submit_diagnosis`/`submit_repair` behind a signed challenge token, connected to a ChatGPT App and Codex plugin riding UofU's ChatGPT/Codex access. Core architectural fact: **verification runs inside Evidence Engine's own sandbox** (I8), never self-reported by the host model. Properties are a reviewed declarative DSL, never model-authored code. BKT is cut for now (heuristic stand-in, explicitly not a mastery estimate). Canvas is Core but hard-gated behind confirmed institutional approval. A mock-mode demo of the topic-grounding shape (fixture-backed, no real Canvas connection) now exists — `apps/api/app/domain/canvas_mock.py`, `topic_matching.py`, `docs/CANVAS_INTEGRATION.md` — distinct from, and no substitute for, the still-blocked real integration. **Research (`episodic/0029`, `docs/research/canvas-access-deep-research-findings.md`) found a genuinely compliant path that needs no institutional approval at all**: a student-initiated upload/"Add course materials" workflow (syllabus, instructor-provided files, own notes — no token, no OAuth, no scraping), distinct from and more valuable than the mock since it would ground practice in a student's real material; not yet designed or built. The LTI-institutional path (R5) is unchanged/still blocked but now has a sharper ask (LTI 1.3, one course, one term, UofU's Digital Learning Technologies contact). Per explicit product decision, this became real, buildable work rather than staying a research note: a second, distinct capability now exists — `apps/api/app/domain/{workspace_contracts,chunking,data_boundary,workspace_store,retrieval,ingestion}.py` plus 5 new MCP tools (`add_course_material`, `list_workspace_materials`, `remove_material`, `delete_workspace`, `answer_from_materials`), documented in `docs/STUDY_WORKSPACE.md`. It redefines Evidence Engine's mission (the charter's "not a generic tutor" framing needs updating) and requires rewriting invariants I1/I2/I3/I5/I6 — that rewrite is the next task, deliberately sequenced after the product shape was built, not before. Full plan: `docs/IMPLEMENTATION_PLAN.md`. Invariants I1-I8: `docs/PROJECT_CHARTER.md`. Product framing: `docs/VISION.md`.
-
-**September 2026 group product direction — recorded, not implemented.** The team agreed to explore Evidence Engine as an institution-supported learning layer: professor- and IT-approved class packages could provide course-specific skills, guardrails, hooks, tools, plugins, MCP servers, and permitted context through ChatGPT, Codex, agents, or custom GPTs; Canvas or a companion browser extension are possible context/provisioning paths; NotebookLM-style source-grounded Q&A, citations, summaries, and study aids would complement verified practice. Permissions, provisioning, privacy, procurement, browser-extension feasibility, final architecture, and open-source component selection remain discovery questions. This direction does not change the current charter or application behavior. Canonical record: `docs/TEAM_PRODUCT_DIRECTION.md`; shareable recap: `docs/DISCORD_TLDR.md`; one-page brief: `docs/EVIDENCE_ENGINE_PROJECT_BRIEF.docx`; handoff: `episodic/0034-expanded-product-direction-record.md`.
-
-**Initial research archive — historical inspiration, not current or future truth.** Two pasted research exports and three original ChatGPT share links are synthesized in `docs/research/INITIAL_RESEARCH_AND_INSPIRATION.md`. Reusable seeds include evidence-first learning, procedural Socratic runbooks, a consent-first source workspace, narrow LTI pilot framing, memory-layer separation, open-source leads, and prior-art candidates. The archive explicitly records conflicts with the current repository: real student code versus curated practice, assignment inputs versus I1, obsolete MCP tool names, disputed Canvas Free-for-Teacher status, unproven enrollment provisioning, and prototype workspace limitations. `AGENTS.md` now requires contributors and AI agents to surface such drift, name superseded behavior, and remove obsolete code deliberately rather than treating every existing path as a requirement.
-
-**Phase 1 (feasibility spikes, the blocking gate) — all four have a documented outcome**: spike 3 (trusted sandbox) passed — `apps/api/app/domain/sandbox.py`. Spike 2 (MCP connectivity): the Codex CLI half is actually verified (`episodic/0031`, `docs/MCP_SERVER.md`) — a personal-account Codex CLI really called `list_course_topics` over stdio. The ChatGPT App half is **in progress, paused mid-session** (`episodic/0032`): a real public tunnel (`cloudflared`) + streamable-http server (`scripts/run_streamable_http.py`) answered a real MCP `initialize` handshake from outside the machine, but the final step — adding a custom connector inside ChatGPT's own settings and actually calling a tool from a real ChatGPT client — needs a human and was paused for the night; both processes were stopped, resume steps are in `episodic/0032`. The UofU institutional-workspace leg (R11) remains fully unverified/open regardless. Spike 4 (Canvas) confirmed blocked on institutional access with no self-service or policy bypass (personal tokens disabled, OAuth2 dev keys admin-only, Instructure's free trial discontinued) — `scripts/verify_canvas_access.py` ready, unused. Spike 1 (workspace admin) has candidate contacts identified (UofU's ChatGPT Edu includes Codex; AI Tool Form + named AI Office Leadership contacts in `docs/IMPLEMENTATION_PLAN.md` §9) but no outreach sent yet. Spikes 1 and 4 need a named human owner — not resolvable by engineering alone.
-
-**Phase 2/3 (post-gate build) is well underway.** Kernel (`apps/api/app/domain/`): `properties.py` (declarative DSL, §3.1, reference-oracle execution not hardcoded golden values) + `sandbox.py` (real isolated execution, I8, signed evidence records, plus the reusable `run_cases`/`run_oracle`/`generate_random_case` primitives) + `mutation.py` (two operator families) + `kill_ratio.py` (correct killed/survived classification) + `equivalence.py` (automated differential-testing equivalent-mutant detection, batched into one sandboxed subprocess call per check — not one per trial) are wired together and proven to generalize across two structurally different challenges (`traversal-invariant-02`/bfs, `binary-search-invariant-01`/binary search). One confirmed real equivalent mutant found and now auto-detected (`// 2` -> `// 1`, 2000 trials, 0 mismatches). MCP surface (`apps/api/app/mcp_server.py`): all 4 workflow tools exist behind a stateless signed `challenge_token` (I5), the full predict→diagnose→repair→evidence loop runs end-to-end verified over a real stdio subprocess, and the I6/I7 guardrail eval suite (`tests/test_guardrails.py`, confirmed to have real teeth) sweeps the pre-repair tools for leaks. Phase 3's DoD is essentially met. **The Phase 2 mutation pipeline is now complete end-to-end**: `app.domain.content_selection.select_mutant` combines classification and equivalence-checking into accept/reject/flag-for-review, run against binary_search's full 15-mutant set as a live sanity check (14 accepted, 1 correctly rejected as equivalent, 0 flagged — both real gaps were already closed in `episodic/0025`). Stated, not-hidden gaps: **only `traversal-invariant-02` is wired through the MCP layer** (the second challenge exists at the kernel level only — deliberately not forced through yet, since it needs real content-design judgment about what "prediction" means for a non-graph-traversal challenge, not just mechanical wiring, and this has now been deferred across several consecutive handoffs); the policy's `flagged_for_review` branch has no real example, only a unit test; still exactly two mutation-operator families; no tool-call-ordering enforcement on the token. Full history: `episodic/0019-*.md` through `0027-*.md`.
+- `long-term/public-data.md` — historical public-data rule; its cautious treatment
+  of private inputs remains useful, but the current data contract is the charter.
 
 ## Current handoff
 
-- `episodic/0035-initial-research-and-drift-rules.md`
+Parallel workstreams number their own episodic records (T-17), so there is no
+longer one single "latest" file. Each part's newest record:
+
+- `episodic/0043-deployment-readiness.md` (Part 4 recon: AWS account is deployable, CDK not bootstrapped)
+- `episodic/0042-merge-parts-1-2-3-5.md` (cross-cutting: merged PRs #6/#7/#8 onto the integration branch)
+- `episodic/0041-part2-instructor-capture.md` (Part 2: instructor capture)
+- `episodic/0041-context-relay.md` (cross-cutting: relay log and open threads)
+- `episodic/0040-part3-student-ar.md` (Part 3: student experience and AR, merged into Part 2's branch)
+- `episodic/0040-bio-cell-demo-access-pack.md` (Part 5: reviewed pack)
+- `episodic/0039-part1-contract-gaps.md` (Part 1: foundation and contracts)

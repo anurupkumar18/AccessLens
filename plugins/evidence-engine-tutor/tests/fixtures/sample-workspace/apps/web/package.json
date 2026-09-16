@@ -1,4 +1,0 @@
-{
-  "name": "sample-web-app",
-  "scripts": {"start": "node src/index.ts"}
-}

@@ -1,0 +1,287 @@
+{
+  "schemaVersion": "1.0",
+  "packId": "bio-cell-demo",
+  "version": 1,
+  "title": "Cell Structure (synthetic Part 2 test pack)",
+  "matching": {
+    "algorithm": "dhash12",
+    "hashBits": 132,
+    "maxHammingDistance": 26,
+    "minMargin": 14,
+    "onNoMatch": "source.unmatched"
+  },
+  "assets": [
+    {
+      "assetId": "slide-01",
+      "fingerprint": "dhash12:5814fe1f81f03e07c0f81f03e07c0fc3f",
+      "title": "The cell: an overview",
+      "readingOrder": [
+        "title",
+        "cell-outline"
+      ],
+      "regions": [
+        {
+          "regionId": "cell-outline",
+          "bounds": {
+            "x": 0,
+            "y": 0.13,
+            "width": 0.47,
+            "height": 0.87
+          },
+          "shortDescription": "A single cell drawn as a large green oval filling the left half of the slide.",
+          "plainLanguage": "This green oval stands for one whole cell."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-02",
+      "fingerprint": "dhash12:181fe7fe7fcff9ff3fe7e0fc1f83f07fc",
+      "title": "The cell membrane",
+      "readingOrder": [
+        "title",
+        "intro-text",
+        "membrane"
+      ],
+      "regions": [
+        {
+          "regionId": "intro-text",
+          "bounds": {
+            "x": 0.45,
+            "y": 0.14,
+            "width": 0.44,
+            "height": 0.35
+          },
+          "shortDescription": "Six lines of introduction text in the upper right.",
+          "plainLanguage": "The text at the top right introduces the membrane."
+        },
+        {
+          "regionId": "membrane",
+          "bounds": {
+            "x": 0.45,
+            "y": 0.52,
+            "width": 0.44,
+            "height": 0.44
+          },
+          "shortDescription": "A teal block in the lower right representing the cell membrane.",
+          "plainLanguage": "The block at the bottom right is the membrane, the cell's outer layer."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-03",
+      "fingerprint": "dhash12:181ff200400801003ffffffffffffffff",
+      "title": "The mitochondrion",
+      "readingOrder": [
+        "title",
+        "mitochondrion"
+      ],
+      "regions": [
+        {
+          "regionId": "mitochondrion",
+          "bounds": {
+            "x": 0.02,
+            "y": 0.13,
+            "width": 0.87,
+            "height": 0.37
+          },
+          "shortDescription": "A wide rust-colored band across the upper half representing a mitochondrion.",
+          "plainLanguage": "The wide band near the top is the mitochondrion, which powers the cell."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-04",
+      "fingerprint": "dhash12:181ffffffffffff1f80c000600601c420",
+      "title": "The nucleus",
+      "readingOrder": [
+        "title",
+        "nucleus",
+        "nucleolus"
+      ],
+      "regions": [
+        {
+          "regionId": "nucleus",
+          "bounds": {
+            "x": 0,
+            "y": 0.46,
+            "width": 0.96,
+            "height": 0.54
+          },
+          "shortDescription": "A large navy oval across the lower half representing the nucleus.",
+          "plainLanguage": "The big dark oval at the bottom is the nucleus."
+        },
+        {
+          "regionId": "nucleolus",
+          "bounds": {
+            "x": 0.28,
+            "y": 0.68,
+            "width": 0.32,
+            "height": 0.24
+          },
+          "shortDescription": "A smaller gold oval inside the nucleus representing the nucleolus.",
+          "plainLanguage": "The small gold oval inside is the nucleolus."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-05",
+      "fingerprint": "dhash12:1813f27e4fc9f93f3fbf03e07c0f81ff7",
+      "title": "Ribosomes and the endoplasmic reticulum",
+      "readingOrder": [
+        "title",
+        "heading-text",
+        "ribosome-cluster",
+        "reticulum"
+      ],
+      "regions": [
+        {
+          "regionId": "heading-text",
+          "bounds": {
+            "x": 0.02,
+            "y": 0.14,
+            "width": 0.2,
+            "height": 0.35
+          },
+          "shortDescription": "Five lines of text in the upper left.",
+          "plainLanguage": "The text in the upper left explains ribosomes."
+        },
+        {
+          "regionId": "ribosome-cluster",
+          "bounds": {
+            "x": 0.67,
+            "y": 0.13,
+            "width": 0.22,
+            "height": 0.37
+          },
+          "shortDescription": "A gold block in the upper right representing a cluster of ribosomes.",
+          "plainLanguage": "The gold block at the top right stands for ribosomes."
+        },
+        {
+          "regionId": "reticulum",
+          "bounds": {
+            "x": 0.23,
+            "y": 0.52,
+            "width": 0.44,
+            "height": 0.46
+          },
+          "shortDescription": "A wide plum block across the lower middle representing the endoplasmic reticulum.",
+          "plainLanguage": "The wide shape at the bottom is the endoplasmic reticulum."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-06",
+      "fingerprint": "dhash12:181fdf81f03e07c0e7e4fc9f93f27e4fc",
+      "title": "Summary",
+      "readingOrder": [
+        "title",
+        "key-idea",
+        "summary-text",
+        "takeaway"
+      ],
+      "regions": [
+        {
+          "regionId": "key-idea",
+          "bounds": {
+            "x": 0.23,
+            "y": 0.13,
+            "width": 0.44,
+            "height": 0.37
+          },
+          "shortDescription": "A navy block in the upper middle holding the key idea.",
+          "plainLanguage": "The dark block near the top marks the main idea."
+        },
+        {
+          "regionId": "summary-text",
+          "bounds": {
+            "x": 0.02,
+            "y": 0.53,
+            "width": 0.2,
+            "height": 0.44
+          },
+          "shortDescription": "Six lines of summary text in the lower left.",
+          "plainLanguage": "The text at the bottom left sums up the lesson."
+        },
+        {
+          "regionId": "takeaway",
+          "bounds": {
+            "x": 0.67,
+            "y": 0.52,
+            "width": 0.22,
+            "height": 0.46
+          },
+          "shortDescription": "A green block in the lower right holding the takeaway.",
+          "plainLanguage": "The green block at the bottom right is the takeaway."
+        }
+      ]
+    },
+    {
+      "assetId": "twin-a",
+      "fingerprint": "dhash12:181e738e71ce39c727bce39c738e71cf7",
+      "title": "Transport across the membrane (part 1)",
+      "readingOrder": [
+        "title",
+        "diagram",
+        "notes"
+      ],
+      "regions": [
+        {
+          "regionId": "diagram",
+          "bounds": {
+            "x": 0.23,
+            "y": 0.13,
+            "width": 0.22,
+            "height": 0.37
+          },
+          "shortDescription": "A navy block in the upper middle representing a transport diagram.",
+          "plainLanguage": "The dark block near the top is the transport diagram."
+        },
+        {
+          "regionId": "notes",
+          "bounds": {
+            "x": 0.67,
+            "y": 0.14,
+            "width": 0.22,
+            "height": 0.35
+          },
+          "shortDescription": "Five lines of notes in the upper right.",
+          "plainLanguage": "The notes at the top right explain the diagram."
+        }
+      ]
+    },
+    {
+      "assetId": "twin-b",
+      "fingerprint": "dhash12:181e738e71ce39c727bce39c738e71cf7",
+      "title": "Transport across the membrane (part 2)",
+      "readingOrder": [
+        "title",
+        "diagram",
+        "notes"
+      ],
+      "regions": [
+        {
+          "regionId": "diagram",
+          "bounds": {
+            "x": 0.23,
+            "y": 0.13,
+            "width": 0.22,
+            "height": 0.37
+          },
+          "shortDescription": "A navy block in the upper middle representing a transport diagram; this slide adds a slide-number box in the corner.",
+          "plainLanguage": "The dark block near the top is the transport diagram."
+        },
+        {
+          "regionId": "notes",
+          "bounds": {
+            "x": 0.67,
+            "y": 0.14,
+            "width": 0.22,
+            "height": 0.35
+          },
+          "shortDescription": "Five lines of notes in the upper right.",
+          "plainLanguage": "The notes at the top right explain the diagram."
+        }
+      ]
+    }
+  ]
+}

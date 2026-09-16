@@ -1,0 +1,43 @@
+{
+  "title": "The Layered Graph",
+  "readingOrder": [
+    "title",
+    "layered-graph-diagram",
+    "bullet-points"
+  ],
+  "regions": [
+    {
+      "regionId": "title",
+      "bounds": {
+        "x": 0.04,
+        "y": 0.04,
+        "width": 0.5,
+        "height": 0.14
+      },
+      "shortDescription": "Section label reads \"THE STRUCTURE\" in small blue caps above the main heading \"The Layered Graph\" in large bold text.",
+      "plainLanguage": "The slide heading says \"The Layered Graph\" under a small label that reads \"THE STRUCTURE\"."
+    },
+    {
+      "regionId": "layered-graph-diagram",
+      "bounds": {
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.55,
+        "height": 0.62
+      },
+      "shortDescription": "A diagram of three stacked horizontal planes labeled Layer 2 (top), Layer 1 (middle), and Layer 0 (bottom). The top layer has two blue nodes connected by a line, with one black node labeled \"entry point.\" The middle layer has five blue nodes with connecting edges. The bottom layer is densely populated with gray nodes and edges. Dashed vertical lines connect corresponding nodes across layers. A caption reads \"Layer 0 contains every vector.\"",
+      "plainLanguage": "Three stacked flat planes show a graph at each level. The top plane has very few nodes, the middle has more, and the bottom has the most. Dashed lines link the same node across layers."
+    },
+    {
+      "regionId": "bullet-points",
+      "bounds": {
+        "x": 0.58,
+        "y": 0.22,
+        "width": 0.38,
+        "height": 0.65
+      },
+      "shortDescription": "Four bold headings each followed by a short explanation: \"Every vector lives in layer 0\" — the bottom layer is a proximity graph over the full dataset, each node linked to its nearest neighbors. \"Higher layers are random samples\" — each node is promoted upward with exponentially decaying probability, so every layer up is ~an order of magnitude sparser. \"Sparse layers = long-range links\" — nearest neighbors in a sparse layer are far apart in space, those edges are the express lanes. \"One entry point on top\" — the highest-layer node is where every search begins.",
+      "plainLanguage": "Four labeled points explain the structure: all data is in layer 0; upper layers hold fewer nodes chosen randomly; sparser layers create long-range shortcuts; and every search starts from a single entry node at the top."
+    }
+  ]
+}

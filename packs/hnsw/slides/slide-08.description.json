@@ -1,0 +1,44 @@
+{
+  "title": "Recall vs. Speed",
+  "readingOrder": [
+    "title",
+    "subtitle-label",
+    "operating-curve-chart",
+    "what-to-remember-list"
+  ],
+  "regions": [
+    {
+      "regionId": "subtitle-label",
+      "bounds": {
+        "x": 0.04,
+        "y": 0.06,
+        "width": 0.3,
+        "height": 0.04
+      },
+      "shortDescription": "Section label in small blue uppercase text reading \"THE OPERATING CURVE\".",
+      "plainLanguage": "A small blue label at the top says \"THE OPERATING CURVE\"."
+    },
+    {
+      "regionId": "operating-curve-chart",
+      "bounds": {
+        "x": 0.08,
+        "y": 0.26,
+        "width": 0.55,
+        "height": 0.55
+      },
+      "shortDescription": "A line chart with \"efSearch, increasing\" on the x-axis and no labeled y-axis. A solid blue curve labeled \"Recall\" rises steeply then flattens, showing diminishing returns. A dashed black line labeled \"Latency\" rises more steadily. A green dot marks \"the knee: ~95–99% recall\" near the point where the recall curve begins to flatten.",
+      "plainLanguage": "A chart showing that as efSearch increases, recall improves quickly at first then levels off, while latency keeps rising. A green dot marks the sweet spot at roughly 95–99% recall."
+    },
+    {
+      "regionId": "what-to-remember-list",
+      "bounds": {
+        "x": 0.57,
+        "y": 0.27,
+        "width": 0.4,
+        "height": 0.56
+      },
+      "shortDescription": "A numbered list headed \"What to remember\" with four items: 01 HNSW is a skip list generalized to a proximity graph: coarse layers travel far, layer 0 refines. 02 Search is greedy descent from a single entry point — ~O(log N) hops, no training step. 03 The hierarchy comes from a random level draw at insert time; M links bound every node's degree. 04 In production, efSearch is your dial: sweep it, plot this curve, pick your (text appears cut off).",
+      "plainLanguage": "A four-point summary: HNSW uses layered graphs, search takes about O(log N) steps, node levels are assigned randomly at insert time, and efSearch lets you trade speed for recall in production."
+    }
+  ]
+}

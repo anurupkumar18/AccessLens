@@ -1,4 +1,0 @@
-interface:
-  display_name: "Evidence Engine Delivery"
-  short_description: "Build and verify the evidence engine in safe vertical slices."
-  default_prompt: "Use the evidence-engine-delivery workflow to plan or implement a scoped, evidence-backed change."
