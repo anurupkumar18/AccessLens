@@ -108,6 +108,10 @@ export const RoleCapabilitySchema = z.object({
   issuedAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
   token: z.string().min(1),
+  // Opaque short-lived token for the session's live media stream (Amazon IVS),
+  // attached by the relay since 2026-09-16. Passed through untouched; strict()
+  // still refuses any other field, so identity cannot ride along.
+  streamToken: z.string().min(1).optional(),
 }).strict();
 
 // ---------------------------------------------------------------------------
