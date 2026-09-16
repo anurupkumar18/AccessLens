@@ -59,7 +59,7 @@ work is being made directly on `master` by explicit product-owner direction.
 | --- | --- | --- | --- | --- |
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0050-stop-versus-end-session-lifecycle.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
-| 3. Student experience and AR | Prachi | merged to `master` via PR #10 | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. Follow-up adds a Dyslexic-friendly mode and hardens capture gesture handling for tab/window/screen sharing. | `npm run typecheck`; targeted Vitest checks; `docs/NEXT_STEPS.md` |
+| 3. Student experience and AR | Prachi | merged as `7a199c0` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. Follow-up adds a Dyslexic-friendly mode and hardens capture gesture handling for tab/window/screen sharing. | `npm run typecheck`; targeted Vitest checks; `docs/NEXT_STEPS.md` |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
 
@@ -831,10 +831,12 @@ execution still has the repository's Windows `python3` launcher and generated
 pack line-ending issues to resolve separately; no model or camera behavior was
 claimed by this slice.
 
+**Threads touched:** none.
+
 **Next agent needs to know:** the local preview should be run from `master` after
 `npm ci`. The two teammate documentation edits are intentionally kept in the
 stash while product work proceeds directly on `master`.
-### RL-035 - 2026-09-16 - cross-cutting - Codex
+### RL-035 — 2026-09-16 — Part 1 — Codex
 
 **Landed:** added `docs/ADVANCED_FEATURES.md`, defining a non-recording Review
 Mode built from approved documents and semantic lesson summaries; live focus,
@@ -848,3 +850,5 @@ a camera-only student mode.
 Review Mode must not replay a professor or require raw recordings. Camera work
 needs mentor/accessibility validation, explicit consent, local processing where
 practical, and a manual camera-free fallback.
+
+**Threads touched:** none.
