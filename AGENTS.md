@@ -1,5 +1,16 @@
 # AccessLens agent guide
 
+## Team alignment context — review before product-direction work
+
+Read [`docs/TEAM_ALIGNMENT_CHECK.md`](docs/TEAM_ALIGNMENT_CHECK.md) before
+changing product direction, demo claims, privacy boundaries, or the active MVP
+scope. It is a visible scorecard and agenda for the team's next in-person
+meeting; it is **not an implementation block**. Contributors may keep making
+scoped progress against the current extension-first MVP tonight.
+
+Do not silently choose the narrowed MVP revision or make new product claims
+from the document. Record any resulting decision after the team meeting.
+
 ## Read in this order
 
 1. `docs/CONTEXT_RELAY.md` — current state, open threads, decisions already made

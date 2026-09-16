@@ -23,6 +23,7 @@ ALLOWED_EVENT_TYPES = (
     "caption.appended",
     "capture.paused",
     "capture.resumed",
+    "capture.stopped",
     "source.unmatched",
     "session.ended",
 )
@@ -48,6 +49,7 @@ INSTRUCTOR_ONLY_TYPES = (
     "caption.appended",
     "capture.paused",
     "capture.resumed",
+    "capture.stopped",
     "source.unmatched",
     "session.ended",
 )
