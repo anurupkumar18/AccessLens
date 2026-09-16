@@ -57,7 +57,7 @@ during the build.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0050-stop-versus-end-session-lifecycle.md` |
+| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls are IN REVIEW with no transport change. Closed T-02, T-03, T-04. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0054-local-reading-settings.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
@@ -850,3 +850,20 @@ rejects `capture.stopped` and requires a human review plus authorized deployment
 **Next agent needs to know:** review `2d04fad`, deploy the reviewed relay when
 authorized, and exercise a real resume-path reconnect plus malformed-event
 rejection before treating the false-live row in the quality bench as proven.
+
+### RL-036 — 2026-09-16 — Part 1 / unowned student surface — Codex
+
+**Landed:** AL-010 local reading controls are ready for QA on
+`codex/demo-proof-sprint-qa`: student-local font, text size, line spacing,
+reading width, higher contrast, reduced motion, and requested-audio speed.
+The preference schema is strict, rejects prohibited/unknown fields, supplies
+safe defaults to older saved settings, and persists only through local extension
+storage. Audio speed is applied only to an utterance created after the student
+presses Play. `LiveEventSchema` rejects a preference-shaped field, and neither
+the relay nor instructor receives these settings.
+**Threads touched:** no existing risk thread; the Part 1 state row now points to
+the AL-010 handoff. T-21/T-33 retain their independent deployment and physical
+device evidence requirements.
+**Next agent needs to know:** QA the unpacked extension's controls in a real
+browser and verify settings survive an extension reload. This local code does
+not prove a screen-reader, Windows, or multi-device live relay run.

@@ -128,6 +128,27 @@ describe('StudentExperience', () => {
     expect(container?.textContent).toContain('Structured text');
   });
 
+  it('updates local reading controls through their native keyboard-accessible inputs', async () => {
+    const harness = renderExperience();
+    const font = container!.querySelector('#font-family') as HTMLSelectElement;
+    const spacing = container!.querySelector('#line-spacing') as HTMLSelectElement;
+    const width = container!.querySelector('#content-width') as HTMLSelectElement;
+    const contrast = container!.querySelector('#high-contrast-toggle') as HTMLInputElement;
+    const speechRate = container!.querySelector('#speech-rate') as HTMLSelectElement;
+
+    await act(async () => {
+      font.value = 'serif'; font.dispatchEvent(new Event('change', { bubbles: true }));
+      spacing.value = 'spacious'; spacing.dispatchEvent(new Event('change', { bubbles: true }));
+      width.value = 'narrow'; width.dispatchEvent(new Event('change', { bubbles: true }));
+      contrast.click();
+      speechRate.value = '1.25'; speechRate.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(harness.preferences).toMatchObject({ fontFamily: 'serif', lineSpacing: 'spacious', contentWidth: 'narrow', highContrast: true, speechRate: 1.25 });
+    expect(container!.querySelector('.student-experience')?.className).toContain('high-contrast');
+    expect(container!.querySelector('.student-experience')?.className).toContain('font-serif');
+  });
+
 
   it('goes stale only on a real disconnect, and live again on reconnect -- not from content silence', async () => {
     const client = new FakeConnectionAwareClient();

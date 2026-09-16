@@ -357,6 +357,25 @@ input[type='range'] { accent-color: var(--ink); }
 /* ---------- Student experience ---------------------------------------- */
 
 .student-experience { padding: 0; }
+.student-experience.font-system { font-family: var(--sans); }
+.student-experience.font-serif { font-family: Georgia, 'Times New Roman', serif; }
+.student-experience.font-monospace { font-family: var(--mono); }
+.student-experience.spacing-compact .student-content { line-height: 1.35; }
+.student-experience.spacing-comfortable .student-content { line-height: 1.6; }
+.student-experience.spacing-spacious .student-content { line-height: 1.9; }
+.student-content { max-width: 72ch; }
+.student-experience.width-narrow .student-content { max-width: 48ch; }
+.student-experience.width-wide .student-content { max-width: none; }
+.student-experience.high-contrast {
+  --ink: #000;
+  --paper: #fff;
+  --card: #fff;
+  --muted: #1a1a1a;
+  --line: #444;
+  --line-strong: #000;
+  --focus: #000;
+  color-scheme: light;
+}
 .student-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .student-heading h2 { margin: 0; }
 
@@ -523,6 +542,7 @@ input[type='range'] { accent-color: var(--ink); }
 }
 .display-settings label { display: flex; align-items: center; gap: .6rem; margin: 0; text-transform: none; letter-spacing: 0; font: 400 .92rem/1.4 var(--sans); color: var(--ink); }
 .display-settings input[type='range'] { flex: 1; }
+.display-settings select { width: auto; min-width: 9rem; margin-left: auto; }
 
 .pack-picker label { display: inline; margin-right: .5rem; }
 .pack-picker select { width: auto; display: inline-block; }

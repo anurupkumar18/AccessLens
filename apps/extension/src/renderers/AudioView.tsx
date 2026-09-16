@@ -5,9 +5,10 @@ interface Props {
   pack: AccessPack;
   assetId?: string;
   regionId?: string;
+  speechRate: number;
 }
 
-export function AudioView({ pack, assetId, regionId }: Props): React.ReactElement {
+export function AudioView({ pack, assetId, regionId, speechRate }: Props): React.ReactElement {
   const [message, setMessage] = useState('Audio is ready and will play only when requested.');
   const asset = pack.assets.find((candidate) => candidate.assetId === assetId) ?? pack.assets[0];
   const region = asset?.regions.find((candidate) => candidate.regionId === regionId) ?? asset?.regions[0];
@@ -19,7 +20,9 @@ export function AudioView({ pack, assetId, regionId }: Props): React.ReactElemen
       return;
     }
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(region.shortDescription));
+    const utterance = new SpeechSynthesisUtterance(region.shortDescription);
+    utterance.rate = speechRate;
+    window.speechSynthesis.speak(utterance);
     setMessage(`Playing description for ${region.regionId}.`);
   }
 

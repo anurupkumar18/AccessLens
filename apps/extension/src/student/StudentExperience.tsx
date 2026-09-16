@@ -97,7 +97,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
 
   return (
     <section
-      className="student-experience"
+      className={`student-experience font-${preferences.fontFamily} spacing-${preferences.lineSpacing} width-${preferences.contentWidth}${preferences.highContrast ? ' high-contrast' : ''}`}
       aria-labelledby="student-title"
       style={{ fontSize: `${preferences.textScale}rem` }}
     >
@@ -147,10 +147,10 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         ))}
       </div>
 
-      <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
+      <div className="student-content" id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} speechRate={preferences.speechRate} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
             <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
@@ -160,6 +160,14 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
 
       <fieldset className="display-settings">
         <legend>Display preferences</legend>
+        <label htmlFor="font-family">
+          Font
+          <select id="font-family" value={preferences.fontFamily} onChange={(changeEvent) => updatePreferences({ fontFamily: changeEvent.target.value as StudentPreferences['fontFamily'] })}>
+            <option value="system">System sans-serif</option>
+            <option value="serif">Serif</option>
+            <option value="monospace">Monospace</option>
+          </select>
+        </label>
         <label htmlFor="reduced-motion-toggle">
           <input
             id="reduced-motion-toggle"
@@ -181,6 +189,40 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
             aria-valuetext={`${Math.round(preferences.textScale * 100)} percent`}
             onChange={(changeEvent) => updatePreferences({ textScale: Number(changeEvent.target.value) })}
           />
+        </label>
+        <label htmlFor="line-spacing">
+          Line spacing
+          <select id="line-spacing" value={preferences.lineSpacing} onChange={(changeEvent) => updatePreferences({ lineSpacing: changeEvent.target.value as StudentPreferences['lineSpacing'] })}>
+            <option value="compact">Compact</option>
+            <option value="comfortable">Comfortable</option>
+            <option value="spacious">Spacious</option>
+          </select>
+        </label>
+        <label htmlFor="content-width">
+          Reading width
+          <select id="content-width" value={preferences.contentWidth} onChange={(changeEvent) => updatePreferences({ contentWidth: changeEvent.target.value as StudentPreferences['contentWidth'] })}>
+            <option value="standard">Standard</option>
+            <option value="narrow">Narrow</option>
+            <option value="wide">Wide</option>
+          </select>
+        </label>
+        <label htmlFor="high-contrast-toggle">
+          <input
+            id="high-contrast-toggle"
+            type="checkbox"
+            checked={preferences.highContrast}
+            onChange={() => updatePreferences({ highContrast: !preferences.highContrast })}
+          />
+          Higher contrast
+        </label>
+        <label htmlFor="speech-rate">
+          Read-aloud speed
+          <select id="speech-rate" value={preferences.speechRate} onChange={(changeEvent) => updatePreferences({ speechRate: Number(changeEvent.target.value) })}>
+            <option value="0.75">Slower</option>
+            <option value="1">Standard</option>
+            <option value="1.25">Faster</option>
+            <option value="1.5">Fastest</option>
+          </select>
         </label>
       </fieldset>
     </section>

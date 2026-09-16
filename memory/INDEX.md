@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0054-local-reading-settings.md` (Part 1/unowned student surface: local-only reading controls and requested-audio speed are ready for QA; real-browser accessibility evidence remains open)
 - `episodic/0053-fail-closed-invalid-relay-event.md` (Part 1: malformed inbound relay events now fail closed in the student UI; deployment and real-device proof remain open)
 - `episodic/0051-demo-proof-sprint-operator-evidence.md` (cross-cutting: privacy-safe operator packet and a 30-event relay quality bench; deployment and human-only proof remain explicitly open)
 - `episodic/0050-stop-versus-end-session-lifecycle.md` (Part 1/cross-cutting: `capture.stopped` separates stopped sharing from terminal session end; locally verified and awaiting contract review/deploy)

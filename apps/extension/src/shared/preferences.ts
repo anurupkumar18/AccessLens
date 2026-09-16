@@ -7,6 +7,14 @@ export const StudentPreferencesSchema = z.object({
   schemaVersion: z.literal('1.0'),
   mode: z.enum(['focus', 'structured-text', 'audio', 'ar']),
   textScale: z.number().min(0.75).max(2),
+  // Defaults make saved preferences from before the reading controls existed
+  // forward-compatible. These values remain entirely in local extension
+  // storage; neither the relay nor an instructor sees them.
+  fontFamily: z.enum(['system', 'serif', 'monospace']).default('system'),
+  lineSpacing: z.enum(['compact', 'comfortable', 'spacious']).default('comfortable'),
+  contentWidth: z.enum(['standard', 'narrow', 'wide']).default('standard'),
+  highContrast: z.boolean().default(false),
+  speechRate: z.number().min(0.75).max(1.5).default(1),
   reducedMotion: z.boolean(),
   captionsEnabled: z.boolean(),
 }).strict();
@@ -17,6 +25,11 @@ export const defaultPreferences: StudentPreferences = {
   schemaVersion: '1.0',
   mode: 'focus',
   textScale: 1,
+  fontFamily: 'system',
+  lineSpacing: 'comfortable',
+  contentWidth: 'standard',
+  highContrast: false,
+  speechRate: 1,
   reducedMotion: false,
   captionsEnabled: true,
 };
