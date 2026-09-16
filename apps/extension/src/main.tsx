@@ -5,7 +5,11 @@ import { App } from './shell/App';
 import { loadRemotePack, remotePackUrl } from './shared/remotePack';
 
 const root = createRoot(document.getElementById('root')!);
-const remote = remotePackUrl(window.location.search);
+// A pack named in the URL wins; otherwise a locally hosted build may name a
+// default published pack in VITE_ACCESSLENS_PACK_URL so the bare origin shows
+// it (the installed extension sets neither and uses the bundled packs).
+const defaultPack = import.meta.env.VITE_ACCESSLENS_PACK_URL as string | undefined;
+const remote = remotePackUrl(window.location.search) ?? (defaultPack ? remotePackUrl(`?pack=${encodeURIComponent(defaultPack)}`) : null);
 if (remote) {
   // A published pack named in the URL renders in place of the bundled
   // choices (decision D7). Failure is shown, not swallowed: a shell that
