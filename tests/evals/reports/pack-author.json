@@ -1,16 +1,16 @@
 {
   "role": "pack-author",
   "model": "us.anthropic.claude-sonnet-4-6",
-  "startedAt": "2026-09-16T03:48:51.014Z",
+  "startedAt": "2026-09-16T03:51:26.558Z",
   "cases": [
     {
       "caseId": "slide-01",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 3,
+      "attempts": 1,
       "violations": [],
       "facts": {
-        "regions": 3,
+        "regions": 4,
         "title": "How HNSW Works",
         "references": 0
       }
@@ -19,10 +19,10 @@
       "caseId": "slide-02",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 2,
+      "attempts": 1,
       "violations": [],
       "facts": {
-        "regions": 4,
+        "regions": 5,
         "title": "The Nearest-Neighbor Problem",
         "references": 0
       }
@@ -31,12 +31,13 @@
       "caseId": "slide-03",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 3,
+      "attempts": 2,
       "violations": [],
       "facts": {
-        "attemptIssues": "[[\"regions: was sent as a text string containing incomplete JSON. Send regions as a real JSON array of objects, not as a string, and keep it short enough to finish.\"],[\"regions.2.shortDescription: shortDescription is 68 words; the cap is 60. Rewrite it shorter.\"],[\"regions: was sent as a text string containing incomplete JSON. Send regions as a real JSON array of objects, not as a string, and keep it short enough to finish.\"]]"
-      },
-      "error": "pack-author produced no schema-valid output in 3 attempts for slide-03"
+        "regions": 5,
+        "title": "Skip Lists",
+        "references": 0
+      }
     },
     {
       "caseId": "slide-04",
@@ -45,9 +46,10 @@
       "attempts": 3,
       "violations": [],
       "facts": {
-        "attemptIssues": "[[\"regions.1.shortDescription: shortDescription is 64 words; the cap is 60. Rewrite it shorter.\"],[\"regions.0.shortDescription: shortDescription is 61 words; the cap is 60. Rewrite it shorter.\",\"regions.1.shortDescription: shortDescription is 61 words; the cap is 60. Rewrite it shorter.\"],[\"regions.1.shortDescription: shortDescription is 64 words; the cap is 60. Rewrite it shorter.\"]]"
-      },
-      "error": "pack-author produced no schema-valid output in 3 attempts for slide-04"
+        "regions": 2,
+        "title": "The Layered Graph",
+        "references": 0
+      }
     },
     {
       "caseId": "slide-05",
@@ -65,10 +67,10 @@
       "caseId": "slide-06",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 3,
+      "attempts": 1,
       "violations": [],
       "facts": {
-        "regions": 4,
+        "regions": 5,
         "title": "Inserting a Vector",
         "references": 0
       }
@@ -89,22 +91,21 @@
       "caseId": "slide-08",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 2,
+      "attempts": 3,
       "violations": [],
       "facts": {
-        "regions": 3,
-        "title": "Recall vs. Speed",
-        "references": 0
-      }
+        "attemptIssues": "[[\"regions: was sent as a text string containing incomplete JSON. Send regions as a real JSON array of objects, not as a string, and keep it short enough to finish.\"],[\"regions.2.shortDescription: shortDescription is 65 words; the cap is 60. Rewrite it shorter.\"],[\"regions.2.shortDescription: shortDescription is 63 words; the cap is 60. Rewrite it shorter.\"]]"
+      },
+      "error": "pack-author produced no schema-valid output in 3 attempts for slide-08"
     }
   ],
   "summary": {
     "total": 8,
-    "errored": 2,
-    "cleanRate": "6/6 (100%)",
+    "errored": 1,
+    "cleanRate": "7/7 (100%)",
     "heldOutCleanRate": "n/a",
-    "tunedCleanRate": "6/6 (100%)",
-    "meanAttempts": "2.17",
+    "tunedCleanRate": "7/7 (100%)",
+    "meanAttempts": "1.57",
     "violationsByRule": {}
   }
 }
