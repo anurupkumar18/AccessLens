@@ -8,15 +8,16 @@ to offer tab, window, and display sharing while awaiting a temporary session.
 ## Changed files
 
 - `captureController.ts` starts the explicitly user-triggered capture chooser
-  before awaiting `SessionClient.create()`. If create fails after permission is
-  granted, the stream is stopped before returning the UI to idle.
-- `captureController.test.ts` asserts the capture request begins before session
-  creation.
+  before awaiting `SessionClient.create()`, then creates the temporary session
+  only after capture is granted. If create fails, the stream is stopped before
+  returning the UI to idle.
+- `captureController.test.ts` asserts both the capture-request order and that a
+  temporary session waits for the instructor's grant.
 
 ## Validation evidence
 
-Focused controller tests passed (24), followed by full `make check`: 61 Access
-Pack, 24 relay, 5 delivery-board, 287 extension, and 53 live-session tests. The
+Focused controller tests passed (25), followed by full `make check`: 61 Access
+Pack, 24 relay, 5 delivery-board, 288 extension, and 53 live-session tests. The
 checked-in unpacked-extension build was regenerated.
 
 ## Blocker

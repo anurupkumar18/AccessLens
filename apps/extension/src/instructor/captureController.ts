@@ -201,19 +201,18 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
         // otherwise Chrome can reject window or display capture after the
         // transient user activation expires.
         const streamPromise = host.requestStream();
+        const granted = await streamPromise;
         if (openedHere) {
           try {
             await client.create(id);
           } catch {
-            const granted = await streamPromise.catch(() => null);
-            granted?.stop();
+            granted.stop();
             phase = 'idle';
             message = 'Could not open a session. Check the connection and try Start again.';
             notify();
             return;
           }
         }
-        const granted = await streamPromise;
         sessionId = id;
         stream = granted;
         unsubscribeEnded = granted.onEnded(() => endSharing());

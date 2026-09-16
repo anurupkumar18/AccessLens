@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { AccessPackSchema, InMemorySessionClient, LiveEventSchema, type LiveEvent } from '../shared/contracts';
+import type { CaptureStream } from '../sources/screen/captureHost';
 import { createCaptureController } from './index';
 import {
   FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, testPack,
@@ -58,6 +59,25 @@ describe('capture controller: start and permission flow (A1, A3)', () => {
     await controller.start();
 
     expect(order).toEqual(['requestStream', 'create']);
+  });
+
+  it('does not create a temporary session until the instructor grants capture', async () => {
+    const host = new FakeCaptureHost();
+    const client = new InMemorySessionClient();
+    let allowCapture: ((stream: CaptureStream) => void) | undefined;
+    const create = client.create.bind(client);
+    const createSpy = vi.fn(create);
+    client.create = createSpy;
+    host.requestStream = () => new Promise<CaptureStream>((resolve) => { allowCapture = resolve; });
+    const controller = createCaptureController({ client, pack, host, scheduler: new FakeScheduler(), ids: fixedIds('sess-consent') });
+
+    const starting = controller.start();
+    await Promise.resolve();
+    expect(createSpy).not.toHaveBeenCalled();
+
+    allowCapture!(host.stream);
+    await starting;
+    expect(createSpy).toHaveBeenCalledWith('sess-consent');
   });
 
   it('stops an already-granted stream when session creation fails', async () => {
