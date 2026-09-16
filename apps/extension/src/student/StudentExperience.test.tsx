@@ -2,12 +2,23 @@
 import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import axe from 'axe-core';
-import { InMemorySessionClient } from '../shared/contracts';
+import { InMemorySessionClient, type SessionClient } from '../shared/contracts';
 import { validEvent, validPack } from '../shared/fixtures';
 import { defaultPreferences, type StudentPreferences } from '../shared/preferences';
 import { StudentExperience } from './StudentExperience';
+
+class FakeConnectionAwareClient extends InMemorySessionClient {
+  private connectionListeners = new Set<(connected: boolean) => void>();
+  onConnectionChange(listener: (connected: boolean) => void): () => void {
+    this.connectionListeners.add(listener);
+    return () => this.connectionListeners.delete(listener);
+  }
+  emitConnectionChange(connected: boolean): void {
+    this.connectionListeners.forEach((listener) => listener(connected));
+  }
+}
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -22,7 +33,7 @@ describe('StudentExperience', () => {
     container = null;
   });
 
-  function renderExperience(event = validEvent): { preferences: StudentPreferences; rerender(): void } {
+  function renderExperience(event = validEvent, client: SessionClient = new InMemorySessionClient()): { preferences: StudentPreferences; rerender(): void } {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -30,7 +41,7 @@ describe('StudentExperience', () => {
     const rerender = (): void => {
       root?.render(
         <StudentExperience
-          client={new InMemorySessionClient()}
+          client={client}
           event={event}
           pack={validPack}
           preferences={state.preferences}
@@ -66,6 +77,32 @@ describe('StudentExperience', () => {
     await act(async () => focusTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
     expect(harness.preferences.mode).toBe('structured-text');
     expect(container?.textContent).toContain('Structured text');
+  });
+
+  it('goes stale only on a real disconnect, and live again on reconnect -- not from content silence', async () => {
+    const client = new FakeConnectionAwareClient();
+    renderExperience(validEvent, client);
+    expect(container?.querySelector('.connection-pill')?.textContent).toBe('live');
+
+    await act(async () => client.emitConnectionChange(false));
+    expect(container?.querySelector('.connection-pill')?.textContent).toBe('stale');
+    expect(container?.textContent).toContain('Connection interrupted. Showing the last reviewed state.');
+
+    await act(async () => client.emitConnectionChange(true));
+    expect(container?.querySelector('.connection-pill')?.textContent).toBe('live');
+    expect(container?.textContent).toContain('Reconnected.');
+  });
+
+  it('stays live when content is quiet, for a transport with no connection status to report', async () => {
+    vi.useFakeTimers();
+    try {
+      renderExperience();
+      expect(container?.querySelector('.connection-pill')?.textContent).toBe('live');
+      await act(async () => { vi.advanceTimersByTime(120_000); });
+      expect(container?.querySelector('.connection-pill')?.textContent).toBe('live');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('has no automatically detectable accessibility violations in the AR fallback', async () => {

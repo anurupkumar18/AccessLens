@@ -69,6 +69,7 @@ const DEFAULT_BACKOFF = [250, 500, 1000, 2000, 5000];
 export class WebSocketSessionClient implements SessionClient {
   private socket?: SocketLike;
   private readonly listeners = new Set<(event: LiveEvent) => void>();
+  private readonly connectionListeners = new Set<(connected: boolean) => void>();
   private readonly outbox: LiveEvent[] = [];
   private pending?: { resolve: (c: RoleCapability) => void; reject: (e: Error) => void };
   private capability?: RoleCapability;
@@ -77,6 +78,23 @@ export class WebSocketSessionClient implements SessionClient {
   private attempt = 0;
 
   constructor(private readonly options: WebSocketSessionClientOptions) {}
+
+  /**
+   * Real socket connectivity, not a proxy for it. `SessionClient`'s frozen
+   * five methods have no room for this, so it is additive rather than a
+   * change to that interface -- existing callers (Parts 2 and 3's code
+   * against the mock/BroadcastChannel clients, which never disconnect) are
+   * unaffected. A consumer that wants genuine staleness rather than a
+   * content-silence guess checks for this method before using it.
+   */
+  onConnectionChange(listener: (connected: boolean) => void): () => void {
+    this.connectionListeners.add(listener);
+    return () => this.connectionListeners.delete(listener);
+  }
+
+  private notifyConnection(connected: boolean): void {
+    this.connectionListeners.forEach(listener => listener(connected));
+  }
 
   create(sessionId: string): Promise<RoleCapability> {
     return this.handshake(sessionId, { kind: 'create', sessionId });
@@ -161,6 +179,7 @@ export class WebSocketSessionClient implements SessionClient {
 
     socket.onopen = () => {
       this.attempt = 0;
+      this.notifyConnection(true);
       onOpen?.();
       this.flush();
     };
@@ -177,6 +196,7 @@ export class WebSocketSessionClient implements SessionClient {
 
     socket.onclose = () => {
       this.socket = undefined;
+      this.notifyConnection(false);
       if (!this.closed) this.scheduleReconnect();
     };
 

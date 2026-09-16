@@ -190,6 +190,54 @@ describe('WebSocketSessionClient', () => {
     expect(decoded).toMatchObject({ role: 'instructor', sessionId: 'sess-demo-0001' });
   });
 
+  it('reports real connection status, not content silence', async () => {
+    const h = make();
+    const statuses: boolean[] = [];
+    h.client.onConnectionChange(connected => statuses.push(connected));
+
+    const promise = h.client.create('sess-demo-0001');
+    h.latest().open();
+    h.latest().deliver({ kind: 'capability', capability: capability('instructor') });
+    await promise;
+    expect(statuses).toEqual([true]);
+
+    h.latest().drop();
+    expect(statuses).toEqual([true, false]);
+
+    h.runTimers();
+    h.latest().open();
+    expect(statuses).toEqual([true, false, true]);
+  });
+
+  it('reports disconnected once the backoff list is exhausted and it stops trying', () => {
+    const h = make();
+    const statuses: boolean[] = [];
+    h.client.onConnectionChange(connected => statuses.push(connected));
+    h.client.create('sess-demo-0001').catch(() => {});
+    h.latest().open();
+
+    for (let i = 0; i < 10; i += 1) {
+      h.latest().drop();
+      h.runTimers();
+    }
+
+    expect(statuses.at(-1)).toBe(false);
+  });
+
+  it('stops reporting connection status after unsubscribe', async () => {
+    const h = make();
+    const statuses: boolean[] = [];
+    const unsubscribe = h.client.onConnectionChange(connected => statuses.push(connected));
+    unsubscribe();
+
+    const promise = h.client.create('sess-demo-0001');
+    h.latest().open();
+    h.latest().deliver({ kind: 'capability', capability: capability('instructor') });
+    await promise;
+
+    expect(statuses).toEqual([]);
+  });
+
   it('surfaces a relay error instead of hanging', async () => {
     const h = make();
     const promise = h.client.join('sess-demo-0001');

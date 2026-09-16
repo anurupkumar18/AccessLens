@@ -111,6 +111,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-25 | **The relay is deployed and the extension does not use it.** `WebSocketSessionClient` implements Part 1's frozen interface and is tested, but nothing constructs it: the extension still runs on `BroadcastChannel`, which is one browser profile on one machine. `VITE_ACCESSLENS_WS_URL` is unset. Until someone swaps the transport at its construction site and rehearses across two real devices, "multi-device demo" is an untested claim — and the swap is the cheap part, while discovering a problem during the rehearsal is not. | Part 1 + Part 3 | The demo | IN PROGRESS | `apps/extension/src/shell/createDefaultClient.ts` swaps the transport when `VITE_ACCESSLENS_WS_URL` is set; verified with the real deployed endpoint from two real browser tabs (instructor `create()` succeeded, student `join()` correctly rejected a bogus code) and Part 4's own `integration-test.mjs` (12/12). What has *not* happened is the rehearsal across two real devices with real `getDisplayMedia()` permission -- no sandboxed tool can grant that. |
 | T-26 | The deployed endpoint has no authorizer on `$connect`: anyone who can reach the URL can create a session, and the session id is the only secret. Acceptable for a reviewed demo pack with no student data, and stated in `services/live-session/README.md`, but it must not be described as secure, and it is not a shape to carry into anything holding real course content. | Part 4 | Claims made about the demo | ACCEPTED | Deliberate scope call for the hackathon; `services/live-session/README.md` "What is not built" |
 | T-27 | `.github/workflows/check.yml` ran `npm ci` at the repo root only. `services/live-session` is its own package with its own lockfile (Part 4's `live-session-check` Makefile target says so explicitly), so CI has failed on every push since Part 4 merged (`0fba221` onward) with `Cannot find module '@aws-sdk/client-dynamodb'` -- the same shape of gap as T-08, in a new directory nobody updated the workflow for. | Part 1 | Everyone | CLOSED | Added `npm ci --prefix services/live-session` to the workflow; reproduced the failure locally first (`rm -rf services/live-session/node_modules && make check`), confirmed the fix the same way |
+| T-28 | `StudentExperience.tsx` marked the view "stale" after 15 seconds with no new event -- a content-silence guess standing in for a connection check. An instructor explaining one region for more than 15 seconds (normal pacing) produced a false "Connection interrupted," which is exactly what the team hit live-testing the real extension against the real relay. | Part 1 + Part 3 + Part 4 | Trust in the demo's own status indicator | CLOSED | `WebSocketSessionClient.onConnectionChange` (real socket open/close, additive to the frozen interface) threaded through `liveRelayClient.ts` to `StudentExperience.tsx`, replacing the timer. `markLiveStateReconnected` added as the stale->live counterpart. +9 tests across the four files (`services/live-session` 52 total, extension 259 total) |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
@@ -676,3 +677,31 @@ this was for CI actually installing into it). If a future part adds another
 `package.json` anywhere other than the repo root, add its `npm ci` to
 `.github/workflows/check.yml` in the same PR, not as a follow-up someone
 else discovers via a red run.
+
+### RL-027 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** the user's teammates were live-testing the real extension against
+the real deployed relay and hit "Connection interrupted. Showing the last
+reviewed state." with the pill reading "Stale," while the connection was
+actually fine. Root cause: `StudentExperience.tsx` guessed staleness from
+15 seconds of content silence, not from any actual connection signal. An
+instructor spending more than 15 seconds on one region -- normal lecture
+pacing -- was indistinguishable from a dropped socket to that timer.
+
+Fixed properly rather than papering over it: `WebSocketSessionClient`
+already tracked real socket open/close internally and exposed none of it;
+added `onConnectionChange` (additive, not a change to the frozen five-method
+interface), threaded it through `liveRelayClient.ts`, and had
+`StudentExperience.tsx` drive `live`/`stale` from that instead of the timer.
+`BroadcastChannel`/in-memory transports have no such method and so never go
+falsely stale from a quiet instructor -- correct, since they have no real
+disconnect concept to report. Added `markLiveStateReconnected` as the
+stale -> live counterpart to the existing `markLiveStateStale`.
+**Threads touched:** T-28 opened and closed in the same pass.
+**Next agent needs to know:** this bug predates the live relay -- the same
+false alarm would have fired against `BroadcastChannel` too, just with lower
+stakes since that transport doesn't actually drop mid-demo. If you add
+another timer-based guess standing in for a real signal anywhere in this
+codebase, this is the second time in one day that pattern produced a false
+alarm in front of an actual user (the first was T-08/T-27's CI gaps). Prefer
+the real signal even when the guess is easier to write.

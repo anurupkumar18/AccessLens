@@ -4,7 +4,7 @@ import type { StudentPreferences } from '../shared/preferences';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { AudioView } from '../renderers/AudioView';
-import { applyLiveEvent, initialStudentLiveState, markLiveStateStale } from './liveState';
+import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
 
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
@@ -37,10 +37,17 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
   }, [event, pack]);
 
   useEffect(() => {
-    if (live.status !== 'live') return;
-    const timer = window.setTimeout(() => setLive((current) => markLiveStateStale(current)), 15_000);
-    return () => window.clearTimeout(timer);
-  }, [live.lastSequence, live.status]);
+    // Real socket connectivity, when the transport can report it (Part 4's
+    // WebSocketSessionClient; the mock transports never disconnect). A fixed
+    // timeout on content silence was tried first and produced false "Connection
+    // interrupted" alarms any time an instructor spent more than a few seconds
+    // on one region, which is normal lecture pacing, not a dropped connection.
+    const connectionAware = client as { onConnectionChange?: (listener: (connected: boolean) => void) => () => void };
+    if (!connectionAware.onConnectionChange) return;
+    return connectionAware.onConnectionChange((connected) => {
+      setLive((current) => (connected ? markLiveStateReconnected(current) : markLiveStateStale(current)));
+    });
+  }, [client]);
 
   async function join(): Promise<void> {
     try {

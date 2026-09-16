@@ -94,4 +94,29 @@ describe('wrapLiveRelayClient', () => {
 
     expect(underlying.close).toHaveBeenCalled();
   });
+
+  it('passes through real connection status when the underlying client supports it', () => {
+    const underlying = fakeUnderlying() as FakeUnderlying & { onConnectionChange(listener: (connected: boolean) => void): () => void };
+    let notify: ((connected: boolean) => void) | undefined;
+    underlying.onConnectionChange = (listener: (connected: boolean) => void) => {
+      notify = listener;
+      return () => { notify = undefined; };
+    };
+    const client = wrapLiveRelayClient(underlying);
+
+    expect(client.onConnectionChange).toBeDefined();
+    const statuses: boolean[] = [];
+    client.onConnectionChange!(connected => statuses.push(connected));
+    notify?.(true);
+    notify?.(false);
+
+    expect(statuses).toEqual([true, false]);
+  });
+
+  it('has no onConnectionChange when the underlying client does not support it', () => {
+    const underlying = fakeUnderlying();
+    const client = wrapLiveRelayClient(underlying);
+
+    expect(client.onConnectionChange).toBeUndefined();
+  });
 });

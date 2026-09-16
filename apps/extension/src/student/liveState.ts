@@ -79,3 +79,8 @@ export function markLiveStateStale(current: StudentLiveState): StudentLiveState 
   if (current.status !== 'live') return current;
   return { ...current, status: 'stale', message: 'Connection interrupted. Showing the last reviewed state.' };
 }
+
+export function markLiveStateReconnected(current: StudentLiveState): StudentLiveState {
+  if (current.status !== 'stale') return current;
+  return { ...current, status: 'live', message: 'Reconnected.' };
+}

@@ -11,6 +11,17 @@ interface UnvalidatedSessionClient {
   send(event: unknown): void;
   subscribe(listener: (event: unknown) => void): () => void;
   close(): void;
+  /** Real socket connectivity (`WebSocketSessionClient` only -- the mock
+   *  transports never disconnect, so they have no such method). Additive to
+   *  the frozen `SessionClient` interface, not part of it. */
+  onConnectionChange?(listener: (connected: boolean) => void): () => void;
+}
+
+/** `SessionClient` plus the same optional, additive connection-status hook.
+ *  A consumer checks for it (`'onConnectionChange' in client`) rather than
+ *  assuming every transport has one. */
+export interface LiveRelaySessionClient extends SessionClient {
+  onConnectionChange?(listener: (connected: boolean) => void): () => void;
 }
 
 /**
@@ -21,7 +32,7 @@ interface UnvalidatedSessionClient {
  * dropped, not forwarded or thrown; a malformed capability rejects the
  * `create`/`join` promise, since the caller is already awaiting it.
  */
-export function wrapLiveRelayClient(underlying: UnvalidatedSessionClient): SessionClient {
+export function wrapLiveRelayClient(underlying: UnvalidatedSessionClient): LiveRelaySessionClient {
   return {
     async create(sessionId: string): Promise<RoleCapability> {
       return RoleCapabilitySchema.parse(await underlying.create(sessionId));
@@ -41,5 +52,8 @@ export function wrapLiveRelayClient(underlying: UnvalidatedSessionClient): Sessi
     close(): void {
       underlying.close();
     },
+    onConnectionChange: underlying.onConnectionChange
+      ? (listener: (connected: boolean) => void) => underlying.onConnectionChange!(listener)
+      : undefined,
   };
 }

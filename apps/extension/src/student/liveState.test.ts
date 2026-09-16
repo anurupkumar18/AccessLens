@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveEvent } from '../shared/contracts';
 import { validEvent, validPack } from '../shared/fixtures';
-import { applyLiveEvent, initialStudentLiveState, markLiveStateStale } from './liveState';
+import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
 
 describe('student live state', () => {
   it('applies the newest reviewed region and AR hotspot', () => {
@@ -57,6 +57,22 @@ describe('student live state', () => {
       assetId: 'cell-slide-03',
       regionId: 'mitochondrion',
     });
+  });
+
+  it('returns to live with the last reviewed region once the socket reconnects', () => {
+    const live = applyLiveEvent(initialStudentLiveState, validEvent, validPack);
+    const stale = markLiveStateStale(live);
+    expect(markLiveStateReconnected(stale)).toMatchObject({
+      status: 'live',
+      assetId: 'cell-slide-03',
+      regionId: 'mitochondrion',
+      message: 'Reconnected.',
+    });
+  });
+
+  it('leaves a non-stale status alone on a reconnect notification', () => {
+    const ended = applyLiveEvent(initialStudentLiveState, { ...validEvent, type: 'session.ended', sequence: 9 } as LiveEvent, validPack);
+    expect(markLiveStateReconnected(ended)).toBe(ended);
   });
 
   it('shows unmatched without inventing an asset or region', () => {
