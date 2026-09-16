@@ -2,6 +2,8 @@ import React, { Suspense, useEffect, useState } from 'react';
 import type { AccessPack, LiveEvent, RoleCapability, SessionClient } from '../shared/contracts';
 import { defaultAiClient, isRelayCapability, type AiClient } from '../shared/aiClient';
 import { AskClass } from './AskClass';
+import { StudyChat } from './StudyChat';
+import { defaultChatClient, type ChatClient } from '../shared/chatClient';
 import { LiveCaptionsView } from './LiveCaptionsView';
 import { ScreenReaderAnnouncer } from './ScreenReaderAnnouncer';
 import type { StudentPreferences } from '../shared/preferences';
@@ -25,6 +27,8 @@ interface Props {
   onPreferencesChange(preferences: StudentPreferences): void;
   /** AI gateway client; defaults to the one configured by VITE_ACCESSLENS_AI_URL. */
   ai?: AiClient | null;
+  /** Study chat client; defaults to the one configured by VITE_ACCESSLENS_CHAT_URL. */
+  chat?: ChatClient | null;
 }
 
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
@@ -41,7 +45,7 @@ function modesFor(pack: AccessPack): typeof allModes {
   return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
 }
 
-export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient }: Props): React.ReactElement {
+export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient, chat = defaultChatClient }: Props): React.ReactElement {
   const [sessionId, setSessionId] = useState('');
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
@@ -213,7 +217,9 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         ) : null}
       </div>
 
-      <AskClass pack={pack} capability={capability} ai={ai} />
+      {chat
+        ? <StudyChat pack={pack} capability={capability} client={chat} assetId={live.assetId} regionId={live.regionId} />
+        : <AskClass pack={pack} capability={capability} ai={ai} />}
 
       <fieldset className="display-settings">
         <legend>Screen reader</legend>

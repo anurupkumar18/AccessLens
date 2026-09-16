@@ -15,10 +15,13 @@
  * allowlisted fields. For local testing, not for serving a class.
  */
 import { createServer } from 'node:http';
+import { buildChatHandler } from '../src/chatHandler.js';
 import { handler } from '../src/handler.js';
 
 const port = Number(process.argv[2] ?? 8787);
-const MAX_REQUEST_BYTES = 8192;
+/** Large enough for a Whisper clip; each route enforces its own, smaller limit. */
+const MAX_REQUEST_BYTES = 600_000;
+let chat: ReturnType<typeof buildChatHandler> | undefined;
 
 if (!process.env.CAPABILITY_SECRET) {
   console.error('CAPABILITY_SECRET is not set. Use the deployed relay\'s secret so its capabilities verify.');
@@ -50,15 +53,30 @@ createServer((request, response) => {
   request.on('end', () => {
     if (response.headersSent) return;
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
+    const body = Buffer.concat(chunks).toString('utf8');
+    if (path === '/chat') {
+      // The study chat streams: the same handler the Function URL runs, writing
+      // each JSON line as it is produced.
+      chat ??= buildChatHandler();
+      chat.then(handle => handle({ body, requestContext: { http: { method: request.method } } }, {
+        start: status => { response.writeHead(status, { ...cors, 'content-type': 'application/x-ndjson', 'cache-control': 'no-store' }); },
+        write: line => { response.write(line); },
+        end: () => { response.end(); },
+      })).catch(() => {
+        if (!response.headersSent) response.writeHead(500, { ...cors, 'content-type': 'application/json' });
+        response.end('{"type":"error","reason":"chat-unavailable"}\n');
+      });
+      return;
+    }
     handler({
       rawPath: path,
       requestContext: { http: { method: request.method, path } },
-      body: Buffer.concat(chunks).toString('utf8'),
+      body,
     }).then(
       (result) => response.writeHead(result.statusCode, { ...result.headers, ...cors }).end(result.body),
       () => response.writeHead(500, { ...cors, 'content-type': 'application/json' }).end('{"error":"internal"}'),
     );
   });
 }).listen(port, '127.0.0.1', () => {
-  console.log(`AI routes on http://localhost:${port} (POST /ask, /speak, /transcribe-url)`);
+  console.log(`AI routes on http://localhost:${port} (POST /ask, /speak, /transcribe-url, /transcribe-chunk, /chat)`);
 });

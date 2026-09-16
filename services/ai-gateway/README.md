@@ -9,6 +9,7 @@ Gateway HTTP API, deployed by `infra/` in the same stack as the relay.
 | `POST /speak` | instructor or student in a live session | Hear mode: one field of one reviewed region as mp3 | Polly (neural) |
 | `POST /transcribe-url` | instructor only | A 5-minute presigned URL the instructor's browser uses to stream its microphone to Transcribe | Transcribe streaming |
 | `POST /transcribe-chunk` | instructor only | One spoken clip (16 kHz mono WAV, at most 12 s) to caption text | Whisper large-v3-turbo on a SageMaker endpoint (`infra/lib/whisper-stack.ts`) |
+| Study chat Function URL (streaming) | instructor or student in a live session | A multi-turn chat about the lesson, streamed as JSON lines | Bedrock Converse (Claude Sonnet 4.6) + a Bedrock Guardrail; a Bedrock Knowledge Base when configured |
 
 Sonnet 4.6 because it is the only Claude model this hackathon account can invoke
 (`docs/AWS_ACCESS_VERIFICATION.md` §3).
@@ -53,6 +54,41 @@ only the text comes back, and neither is logged. It answers 503
 and destroyed independently of this stack) is not deployed. This is the
 default captioning engine in the instructor panel; Transcribe streaming is
 offered alongside it as a fallback.
+
+## Study chat
+
+`src/chat.ts` (engine), `src/chatHandler.ts` (Lambda entry), `src/knowledge.ts`
+(course materials seam); the student UI is `apps/extension/src/student/StudyChat.tsx`.
+
+- **Streaming.** Its own function behind a Function URL in `RESPONSE_STREAM`
+  mode, because API Gateway's HTTP API buffers responses. The reply arrives as
+  newline-delimited JSON events: `delta`, `sources`, then `done` (or `error`).
+- **Guardrail.** Every call carries the `accesslens-study-chat` Bedrock
+  Guardrail (stack `AccessLensLiveSession`) in synchronous stream mode, so text
+  is checked before the student sees it: content filters (prompt attacks on
+  input), a denied topic for handing over graded-work answers, PII
+  anonymised or blocked, and the managed profanity list. A blocked exchange is
+  not sent back as context on later turns, or it would block them too.
+- **Agent loop.** Classic Bedrock Agents cannot be created in the hackathon
+  account (`bedrock:CreateAgent` is denied by an organisation policy), so the
+  agent is the Converse tool-use loop: when a knowledge source is configured
+  the model gets a `search_course_materials` tool and decides when to call it,
+  at most twice per reply, and cites what it found.
+- **Knowledge.** Retrieval is the team's work and plugs in through
+  `CourseKnowledge`. A Bedrock Knowledge Base over the instructors' S3 uploads
+  works today: `cdk deploy -c studyChatKnowledgeBaseId=<id> AccessLensLiveSession`
+  sets `KNOWLEDGE_BASE_ID` and grants `bedrock:Retrieve` on that knowledge base.
+  Without one the chat grounds in the lesson pack only.
+- **Lessons.** The bundled reviewed packs, plus any pack published after an
+  instructor review (`PACK_BASE_URL`, cached per container); drafts are refused.
+- **Nothing kept.** The conversation lives in the student's page and is sent
+  with each turn (last 20 turns, 16,000 characters). Logs record only route,
+  role, pack, stop reason, search count and timing.
+
+Try it before deploying: run `scripts/local-server.ts` (it serves `/chat` with the
+same handler, without a guardrail unless `GUARDRAIL_ID` is set) and set
+`VITE_ACCESSLENS_CHAT_URL=http://localhost:8787/chat`. After deploying, use the
+stack's `StudyChatUrl` output instead.
 
 ## Charter A2 decision: remote audio for live captions
 

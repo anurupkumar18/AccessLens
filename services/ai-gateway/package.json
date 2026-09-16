@@ -7,12 +7,14 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "esbuild src/handler.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.mjs --external:@aws-sdk/* --loader:.json=json --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
+    "build": "esbuild src/handler.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.mjs --external:@aws-sdk/* --loader:.json=json --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" && esbuild src/chatHandler.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/chat.mjs --loader:.json=json --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
     "check": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^0.33.6",
     "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.1134.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1134.0",
     "@aws-sdk/client-polly": "^3.1133.0",
     "@aws-sdk/client-sagemaker-runtime": "^3.1133.0",
     "@aws-sdk/credential-provider-node": "^3.972.83",

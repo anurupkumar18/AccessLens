@@ -1707,3 +1707,27 @@ controls and the student view two caption displays. That duplication is
 deliberate for this merge, not a decision: the team should pick one path.
 `accesslens-extension-ar-pivot` itself is unchanged; merging this branch into it
 is now conflict-free.
+
+### RL-074 — 2026-09-16 — Part 3 + Part 4 — Omar Rizwan
+
+**Landed:** the student study chat. `services/ai-gateway/src/chat.ts` streams a
+multi-turn conversation with Claude Sonnet 4.6 through the Bedrock Converse API,
+screened by a new Bedrock Guardrail (`accesslens-study-chat`, synchronous stream
+mode: content filters, a graded-work-answers denied topic, PII, profanity). It
+runs as its own Lambda behind a `RESPONSE_STREAM` Function URL (`StudyChatUrl`
+output) in `AccessLensLiveSession`, verifies the relay capability, rate-limits per
+session, and grounds in the reviewed lesson (bundled or published
+instructor-reviewed packs). `StudyChat.tsx` replaces "Ask this class" in the
+student view when `VITE_ACCESSLENS_CHAT_URL` is set. Checked against real
+Bedrock: first text about 1 s; a course-search round trip worked with a fake
+source; end to end in a browser on the HNSW lesson.
+**Threads touched:** none opened.
+**Next agent needs to know:** retrieval is not implemented here by design. The
+team's Knowledge Base plugs in with `cdk deploy -c studyChatKnowledgeBaseId=<id>`
+(the model then gets a `search_course_materials` tool); any other retriever is
+one `CourseKnowledge` implementation in `knowledge.ts`. Classic Bedrock Agents
+are denied account-wide (`bedrock:CreateAgent`, even for the CDK role), which is
+why the agent is the Converse tool loop; AgentCore Runtime is allowed if a hosted
+agent is ever needed. The guardrail has not yet been exercised against real
+student questions: check for false positives (especially the denied topic)
+right after deploying.

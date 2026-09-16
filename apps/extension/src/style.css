@@ -752,6 +752,37 @@ input[type='range'] { accent-color: var(--ink); }
 .caption-lines .caption-partial { color: var(--muted); }
 .caption-lines .caption-partial::after { content: ' \2026'; }
 
+/* Study chat: a bordered conversation window in the same language as the
+   console cards. Student and chat messages differ by position, a label and a
+   rule, never by colour alone (charter A7). */
+.study-chat { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); max-width: 760px; }
+.study-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.study-chat-head h3 { margin: 0; }
+.study-chat-head button { margin: 0; }
+.study-chat-context { margin: .75rem 0 .5rem; }
+.study-chat-context .eyebrow { margin-right: .4rem; }
+.study-chat-log { display: grid; gap: .75rem; max-height: 26rem; overflow-y: auto; padding: 1rem; border: 1px solid var(--rule); background: var(--field); }
+.study-chat-log:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.study-chat-empty p { margin: 0 0 .6rem; }
+.study-chat-suggestions { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.study-chat-suggestions button { margin: 0; text-transform: none; letter-spacing: 0; }
+.chat-message { max-width: 88%; padding: .6rem .8rem; border: 1px solid var(--line); background: var(--card); }
+.chat-message.student { justify-self: end; border-right: 4px solid var(--ink); }
+.chat-message.assistant { justify-self: start; border-left: 4px solid var(--accent); }
+.chat-author { margin: 0 0 .2rem; font: 500 .72rem/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.chat-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-typing { margin: 0; color: var(--muted); font-style: italic; }
+.chat-sources { margin-top: .5rem; padding-top: .4rem; border-top: 1px solid var(--line); }
+.chat-sources ul { margin: .2rem 0 0; padding-left: 1.1rem; }
+.chat-note { margin: .4rem 0 0; font-size: .88rem; color: var(--muted); }
+.chat-note.error { color: var(--ink); }
+.chat-note button { margin: 0 0 0 .3rem; padding: .2rem .5rem; }
+.study-chat-form { margin-top: .75rem; display: grid; gap: .4rem; }
+.study-chat-form textarea { width: 100%; box-sizing: border-box; font: inherit; padding: .6rem .7rem; border: 1px solid var(--rule); background: var(--field); color: var(--ink); resize: vertical; min-height: 3.2rem; }
+.study-chat-actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.study-chat-actions p { margin: 0; }
+.study-chat-actions button { margin: 0; }
+
 .ask-class { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
 .ask-class > h3 { margin-top: 0; }
 .ask-class form { margin-top: 1rem; max-width: 760px; }

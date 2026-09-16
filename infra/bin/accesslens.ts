@@ -44,6 +44,9 @@ new LiveSessionStack(app, 'AccessLensLiveSession', {
   // The authoring distribution's URL, from .env.local (make deploy sources it),
   // so the relay can read any published pack the way students do.
   packBaseUrl: process.env.VITE_ACCESSLENS_ASSET_BASE_URL || undefined,
+  // Set when the team's Knowledge Base over the instructors' S3 uploads exists:
+  // `cdk deploy -c studyChatKnowledgeBaseId=XXXXXXXXXX AccessLensLiveSession`.
+  studyChatKnowledgeBaseId: app.node.tryGetContext('studyChatKnowledgeBaseId') || process.env.STUDY_CHAT_KNOWLEDGE_BASE_ID || undefined,
 });
 new AccessLensAuthoringStack(app, 'AccessLensAuthoring');
 
