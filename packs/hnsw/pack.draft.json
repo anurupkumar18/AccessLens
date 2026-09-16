@@ -13,6 +13,7 @@
   "assets": [
     {
       "assetId": "slide-01",
+      "mediaUri": "slides/slide-01.png",
       "fingerprint": "dhash12:00100000000000000001011e2ac470800",
       "title": "How HNSW Works",
       "readingOrder": [
@@ -82,6 +83,7 @@
     },
     {
       "assetId": "slide-02",
+      "mediaUri": "slides/slide-02.png",
       "fingerprint": "dhash12:00150380000c21cca88590f3106000002",
       "title": "The Nearest-Neighbor Problem",
       "readingOrder": [
@@ -152,6 +154,7 @@
     },
     {
       "assetId": "slide-03",
+      "mediaUri": "slides/slide-03.png",
       "fingerprint": "dhash12:0010020040044188314620d608c000442",
       "title": "Skip Lists",
       "readingOrder": [
@@ -210,6 +213,7 @@
     },
     {
       "assetId": "slide-04",
+      "mediaUri": "slides/slide-04.png",
       "fingerprint": "dhash12:00100300298e398738c71c630d630d002",
       "title": "The Layered Graph",
       "readingOrder": [
@@ -255,6 +259,7 @@
     },
     {
       "assetId": "slide-05",
+      "mediaUri": "slides/slide-05.png",
       "fingerprint": "dhash12:00140300290e21c438d7102389e308002",
       "title": "Searching the Index",
       "readingOrder": [
@@ -312,6 +317,7 @@
     },
     {
       "assetId": "slide-06",
+      "mediaUri": "slides/slide-06.png",
       "fingerprint": "dhash12:00140300628cc3807540700f210630002",
       "title": "Inserting a Vector",
       "readingOrder": [
@@ -394,6 +400,7 @@
     },
     {
       "assetId": "slide-07",
+      "mediaUri": "slides/slide-07.png",
       "fingerprint": "dhash12:001402844c8999132640981302626600a",
       "title": "The Three Parameters",
       "readingOrder": [
@@ -440,6 +447,7 @@
     },
     {
       "assetId": "slide-08",
+      "mediaUri": "slides/slide-08.png",
       "fingerprint": "dhash12:001003000001b0c732c4d8a3506180002",
       "title": "Recall vs. Speed",
       "readingOrder": [

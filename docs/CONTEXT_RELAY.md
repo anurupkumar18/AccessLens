@@ -705,3 +705,18 @@ another timer-based guess standing in for a real signal anywhere in this
 codebase, this is the second time in one day that pattern produced a false
 alarm in front of an actual user (the first was T-08/T-27's CI gaps). Prefer
 the real signal even when the guess is easier to write.
+
+### RL-028 — 2026-09-16 — Part 2 — Jacob
+
+**Landed:** pack-driven student rendering. Focus mode shows the followed
+slide from the asset's `mediaUri` with `region.bounds` outlined, for any
+pack; a pack without images gets the text alone. Slide images for both packs
+are bundled through `shared/packMedia.ts` (one glob line per pack). The AR
+tab is offered only when the pack carries an `arScene`, and a saved AR
+preference falls back to Focus otherwise. `scripts/build-pack.ts` emits
+`mediaUri`; the HNSW draft carries it.
+**Threads touched:** none opened or closed.
+**Next agent needs to know:** the AR renderer still loads a fixed cell model
+rather than the pack's `modelUri`. Gating on `arScene` is enough while only
+one pack has a scene; a second AR pack needs the renderer to read the scene
+from the pack.
