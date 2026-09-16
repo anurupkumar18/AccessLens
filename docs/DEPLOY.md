@@ -153,10 +153,10 @@ export JOB_ID="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).jobId
 ```
 
 Success is HTTP 202 and JSON containing the new `jobId` and
-`"status":"queued"`. V2 records the job but intentionally does not start the
-pipeline; later milestones replace that one function body.
+`"status":"queued"`. Creating the job also starts one execution of the
+`AccessLensAuthoring` Step Functions state machine, named after the job id.
 
-Poll it once:
+Poll it:
 
 ```sh
 curl --fail-with-body --silent --show-error \
@@ -164,8 +164,41 @@ curl --fail-with-body --silent --show-error \
   "$API_URL/v1/jobs/$JOB_ID"
 ```
 
-Success is JSON with the same `jobId`, `packId`, an empty `slides` array, and
-`"status":"queued"`.
+The `status` moves through `ingesting` (LibreOffice/Poppler render the deck
+to PNGs and text), `describing` (the deck analyst writes `lesson.json`),
+`visualizing` (every slide is described and given Polly audio, five slides at
+a time), and settles at `review`. Expect three to six minutes for the
+eight-slide demo deck; the first run adds a container cold start of a few
+seconds. `slides` fills in as each slide finishes. No visualization stages are
+deployed yet, so every slide reports `visualizationStatus: "no-visual"` — a
+clean absence, which is the spec's designed outcome for a slide with no
+verified interactive.
+
+To watch the execution itself:
+
+```sh
+aws stepfunctions describe-execution --region us-east-1 \
+  --execution-arn "$(sed 's/stateMachine/execution/' <<<"$STATE_MACHINE_ARN"):$JOB_ID"
+```
+
+where `STATE_MACHINE_ARN` is the `StateMachineArn` output of `make deploy`.
+`status` is `RUNNING` until the job reaches review, then stays `RUNNING`
+while it waits for the instructor: the machine polls the job record every
+few seconds and continues to publish once `POST /v1/jobs/{id}/review` and
+`POST /v1/jobs/{id}/publish` have been called.
+
+Once the job is at `review`, the draft the instructor would see:
+
+```sh
+curl --fail-with-body --silent --show-error \
+  -H "Authorization: Bearer $ACCESSLENS_API_TOKEN" \
+  "$API_URL/v1/jobs/$JOB_ID/draft"
+```
+
+Success is JSON with one asset per slide, each carrying `regions` with
+`shortDescription`, `plainLanguage`, and an `audioUri` under the job's
+staging prefix. Nothing under `packs/`, `media/`, or `artifacts/` exists yet:
+publishing is the instructor's decision, never the pipeline's.
 
 The bounded all-in-one version of these checks is:
 
@@ -173,8 +206,9 @@ The bounded all-in-one version of these checks is:
 make smoke
 ```
 
-It performs health, upload, PUT, job creation, and five bounded polls. It ends
-with `Smoke complete. A queued status is expected until the V3/V4 pipeline lanes are deployed.`
+It performs health, upload, PUT, job creation, and bounded polls until the
+job leaves `queued`. It ends with `Smoke complete.` and the status it last
+saw; `ingesting` or later means the pipeline is running.
 
 ## 6. Remove everything
 

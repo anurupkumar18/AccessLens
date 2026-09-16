@@ -49,14 +49,14 @@ job_json="$(curl --fail-with-body --silent --show-error --max-time 15 \
 printf '%s\n' "$job_json"
 job_id="$(node -e "const value=JSON.parse(process.argv[1]); process.stdout.write(value.jobId)" "$job_json")"
 
-printf '%s\n' '--- poll job (V2 remains queued until pipeline lanes land) ---'
-for attempt in $(seq 1 5); do
+printf '%s\n' '--- poll job until the pipeline picks it up ---'
+for attempt in $(seq 1 10); do
   response="$(curl --fail-with-body --silent --show-error --max-time 15 \
     -H "Authorization: Bearer $TOKEN" \
     "$VITE_ACCESSLENS_API_URL/v1/jobs/$job_id")"
   printf 'poll %s: %s\n' "$attempt" "$response"
   status="$(node -e "const value=JSON.parse(process.argv[1]); process.stdout.write(value.status)" "$response")"
   if [[ "$status" != queued ]]; then break; fi
-  sleep 2
+  sleep 3
 done
-printf '%s\n' 'Smoke complete. A queued status is expected until the V3/V4 pipeline lanes are deployed.'
+printf 'Smoke complete. Last job status: %s (ingesting or later means the pipeline is running).\n' "$status"
