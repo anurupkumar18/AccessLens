@@ -38,7 +38,7 @@ describe('deck analyst', () => {
     const result = await handleDeckAnalyst(event, {
       agentClient: fakeClient(calls),
       readObject: async key => objects.get(key)!,
-      writeObject: async (key, body) => writes.push({ key, body }),
+      writeObject: async (key, body) => { writes.push({ key, body }); },
     });
     expect(result.status).toBe('ok');
     const content = (calls[0].messages as Array<{ content: Array<{ type: string; text?: string }> }>)[0].content;
