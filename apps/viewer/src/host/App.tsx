@@ -11,12 +11,6 @@ export interface HostAppProps {
   initialParameters?: Record<string, unknown>;
 }
 
-const defaultContext = {
-  slideTitle: 'Visualization',
-  slideDescription: '',
-  lessonContext: '',
-};
-
 function artifactBaseFromEnvironment(): string {
   const configured = import.meta.env.VITE_ACCESSLENS_ARTIFACT_BASE as string | undefined;
   return configured?.trim() || window.location.origin;

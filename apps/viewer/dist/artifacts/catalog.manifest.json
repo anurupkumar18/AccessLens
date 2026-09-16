@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "graph-search-stepper",
+  "artifactVersion": 1,
+  "title": "Graph search, step by step",
+  "summary": "Step a greedy search through a small undirected graph, one visited node at a time, with an adjustable beam width.",
+  "subjects": ["computer-science", "algorithms"],
+  "tags": ["graph", "search", "algorithm-stepper"],
+  "interaction": "stepper",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://example.org/open-interactives/graph-search-stepper",
+    "license": "MIT"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "beamWidth": { "type": "integer", "minimum": 1, "maximum": 64 }
+    }
+  },
+  "defaultParameters": { "beamWidth": 8 },
+  "libraries": ["d3@7"],
+  "accessibility": {
+    "description": "An undirected graph of twelve labelled nodes. The current node is outlined, visited nodes are filled, and the frontier is dashed.",
+    "keyboard": "Space takes one step. Shift+Space steps back. Up and down arrows change the beam width.",
+    "semanticOutline": ["Start node", "Frontier", "Visited set", "Result"]
+  },
+  "render": { "entry": "index.html", "minWidth": 480, "minHeight": 320 }
+}

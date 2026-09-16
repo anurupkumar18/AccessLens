@@ -158,4 +158,23 @@ describe('ViewerHostController', () => {
     const commands = (sandboxWindow as unknown as { postMessage: ReturnType<typeof vi.fn> }).postMessage.mock.calls.map(([message]) => message as { type: string });
     expect(commands.map(({ type }) => type)).toEqual(['sandbox.highlight', 'sandbox.freeze', 'sandbox.clear']);
   });
+
+  it('replaces an existing artifact on a second valid load and passes references through', async () => {
+    const secondManifest = { ...manifest, artifactId: 'graph-search-stepper' };
+    const fetchImpl = vi.fn(async (url: string | URL) => {
+      const value = String(url);
+      if (value.includes('/graph-search-stepper/')) return value.endsWith('manifest.json') ? response(secondManifest) : response({}, '<html></html>');
+      return value.endsWith('manifest.json') ? response(manifest) : response({}, '<html></html>');
+    });
+    const { sandboxWindow } = setup(fetchImpl);
+    dispatchSandbox({ type: 'sandbox.ready' }, sandboxWindow);
+    dispatchExtension(load);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    dispatchExtension({ ...load, artifactId: 'graph-search-stepper', artifactVersion: 1, parameters: { ef: 40, M: 20 } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const commands = (sandboxWindow as unknown as { postMessage: ReturnType<typeof vi.fn> }).postMessage.mock.calls.map(([message]) => message as { type: string; ctx?: { references?: unknown }; parameters?: object });
+    expect(commands.map(({ type }) => type)).toEqual(['sandbox.load', 'sandbox.clear', 'sandbox.load']);
+    expect(commands[2].parameters).toEqual({ ef: 40, M: 20 });
+    expect(commands[2].ctx?.references).toEqual(load.ctx.references);
+  });
 });

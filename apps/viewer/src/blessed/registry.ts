@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { BLESSED_LIBRARIES } from '../../../extension/src/shared/contracts';
 
 export type BlessedLibraryName = (typeof BLESSED_LIBRARIES)[number];
@@ -16,7 +15,9 @@ const notBundled = (name: string): BlessedLoader => async () => {
  */
 export const BLESSED_LOADERS: Readonly<Record<BlessedLibraryName, BlessedLoader>> = {
   'd3@7': notBundled('d3@7'),
-  'three@0.186': async () => THREE,
+  // Dynamic import keeps the registry lazy while still bundling Three.js into
+  // a viewer-origin asset (never loading it from a remote URL).
+  'three@0.186': async () => import('three'),
   'cytoscape@3': notBundled('cytoscape@3'),
   'plotly-basic@2': notBundled('plotly-basic@2'),
   'animejs@3': notBundled('animejs@3'),

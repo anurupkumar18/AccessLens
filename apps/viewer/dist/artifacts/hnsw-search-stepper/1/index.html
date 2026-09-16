@@ -18,7 +18,6 @@
     .node.visited { fill: #cad5ff; }
     .node.current { fill: #f7bb65; stroke: #8b4b00; stroke-width: 4; }
     .node.result { fill: #9ce1c2; stroke: #12663d; stroke-width: 3; }
-    .node.highlighted { stroke: #8b2bb3; stroke-width: 5; filter: drop-shadow(0 0 3px #8b2bb3); }
     .node-label { fill: #172033; font-size: 13px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
     .state { margin: .45rem 0; min-height: 1.4em; }
@@ -85,8 +84,7 @@
           var visited = searchPath.slice(0, step).indexOf(node.id) >= 0;
           var current = searchPath[Math.min(step, searchPath.length - 1)] === node.id && step < searchPath.length;
           var result = step >= searchPath.length && node.id === searchPath[searchPath.length - 1];
-          var highlighted = node.highlighted === true;
-          circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y); circle.setAttribute('r', '22'); circle.setAttribute('class', 'node' + (visited ? ' visited' : '') + (current ? ' current' : '') + (result ? ' result' : '') + (highlighted ? ' highlighted' : ''));
+          circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y); circle.setAttribute('r', '22'); circle.setAttribute('class', 'node' + (visited ? ' visited' : '') + (current ? ' current' : '') + (result ? ' result' : ''));
           circle.setAttribute('aria-label', node.id + (current ? ', current search node' : visited ? ', visited' : ''));
           nodeGroup.appendChild(circle);
           var label = svgElement('text'); label.setAttribute('x', node.x); label.setAttribute('y', node.y); label.setAttribute('class', 'node-label'); label.textContent = node.id; nodeGroup.appendChild(label);
