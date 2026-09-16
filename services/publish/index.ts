@@ -173,7 +173,9 @@ function applyDecision(asset: StagedAsset, decisions: readonly ReviewDecision[],
   if (!slide) throw new PublishValidationError(`staged asset ${asset.assetId} has no corresponding deck slide`);
   ensureStagedKey(slide.mediaKey, input.job.jobId, `slide ${asset.assetId} media`);
 
-  const media: CopyPlan[] = [{ source: slide.mediaKey, destination: destinationMedia, contentType: CONTENT_TYPES.image }];
+  const sourceMedia = asset.mediaUri ?? slide.mediaKey;
+  ensureStagedKey(sourceMedia, input.job.jobId, `slide ${asset.assetId} media`);
+  const media: CopyPlan[] = [{ source: sourceMedia, destination: destinationMedia, contentType: CONTENT_TYPES.image }];
   const rewrittenRegions = keptRegions.map(region => {
     if (!region.audioUri) return region;
     ensureStagedKey(region.audioUri, input.job.jobId, `audio for ${asset.assetId}/${region.regionId}`);
@@ -294,6 +296,9 @@ export async function publishPack(input: PublishPackInput, store: ObjectStore): 
     if (!deckIdSet.has(reviewedId)) throw new PublishValidationError(`reviewed asset ${reviewedId} is not present in the deck`);
   }
 
+  const base = input.publicBaseUrl ?? process.env.PUBLIC_BASE_URL;
+  if (!base) throw new PublishValidationError('publicBaseUrl is required to construct the published pack URL');
+
   const version = await nextVersion(store, parsedJob.packId);
   const publishedAt = input.publishedAt ?? new Date().toISOString();
   const publishedAssets: PackAsset[] = [];
@@ -315,8 +320,6 @@ export async function publishPack(input: PublishPackInput, store: ObjectStore): 
   for (const copy of plannedCopies) await store.copy(copy.source, copy.destination, copy.contentType);
   await store.write(packKey, JSON.stringify(pack, null, 2) + '\n', CONTENT_TYPES.json);
 
-  const base = input.publicBaseUrl ?? process.env.PUBLIC_BASE_URL;
-  if (!base) throw new PublishValidationError('publicBaseUrl is required to construct the published pack URL');
   const packUrl = `${base.replace(/\/+$/u, '')}/${packKey}`;
   return { pack, packId: parsedJob.packId, version, packKey, packUrl };
 }

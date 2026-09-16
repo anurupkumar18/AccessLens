@@ -79,6 +79,36 @@ describe('publishPack', () => {
     expect(store.copies).toEqual([]);
   });
 
+  it('fails before any destination write when no public base URL is configured', async () => {
+    const store = storeWithStagedMedia();
+    await expect(publishPack({
+      job: job(), deck, assets: [stagedAsset('slide-01'), stagedAsset('slide-02', { readingOrder: ['title', 'graph'], regions: [stagedAsset('slide-02').regions[0]] })],
+    }, store)).rejects.toThrow(/publicBaseUrl/i);
+    expect(store.writes).toEqual([]);
+    expect(store.copies).toEqual([]);
+  });
+
+  it('uses the staged asset mediaUri as its source and rejects an unsafe source before writing', async () => {
+    const store = storeWithStagedMedia();
+    store.objects.set('staging/job-1/media/custom-slide-01.png', new Uint8Array([4, 5, 6]));
+    await expect(publishPack({
+      job: job(),
+      deck,
+      assets: [stagedAsset('slide-01', { mediaUri: 'staging/job-1/media/custom-slide-01.png' }), stagedAsset('slide-02', { readingOrder: ['title', 'graph'], regions: [stagedAsset('slide-02').regions[0]] })],
+      publicBaseUrl: 'https://cdn.example.test',
+    }, store)).resolves.toMatchObject({ version: 2 });
+    expect(store.copies).toContainEqual({ source: 'staging/job-1/media/custom-slide-01.png', destination: 'media/pack-1/2/slide-01.png' });
+
+    const unsafe = storeWithStagedMedia();
+    await expect(publishPack({
+      job: job(), deck,
+      assets: [stagedAsset('slide-01', { mediaUri: 'staging/job-1/../../outside.png' }), stagedAsset('slide-02', { readingOrder: ['title', 'graph'], regions: [stagedAsset('slide-02').regions[0]] })],
+      publicBaseUrl: 'https://cdn.example.test',
+    }, unsafe)).rejects.toThrow(/staging/i);
+    expect(unsafe.writes).toEqual([]);
+    expect(unsafe.copies).toEqual([]);
+  });
+
   it('applies edits, removes rejected regions from readingOrder, computes version two, and rewrites media paths', async () => {
     const store = storeWithStagedMedia();
     const result = await publishPack({
