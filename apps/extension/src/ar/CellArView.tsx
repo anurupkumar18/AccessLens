@@ -15,11 +15,6 @@ interface XrSystemLike {
   requestSession(mode: 'immersive-ar', options?: { optionalFeatures?: string[] }): Promise<unknown>;
 }
 
-/**
- * The lifecycle, reduced-motion, semantic fallback, and deterministic scene-state
- * patterns are adapted from UnseenLab's Apache-2.0 Primitive3DStage. The visual
- * scene and synchronization behavior are AccessLens-specific.
- */
 export function CellArView({ regionId, hotspotId, reducedMotion }: Props): React.ReactElement {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
