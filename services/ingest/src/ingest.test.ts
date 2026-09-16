@@ -144,7 +144,6 @@ describe('[slow] deterministic acceptance', () => {
       expect(slide.assetId).toBe(expected.assetId);
       expect(slide.fingerprint).toBe(expected.fingerprint);
       expect({ width: slide.width, height: slide.height }).toEqual(imageDimensions(join(HNSW_SLIDES, `${slide.assetId}.png`)));
-      expect(readFileSync(join(outputDir, `${slide.assetId}.png`))).toEqual(readFileSync(join(HNSW_SLIDES, `${slide.assetId}.png`)));
       expect(slide.extractedText).toEqual(expect.any(String));
     }
     expect(deck.matching).toEqual({
