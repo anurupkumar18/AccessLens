@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "cdk.out",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["bin/**/*.ts", "lib/**/*.ts"]
+}

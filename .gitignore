@@ -16,3 +16,5 @@ output/
 test-results/
 .worktrees/
 node_modules
+cdk.out/
+.cdk-outputs.json
