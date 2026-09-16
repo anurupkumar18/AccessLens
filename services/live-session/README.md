@@ -73,6 +73,26 @@ refuses a replayed sequence and a reused id would fail for the wrong reason.
 Last run: 19 events, both students in order, instructor not echoed, all five
 refusal checks held.
 
+## Opening it in a browser
+
+The endpoint is `wss://`, so pasting it into an address bar does nothing — a
+browser cannot open a WebSocket URL that way. `demo/index.html` is the page that
+does the connecting:
+
+```sh
+npm run demo      # regenerates the page and prints the file:// URL to open
+```
+
+Open it in two windows (or a laptop and a phone), set one to **instructor** and
+one to **student** with the same session code, and press *Send next event*. The
+student view follows over real AWS. It is generated from Part 5's reviewed pack,
+so the wording cannot drift from what the pack says.
+
+This is a **Part 4 diagnostic, not the product**: it renders the reviewed text so
+you can see events arriving, and deliberately implements none of the Focus, Read,
+Hear, or AR modes — those are Part 3's, and a second half-built renderer would be
+a liability. Verified in Chromium driving two tabs against the live endpoint.
+
 ## The protocol
 
 Messages are Part 1's frozen `SessionMessageSchema`: `create`, `join`, `close`,

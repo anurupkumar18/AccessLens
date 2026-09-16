@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AccessLens relay — live check</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1216; --panel: #171c22; --line: #2a323c; --ink: #e8edf3;
+    --muted: #97a3b2; --accent: #6ea8fe; --ok: #57d9a3; --bad: #ff8087;
+    --pad: clamp(12px, 3vw, 24px);
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f6f8fa; --panel:#fff; --line:#d8dee6; --ink:#12171d; --muted:#5b6673; --accent:#0b62d6; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: var(--pad);
+    padding-top: calc(var(--pad) + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 { font-size: 1.15rem; margin: 0 0 .25rem; }
+  .sub { color: var(--muted); margin: 0 0 1rem; font-size: .9rem; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: var(--pad); margin-bottom: 14px; }
+  label { display:block; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin-bottom:.3rem; }
+  input, select, button {
+    font: inherit; color: inherit; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 7px; padding: .5rem .7rem;
+  }
+  input, select { width: 100%; }
+  button { cursor: pointer; background: var(--accent); color: #fff; border-color: transparent; font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .row > div { flex: 1 1 210px; min-width: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; background:var(--muted); margin-right:.45rem; }
+  .dot.on { background: var(--ok); } .dot.off { background: var(--bad); }
+  .status { font-size: .9rem; color: var(--muted); }
+  .slide { font-size: 1.3rem; font-weight: 650; margin: 0 0 .2rem; }
+  .region { color: var(--accent); font-weight: 600; }
+  .plain { margin: .5rem 0 0; }
+  .muted { color: var(--muted); }
+  pre { margin:0; padding:10px; background:var(--bg); border:1px solid var(--line); border-radius:7px;
+        max-height: 260px; overflow:auto; font-size:.78rem; line-height:1.45; }
+  .grid { display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  code { background: var(--bg); padding: .1rem .3rem; border-radius: 4px; font-size: .85em; }
+  .note { font-size:.85rem; color:var(--muted); border-left:3px solid var(--line); padding-left:.7rem; margin-top:.8rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AccessLens relay — live check</h1>
+  <p class="sub">A Part 4 diagnostic. Open this in two windows (or a laptop and a phone):
+     make one an <strong>instructor</strong>, one a <strong>student</strong> with the same session code.</p>
+
+  <div class="card">
+    <div class="row">
+      <div style="flex:2 1 320px">
+        <label for="url">Relay endpoint</label>
+        <input id="url" value="wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo" spellcheck="false">
+      </div>
+      <div>
+        <label for="role">Role</label>
+        <select id="role"><option value="instructor">Instructor</option><option value="student">Student</option></select>
+      </div>
+      <div>
+        <label for="session">Session code</label>
+        <input id="session" value="" spellcheck="false" placeholder="e.g. demo-1234">
+      </div>
+    </div>
+    <div class="actions">
+      <button id="connect">Connect</button>
+      <button id="disconnect" class="ghost" disabled>Disconnect</button>
+    </div>
+    <p class="status" style="margin:.8rem 0 0"><span id="dot" class="dot"></span><span id="status">Not connected.</span></p>
+    <p class="note">The endpoint is <code>wss://</code>, so it cannot be opened from a browser address bar —
+       that is what this page is for. It lives in a temporary hackathon AWS account and will stop existing when the event ends.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 style="font-size:.95rem;margin:0 0 .6rem">Current view</h2>
+      <p class="slide" id="slide">—</p>
+      <p id="regionLine" class="muted">Waiting for the instructor.</p>
+      <p class="plain" id="plain"></p>
+    </div>
+
+    <div class="card" id="instructorPanel" hidden>
+      <h2 style="font-size:.95rem;margin:0 0 .6rem">Instructor controls</h2>
+      <p class="status" id="progress">Not started.</p>
+      <div class="actions">
+        <button id="next">Send next event</button>
+        <button id="playAll" class="ghost">Play whole lesson</button>
+        <button id="endSession" class="ghost">End session</button>
+      </div>
+      <p class="note">These replay the reviewed <code>happy-path</code> fixture — the same events the
+         instructor extension will emit. The relay validates every one and refuses anything off-contract.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:.95rem;margin:0 0 .6rem">Relay log</h2>
+    <pre id="log">Nothing yet.</pre>
+  </div>
+</div>
+
+<script>
+const PACK = {"packId":"bio-cell-demo","version":1,"title":"Cell Structure","assets":{"cell-slide-01":{"title":"The Animal Cell","regions":{"cell-membrane":{"short":"The cell membrane is the outer boundary of the cell. It controls which substances enter and leave.","plain":"The outside edge of the cell. It decides what gets in and out."},"cytoplasm":{"short":"The cytoplasm is the fluid that fills the cell. The organelles sit in it and move through it.","plain":"The liquid inside the cell. Everything else floats in it."},"nucleus":{"short":"The nucleus holds the cell's DNA and directs which proteins the cell makes.","plain":"The control centre. It stores the instructions for the cell."}}},"cell-slide-02":{"title":"Inside the Nucleus","regions":{"nucleus":{"short":"The nucleus is enclosed by a double membrane with pores that let molecules pass between it and the cytoplasm.","plain":"The control centre has a wall with small openings in it."},"nucleolus":{"short":"The nucleolus is a dense region inside the nucleus where ribosome parts are assembled.","plain":"A dark spot inside the control centre. It builds ribosome parts."}}},"cell-slide-03":{"title":"Mitochondria and Energy","regions":{"mitochondrion":{"short":"The mitochondrion releases usable energy from nutrients and stores it as ATP. Its inner membrane is folded to increase surface area.","plain":"This structure helps power the cell."},"cytoplasm":{"short":"The first stage of releasing energy from glucose happens in the cytoplasm, before the mitochondrion finishes the process.","plain":"The first step of getting energy happens in the liquid part."}}},"cell-slide-04":{"title":"Building and Shipping Proteins","regions":{"ribosome":{"short":"Ribosomes read the instructions copied from DNA and join amino acids into a protein chain.","plain":"Ribosomes put proteins together, one piece at a time."},"rough-er":{"short":"The rough endoplasmic reticulum is studded with ribosomes. It folds new proteins and passes them on in small vesicles.","plain":"A folded surface covered in ribosomes. It shapes new proteins."},"golgi-apparatus":{"short":"The Golgi apparatus finishes, sorts, and packages proteins, then sends them to where the cell needs them.","plain":"The packing and sending area for finished proteins."}}},"cell-slide-05":{"title":"Breaking Down and Storing","regions":{"lysosome":{"short":"Lysosomes contain enzymes that break down worn-out cell parts and material the cell has taken in.","plain":"Lysosomes break down old or unwanted parts of the cell."},"vacuole":{"short":"Vacuoles are membrane-bound sacs that store water, nutrients, or waste until the cell needs or removes them.","plain":"Vacuoles are storage bags inside the cell."}}}}};
+const EVENTS = [{"schemaVersion":"1.0","type":"session.started","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"sequence":1,"sentAt":"2026-09-15T15:00:06Z"},{"schemaVersion":"1.0","type":"asset.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-01","sequence":2,"sentAt":"2026-09-15T15:00:12Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-01","regionId":"cell-membrane","arState":{"hotspotId":"cell-slide-01:cell-membrane","action":"focus"},"pointer":{"x":0.5,"y":0.55},"sequence":3,"sentAt":"2026-09-15T15:00:18Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-01","regionId":"cytoplasm","arState":{"hotspotId":"cell-slide-01:cytoplasm","action":"focus"},"pointer":{"x":0.5,"y":0.55},"sequence":4,"sentAt":"2026-09-15T15:00:24Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-01","regionId":"nucleus","arState":{"hotspotId":"cell-slide-01:nucleus","action":"focus"},"pointer":{"x":0.41,"y":0.53},"sequence":5,"sentAt":"2026-09-15T15:00:30Z"},{"schemaVersion":"1.0","type":"asset.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-02","sequence":6,"sentAt":"2026-09-15T15:00:36Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-02","regionId":"nucleus","arState":{"hotspotId":"cell-slide-02:nucleus","action":"focus"},"pointer":{"x":0.44,"y":0.54},"sequence":7,"sentAt":"2026-09-15T15:00:42Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-02","regionId":"nucleolus","arState":{"hotspotId":"cell-slide-02:nucleolus","action":"focus"},"pointer":{"x":0.43,"y":0.53},"sequence":8,"sentAt":"2026-09-15T15:00:48Z"},{"schemaVersion":"1.0","type":"asset.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-03","sequence":9,"sentAt":"2026-09-15T15:00:54Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-03","regionId":"mitochondrion","arState":{"hotspotId":"cell-slide-03:mitochondrion","action":"focus"},"pointer":{"x":0.44,"y":0.34},"sequence":10,"sentAt":"2026-09-15T15:01:00Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-03","regionId":"cytoplasm","arState":{"hotspotId":"cell-slide-03:cytoplasm","action":"focus"},"pointer":{"x":0.5,"y":0.7},"sequence":11,"sentAt":"2026-09-15T15:01:06Z"},{"schemaVersion":"1.0","type":"asset.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-04","sequence":12,"sentAt":"2026-09-15T15:01:12Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-04","regionId":"ribosome","arState":{"hotspotId":"cell-slide-04:ribosome","action":"focus"},"pointer":{"x":0.18,"y":0.38},"sequence":13,"sentAt":"2026-09-15T15:01:18Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-04","regionId":"rough-er","arState":{"hotspotId":"cell-slide-04:rough-er","action":"focus"},"pointer":{"x":0.5,"y":0.55},"sequence":14,"sentAt":"2026-09-15T15:01:24Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-04","regionId":"golgi-apparatus","arState":{"hotspotId":"cell-slide-04:golgi-apparatus","action":"focus"},"pointer":{"x":0.81,"y":0.71},"sequence":15,"sentAt":"2026-09-15T15:01:30Z"},{"schemaVersion":"1.0","type":"asset.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-05","sequence":16,"sentAt":"2026-09-15T15:01:36Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-05","regionId":"lysosome","arState":{"hotspotId":"cell-slide-05:lysosome","action":"focus"},"pointer":{"x":0.29,"y":0.48},"sequence":17,"sentAt":"2026-09-15T15:01:42Z"},{"schemaVersion":"1.0","type":"region.changed","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"assetId":"cell-slide-05","regionId":"vacuole","arState":{"hotspotId":"cell-slide-05:vacuole","action":"focus"},"pointer":{"x":0.72,"y":0.48},"sequence":18,"sentAt":"2026-09-15T15:01:48Z"},{"schemaVersion":"1.0","type":"session.ended","sessionId":"sess-demo-0001","packId":"bio-cell-demo","packVersion":1,"sequence":19,"sentAt":"2026-09-15T15:01:54Z"}];
+
+const $ = id => document.getElementById(id);
+const logEl = $('log');
+let socket = null, sent = 0, sessionId = '', role = 'instructor';
+
+// A short, readable code. The session id is the only secret this demo has, so
+// a guessable one would let anyone join — random beats a fixed default.
+if (!$('session').value) {
+  $('session').value = 'demo-' + Math.random().toString(36).slice(2, 6);
+}
+
+function log(line, kind) {
+  const stamp = new Date().toLocaleTimeString();
+  const prefix = kind === 'err' ? '!' : kind === 'in' ? '<' : '>';
+  logEl.textContent = (logEl.textContent === 'Nothing yet.' ? '' : logEl.textContent + '\n')
+    + stamp + ' ' + prefix + ' ' + line;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(text, state) {
+  $('status').textContent = text;
+  $('dot').className = 'dot' + (state ? ' ' + state : '');
+}
+
+function render(event) {
+  const asset = PACK.assets[event.assetId];
+  if (event.type === 'asset.changed' && asset) {
+    $('slide').textContent = asset.title;
+    $('regionLine').textContent = 'Slide showing. No region highlighted yet.';
+    $('plain').textContent = '';
+  } else if (event.type === 'region.changed' && asset) {
+    const region = asset.regions[event.regionId];
+    $('slide').textContent = asset.title;
+    if (region) {
+      $('regionLine').innerHTML = '<span class="region">' + event.regionId + '</span> — ' + region.short;
+      $('plain').textContent = region.plain;
+    }
+  } else if (event.type === 'source.unmatched') {
+    $('regionLine').textContent = 'The instructor is showing something outside the approved pack.';
+    $('plain').textContent = '';
+  } else if (event.type === 'session.ended') {
+    $('regionLine').textContent = 'Session ended.';
+  }
+}
+
+$('connect').onclick = () => {
+  role = $('role').value;
+  sessionId = $('session').value.trim();
+  if (!sessionId) { setStatus('Enter a session code first.', 'off'); return; }
+
+  try { socket = new WebSocket($('url').value.trim()); }
+  catch (e) { setStatus('That endpoint is not a valid WebSocket URL.', 'off'); return; }
+
+  setStatus('Connecting…');
+
+  socket.onopen = () => {
+    const message = role === 'instructor'
+      ? { kind: 'create', sessionId }
+      : { kind: 'join', sessionId, role: 'student' };
+    socket.send(JSON.stringify(message));
+    log(message.kind + ' ' + sessionId);
+  };
+
+  socket.onmessage = e => {
+    const payload = JSON.parse(e.data);
+    if (payload.kind === 'capability') {
+      setStatus('Connected as ' + payload.capability.role + ' — session ' + sessionId, 'on');
+      $('instructorPanel').hidden = payload.capability.role !== 'instructor';
+      $('connect').disabled = true; $('disconnect').disabled = false;
+      log('capability: ' + payload.capability.role + ', expires ' + payload.capability.expiresAt, 'in');
+    } else if (payload.kind === 'event') {
+      render(payload.event);
+      log('event #' + payload.event.sequence + ' ' + payload.event.type, 'in');
+    } else if (payload.kind === 'rejected') {
+      log('REJECTED: ' + payload.rules.join(', '), 'err');
+    } else if (payload.kind === 'error') {
+      log('ERROR: ' + payload.reason, 'err');
+      setStatus('Relay refused: ' + payload.reason, 'off');
+    } else if (payload.kind === 'accepted') {
+      log('accepted', 'in');
+    } else if (payload.kind === 'closed') {
+      log('session closed', 'in');
+    }
+  };
+
+  socket.onerror = () => { if (!socket || socket.readyState !== 1) setStatus('Could not reach the relay.', 'off'); };
+  socket.onclose = () => {
+    setStatus('Disconnected.', 'off');
+    $('connect').disabled = false; $('disconnect').disabled = true; $('instructorPanel').hidden = true;
+  };
+};
+
+$('disconnect').onclick = () => socket && socket.close();
+
+function sendNext() {
+  if (!socket || socket.readyState !== 1) return false;
+  if (sent >= EVENTS.length) { $('progress').textContent = 'Lesson complete.'; return false; }
+  const event = { ...EVENTS[sent], sessionId };
+  socket.send(JSON.stringify({ kind: 'event', event }));
+  log('event #' + event.sequence + ' ' + event.type);
+  render(event);
+  sent += 1;
+  $('progress').textContent = sent + ' of ' + EVENTS.length + ' events sent.';
+  return true;
+}
+
+$('next').onclick = sendNext;
+$('playAll').onclick = () => {
+  const tick = () => { if (sendNext()) setTimeout(tick, 900); };
+  tick();
+};
+$('endSession').onclick = () => {
+  if (socket && socket.readyState === 1) {
+    socket.send(JSON.stringify({ kind: 'close', sessionId }));
+    log('close ' + sessionId);
+  }
+};
+</script>
+</body>
+</html>
