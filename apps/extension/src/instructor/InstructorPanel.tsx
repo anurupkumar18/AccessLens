@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
+import { defaultAiClient, type AiClient } from '../shared/aiClient';
 import { createCaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import { LiveCaptions, type CaptionDeps } from './LiveCaptions';
 
 interface Props {
   client: SessionClient;
@@ -10,6 +12,9 @@ interface Props {
   scheduler?: Scheduler;
   clock?: Clock;
   ids?: IdGenerator;
+  /** AI gateway client; defaults to the one configured by VITE_ACCESSLENS_AI_URL. */
+  ai?: AiClient | null;
+  captionDeps?: CaptionDeps;
 }
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
@@ -66,7 +71,7 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: Props): React.ReactElement {
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai = defaultAiClient, captionDeps }: Props): React.ReactElement {
   const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
@@ -144,6 +149,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
           <button type="button" className="quiet" onClick={() => guarded(() => controller.endSession())}>End Session</button>
         )}
       </div>
+
+      <LiveCaptions controller={controller} state={state} pack={pack} ai={ai} deps={captionDeps} />
 
       </div>
       <div className="guide">

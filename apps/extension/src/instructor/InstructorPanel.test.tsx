@@ -2,8 +2,10 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
-import { describe, it, expect, afterEach } from 'vitest';
-import { AccessPackSchema, InMemorySessionClient, type LiveEvent } from '../shared/contracts';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { AccessPackSchema, InMemorySessionClient, type LiveEvent, type RoleCapability } from '../shared/contracts';
+import type { AiClient } from '../shared/aiClient';
+import type { CaptionDeps } from './LiveCaptions';
 import { InstructorPanel } from './index';
 import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, solidFrame, testPack } from '../sources/screen/fixtures';
 
@@ -173,5 +175,99 @@ describe('InstructorPanel', () => {
     await act(async () => { stream.enqueue(solidFrame(1440, 900, 40), solidFrame(1440, 900, 40), solidFrame(1440, 900, 40)); scheduler.tick(3); });
     expect(status()).toContain('Unmatched');
     expect(status()).toMatch(/make the slide bigger/i);
+  });
+
+  describe('live captions', () => {
+    /** A client whose capabilities look relay-signed, so the AI features switch on. */
+    class SignedClient extends InMemorySessionClient {
+      override async create(sessionId: string): Promise<RoleCapability> {
+        return { ...(await super.create(sessionId)), token: 'signed-by-relay' };
+      }
+    }
+
+    function renderWithCaptions(ai: AiClient | null, deps: CaptionDeps) {
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      const client = new SignedClient();
+      const scheduler = new FakeScheduler();
+      const host = new FakeCaptureHost();
+      const events: LiveEvent[] = [];
+      client.subscribe(e => events.push(e));
+      root = createRoot(container);
+      act(() => root!.render(
+        <InstructorPanel client={client} pack={pack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} ai={ai} captionDeps={deps} />,
+      ));
+      return { events, scheduler, stream: host.stream };
+    }
+
+    function fakes() {
+      const track = { stop: vi.fn() };
+      let onPiece: ((piece: { text: string; isFinal: boolean }) => void) | null = null;
+      let clock = 0;
+      const ai = { transcribeUrl: vi.fn(async () => ({ url: 'wss://transcribe.example', sampleRate: 16000, expiresIn: 300 })) } as unknown as AiClient;
+      const deps: CaptionDeps = {
+        getMicrophone: vi.fn(async () => ({ getTracks: () => [track] }) as unknown as MediaStream),
+        startStream: vi.fn(async options => { onPiece = options.onPiece; return { stop: vi.fn() }; }),
+        now: () => clock,
+      };
+      return { ai, deps, track, say: (text: string, isFinal: boolean) => act(() => onPiece!({ text, isFinal })), advance: (ms: number) => { clock += ms; } };
+    }
+
+    it('is hidden before a session opens, and explains the AWS notice before anything is captured', async () => {
+      const f = fakes();
+      renderWithCaptions(f.ai, f.deps);
+      expect(container!.textContent).not.toContain('Live captions');
+      await click('Start');
+      expect(container!.textContent).toContain('sends your microphone audio to Amazon Transcribe');
+      expect(f.deps.getMicrophone).not.toHaveBeenCalled();
+    });
+
+    it('opens the microphone only from Start captions, sends caption text, and moves students to a named region', async () => {
+      const f = fakes();
+      const { events, scheduler, stream } = renderWithCaptions(f.ai, f.deps);
+      await click('Start');
+      await act(async () => { stream.enqueue(loadDemoFrame('slide-04')); scheduler.tick(1); });
+      await click('Start captions');
+      expect(f.deps.getMicrophone).toHaveBeenCalledTimes(1);
+      expect(f.ai.transcribeUrl).toHaveBeenCalledWith(expect.objectContaining({ role: 'instructor', token: 'signed-by-relay' }));
+
+      f.say('now look at', false);
+      f.say('now look at the', false);
+      f.say('Now look at the nucleus.', true);
+      const captions = events.filter(e => e.type === 'caption.appended');
+      expect(captions.map(e => (e as { caption: { isFinal: boolean } }).caption.isFinal)).toEqual([false, true]);
+      expect(events.at(-1)).toMatchObject({ type: 'region.changed', assetId: 'slide-04', regionId: 'nucleus' });
+      expect(button('Stop captions')).toBeTruthy();
+    });
+
+    it('does not move students when the instructor turns voice following off', async () => {
+      const f = fakes();
+      const { events, scheduler, stream } = renderWithCaptions(f.ai, f.deps);
+      await click('Start');
+      await act(async () => { stream.enqueue(loadDemoFrame('slide-04')); scheduler.tick(1); });
+      await click('Start captions');
+      act(() => { container!.querySelector<HTMLInputElement>('#caption-follow')!.click(); });
+      f.say('The nucleolus is inside.', true);
+      expect(events.some(e => e.type === 'region.changed')).toBe(false);
+      expect(events.at(-1)).toMatchObject({ type: 'caption.appended' });
+    });
+
+    it('explains how to allow the microphone when permission is refused', async () => {
+      const f = fakes();
+      f.deps.getMicrophone = vi.fn(async () => { throw new DOMException('denied', 'NotAllowedError'); });
+      renderWithCaptions(f.ai, f.deps);
+      await click('Start');
+      await click('Start captions');
+      expect(container!.textContent).toMatch(/Open in a full tab/);
+      expect(f.ai.transcribeUrl).not.toHaveBeenCalled();
+    });
+
+    it('says captions need the AWS session when no AI endpoint is configured', async () => {
+      const f = fakes();
+      renderWithCaptions(null, f.deps);
+      await click('Start');
+      expect(container!.textContent).toContain('Live captions need the AWS session');
+      expect(() => button('Start captions')).toThrow();
+    });
   });
 });
