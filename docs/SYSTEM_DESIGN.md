@@ -280,6 +280,12 @@ grade, or attention signal.
 - `capture.resumed`
 - `capture.stopped` — capture has ended, but the temporary session remains open
   for a later explicit Start on the same join code.
+- `stream.started` — the instructor is streaming live video of one tab or one
+  window (`surface: browser | window`) over the session's Amazon IVS Real-Time
+  stage; students subscribe with the token on their capability. The video
+  never touches the relay. A monitor is not a permitted surface.
+- `stream.stopped` — that video has ended. `capture.stopped` and
+  `session.ended` end it too.
 - `source.unmatched`
 - `session.ended`
 

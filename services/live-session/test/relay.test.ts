@@ -108,7 +108,7 @@ describe('relay', () => {
     const published = happy.map(e => ({ ...e, packId: 'published-pack', packVersion: 3 }));
 
     for (const event of published) {
-      expect(await h.relay.publish('instructor-1', event), String(event.sequence)).toMatchObject({ status: 'ok' });
+      expect(await h.relay.publish('instructor-1', event), String((event as Record<string, unknown>).sequence)).toMatchObject({ status: 'ok' });
     }
     expect((h.inbox.get('student-1') ?? []).map(e => e.sequence)).toEqual(happy.map(e => e.sequence));
     expect(asked).toEqual(['published-pack@3']);
