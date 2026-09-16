@@ -8,6 +8,7 @@ import type { AiClient } from '../shared/aiClient';
 import type { CaptionDeps } from './LiveCaptions';
 import { InstructorPanel } from './index';
 import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, solidFrame, testPack } from '../sources/screen/fixtures';
+import type { PresentingSlide, SlidesSource } from '../sources/slides';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -22,7 +23,7 @@ afterEach(() => {
   root = null;
 });
 
-function render(host = new FakeCaptureHost()) {
+function render(host = new FakeCaptureHost(), slides?: SlidesSource) {
   container = document.createElement('div');
   document.body.appendChild(container);
   const client = new InMemorySessionClient();
@@ -31,9 +32,20 @@ function render(host = new FakeCaptureHost()) {
   client.subscribe(e => events.push(e));
   root = createRoot(container);
   act(() => root!.render(
-    <InstructorPanel client={client} pack={pack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} />,
+    <InstructorPanel client={client} pack={pack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} slides={slides} />,
   ));
   return { host, client, scheduler, events, stream: host.stream };
+}
+
+/** A Google Slides deck presenting in this browser, driven by the test. */
+function fakeSlides(order: string[]) {
+  let listener: ((slide: PresentingSlide | null) => void) | null = null;
+  const source: SlidesSource = {
+    watcher: { watch(l) { listener = l; return () => { listener = null; }; } },
+    slideOrder: vi.fn(async () => order),
+  };
+  const present = (slide: PresentingSlide | null) => act(async () => { listener!(slide); await Promise.resolve(); await Promise.resolve(); });
+  return { source, present, watching: () => listener !== null };
 }
 
 /** Capture-control buttons only (Start/Pause/Resume/Stop/End Session), not form submit buttons. */
@@ -88,6 +100,38 @@ describe('InstructorPanel', () => {
     act(() => scheduler.tick(3));
     expect(status()).toContain('Unmatched');
     expect(events.map(e => e.type)).toEqual(['session.started', 'source.unmatched']);
+  });
+
+  it('Follow Google Slides opens the session first, then follows the deck slide by slide once it presents', async () => {
+    const host = new FakeCaptureHost();
+    const deck = fakeSlides(['p', 'g1', 'g2']);
+    const { events } = render(host, deck.source);
+    expect(buttons()).toEqual(['Follow Google Slides', 'Share a window instead']);
+
+    await click('Follow Google Slides');
+    expect(host.calls).toEqual([]);
+    expect(events.map(e => e.type)).toEqual(['session.started']);
+    expect(container!.textContent).toContain('JOIN42');
+    expect(status()).toContain('Waiting for you to present');
+    expect(deck.watching()).toBe(true);
+
+    await deck.present({ deckId: 'deck', slideObjectId: 'g1' });
+    expect(events.at(-1)).toMatchObject({ type: 'asset.changed', assetId: pack.assets[1].assetId });
+    expect(status()).toContain(pack.assets[1].title);
+
+    await deck.present({ deckId: 'deck', slideObjectId: 'g1' });
+    expect(events).toHaveLength(2);
+    await deck.present({ deckId: 'deck', slideObjectId: 'p' });
+    expect(events.at(-1)).toMatchObject({ type: 'asset.changed', assetId: pack.assets[0].assetId });
+
+    await deck.present(null);
+    expect(status()).toContain('presentation ended');
+    expect(events).toHaveLength(3);
+
+    await click('Stop');
+    expect(events.at(-1)?.type).toBe('capture.stopped');
+    expect(deck.watching()).toBe(false);
+    expect(deck.source.slideOrder).toHaveBeenCalledTimes(3);
   });
 
   it('Pause, Resume, Stop, and End Session each emit their event and change the button set', async () => {

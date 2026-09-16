@@ -4,6 +4,7 @@ import {
   DEFAULT_MATCH_OPTIONS, DEFAULT_SAMPLE_INTERVAL_MS,
   type CaptureHost, type CaptureStream, type DisplaySurface, type MatchOptions, type Sampler, type Scheduler,
 } from '../sources/screen';
+import type { PresentingSlide, SlidesSource } from '../sources/slides';
 
 /** Injected time source; production uses the system clock. */
 export interface Clock { now(): string }
@@ -22,6 +23,9 @@ export const randomIds: IdGenerator = {
 
 export type CapturePhase = 'idle' | 'starting' | 'sharing' | 'paused' | 'closed';
 
+/** What the controller is following while sharing: a captured surface, or the presenting Google Slides tab. */
+export type FollowedSurface = DisplaySurface | 'slides';
+
 export type CurrentState =
   | { kind: 'fresh' }
   | { kind: 'matched'; assetId: string; title: string; regionId: string | null }
@@ -36,8 +40,8 @@ export interface ControllerSnapshot {
   message: string | null;
   current: CurrentState;
   sequence: number;
-  /** Tab, window, or whole screen while sharing; null when not sharing or unreported. */
-  surface: DisplaySurface | null;
+  /** Tab, window, or whole screen while capturing, 'slides' while following Google Slides; null when not sharing or unreported. */
+  surface: FollowedSurface | null;
 }
 
 export interface Correction { assetId: string; regionId?: string }
@@ -47,6 +51,12 @@ export interface CaptureController {
   subscribe(listener: (state: ControllerSnapshot) => void): () => void;
   /** Only ever call this from the Start button's click handler (charter A1). */
   start(): Promise<void>;
+  /**
+   * Opens the session (if none is open) and follows whichever Google Slides
+   * tab presents next in this browser, slide by slide, until Stop. Requires
+   * `slides` in the options; nothing is captured and no chooser opens.
+   */
+  followSlides(): Promise<void>;
   pause(): void;
   resume(): void;
   stop(): void;
@@ -74,6 +84,8 @@ export interface ControllerOptions {
   ids?: IdGenerator;
   sampleIntervalMs?: number;
   match?: MatchOptions;
+  /** The Google Slides source, when this build can watch tabs (the installed extension). */
+  slides?: SlidesSource;
 }
 
 /** Consecutive unmatched samples before source.unmatched fires. */
@@ -106,6 +118,10 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   let sequence = 0;
 
   let stream: CaptureStream | null = null;
+  let followingSlides = false;
+  let unwatchSlides: (() => void) | null = null;
+  /** The presenting slide most recently reported, re-applied on resume. */
+  let lastSlide: PresentingSlide | null = null;
   let sampler: Sampler | null = null;
   let unsubscribeEnded: (() => void) | null = null;
   let unmatchedStreak = 0;
@@ -115,7 +131,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   let correctionAnchor: string | null = null;
 
   function snapshot(): ControllerSnapshot {
-    return { phase, sessionId, message, current: { ...current }, sequence, surface: stream?.surface ?? null };
+    return { phase, sessionId, message, current: { ...current }, sequence, surface: followingSlides ? 'slides' : stream?.surface ?? null };
   }
   function notify(): void {
     const state = snapshot();
@@ -150,7 +166,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     correctionAnchor = null;
   }
 
-  /** Halts sampling synchronously and releases the stream. Emits nothing. */
+  /** Halts sampling synchronously and releases the stream or the Slides watch. Emits nothing. */
   function releaseStream(): void {
     sampler?.stop();
     sampler = null;
@@ -158,6 +174,47 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     unsubscribeEnded = null;
     stream?.stop();
     stream = null;
+    unwatchSlides?.();
+    unwatchSlides = null;
+    followingSlides = false;
+    lastSlide = null;
+  }
+
+  function showAsset(assetId: string | null): void {
+    if (assetId === null) {
+      if (current.kind === 'unmatched') return;
+      current = { kind: 'unmatched' };
+      emit({ type: 'source.unmatched' });
+      return;
+    }
+    if (current.kind === 'matched' && current.assetId === assetId) return;
+    current = { kind: 'matched', assetId, title: findAsset(assetId).title, regionId: null };
+    emit({ type: 'asset.changed', assetId });
+  }
+
+  /** Maps the presenting slide to the pack by position in the deck's slide order. */
+  async function onPresentingSlide(slide: PresentingSlide | null): Promise<void> {
+    lastSlide = slide;
+    if (!followingSlides || phase !== 'sharing') return;
+    if (slide === null) {
+      message = 'The presentation ended. Students keep the last slide; present again to continue.';
+      notify();
+      return;
+    }
+    let order: string[];
+    try {
+      order = await options.slides!.slideOrder(slide.deckId);
+    } catch (error) {
+      message = `Could not read the slide order of this deck: ${error instanceof Error ? error.message : String(error)}`;
+      notify();
+      return;
+    }
+    if (!followingSlides || phase !== 'sharing' || lastSlide !== slide) return;
+    const index = slide.slideObjectId === null ? 0 : order.indexOf(slide.slideObjectId);
+    const asset = index >= 0 ? pack.assets[index] : undefined;
+    message = asset ? null : `Slide ${index + 1} of the deck has no reviewed slide in ${pack.title}.`;
+    showAsset(asset?.assetId ?? null);
+    notify();
   }
 
   function onSample(fingerprint: string | null): void {
@@ -249,6 +306,34 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       notify();
     },
 
+    async followSlides() {
+      if (!options.slides) throw new Error('This build cannot watch Google Slides tabs');
+      if (phase !== 'idle') throw new Error(`Cannot follow Slides while ${phase}`);
+      phase = 'starting';
+      message = 'Opening the session…';
+      notify();
+      const openedHere = sessionId === null;
+      const id = sessionId ?? ids.sessionId();
+      if (openedHere) {
+        try {
+          capability = await client.create(id);
+        } catch {
+          phase = 'idle';
+          message = 'Could not open a session. Check the connection and try again.';
+          notify();
+          return;
+        }
+      }
+      sessionId = id;
+      followingSlides = true;
+      phase = 'sharing';
+      message = 'Waiting for you to present. Open your deck in Google Slides and start the slideshow whenever you are ready.';
+      resetRecognition();
+      emit({ type: 'session.started' });
+      unwatchSlides = options.slides.watcher.watch(slide => { void onPresentingSlide(slide); });
+      notify();
+    },
+
     pause() {
       if (phase !== 'sharing') throw new Error(`Cannot pause while ${phase}`);
       sampler?.stop();
@@ -262,6 +347,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       phase = 'sharing';
       emit({ type: 'capture.resumed' });
       sampler?.start();
+      if (followingSlides) void onPresentingSlide(lastSlide);
       notify();
     },
 

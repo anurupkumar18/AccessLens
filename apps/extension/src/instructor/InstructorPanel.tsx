@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
+import type { SlidesSource } from '../sources/slides';
 import { defaultAiClient, type AiClient } from '../shared/aiClient';
 import { createCaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
 import { LiveCaptions, type CaptionDeps } from './LiveCaptions';
@@ -15,13 +16,15 @@ interface Props {
   /** AI gateway client; defaults to the one configured by VITE_ACCESSLENS_AI_URL. */
   ai?: AiClient | null;
   captionDeps?: CaptionDeps;
+  /** Offered as "Follow Google Slides" when this build can watch tabs. */
+  slides?: SlidesSource;
 }
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
 
 interface Banner { glyph: string; label: string; tone: Tone; sentence: string }
 
-const SURFACE_NAMES = { browser: 'a tab', window: 'a window', monitor: 'your screen' } as const;
+const SURFACE_NAMES = { browser: 'a tab', window: 'a window', monitor: 'your screen', slides: 'Google Slides' } as const;
 
 /** One banner per state: glyph and label carry the meaning, colour only reinforces it. */
 function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
@@ -37,12 +40,19 @@ function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
       : state.surface === 'window' || state.surface === 'monitor'
         ? ' Looking for a reviewed slide anywhere in what you shared.'
         : ' Looking for a reviewed slide.';
-  const sharing = state.surface ? `Sharing ${SURFACE_NAMES[state.surface]}.` : 'Sharing.';
+  const sharing = state.surface === 'slides' ? 'Following Google Slides.' : state.surface ? `Sharing ${SURFACE_NAMES[state.surface]}.` : 'Sharing.';
+  if (state.phase === 'sharing' && state.surface === 'slides') {
+    const synced = state.current.kind === 'matched';
+    return {
+      glyph: synced ? '●' : '◉', label: synced ? 'Following Slides · Synced' : 'Following Slides', tone: synced ? 'ok' : 'live',
+      sentence: state.message ?? `${sharing}${synced ? where : ' Waiting for you to present.'}`,
+    };
+  }
   switch (state.phase) {
     case 'idle':
       return {
         glyph: '○', label: 'Not sharing', tone: state.message ? 'warn' : 'idle',
-        sentence: state.message ?? `Not sharing. ${pack.title} is loaded. Click Start to share the window with your slides.`,
+        sentence: state.message ?? `Not sharing. ${pack.title} is loaded. Click Follow Google Slides, or Start to share a window.`,
       };
     case 'starting':
       return { glyph: '◔', label: 'Waiting for you', tone: 'live', sentence: state.message ?? 'Waiting for the browser dialog.' };
@@ -71,8 +81,8 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai = defaultAiClient, captionDeps }: Props): React.ReactElement {
-  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids }));
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai = defaultAiClient, captionDeps, slides }: Props): React.ReactElement {
+  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, slides }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -95,7 +105,7 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
   }
 
   const steps = [
-    'Click Start and pick the tab, window, or screen showing your slides.',
+    slides ? 'Click Follow Google Slides. Present your deck whenever you like; the session finds it.' : 'Click Start and pick the tab, window, or screen showing your slides.',
     'Read the join code to students. They enter it in their AccessLens.',
     'Present. Reviewed slides are recognised on this device and synced to students, who read and listen at their own pace.',
   ];
@@ -124,7 +134,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
       )}
 
       <div role="group" aria-label="Capture controls">
-        {state.phase === 'idle' && <button type="button" className="primary" onClick={() => { void controller.start(); }}>Start</button>}
+        {state.phase === 'idle' && slides && <button type="button" className="primary" onClick={() => { void controller.followSlides(); }}>Follow Google Slides</button>}
+        {state.phase === 'idle' && <button type="button" className={slides ? undefined : 'primary'} onClick={() => { void controller.start(); }}>{slides ? 'Share a window instead' : 'Start'}</button>}
         {state.phase === 'sharing' && <button type="button" onClick={() => guarded(() => controller.pause())}>Pause</button>}
         {state.phase === 'paused' && <button type="button" className="primary" onClick={() => guarded(() => controller.resume())}>Resume</button>}
         {active && <button type="button" className="stop" onClick={() => guarded(() => controller.stop())}>Stop</button>}

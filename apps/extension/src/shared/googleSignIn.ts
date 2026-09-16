@@ -162,3 +162,49 @@ export async function renderGoogleButton(parent: HTMLElement, clientId: string, 
   });
   google.accounts.id.renderButton(parent, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with' });
 }
+
+/** Google's OAuth 2.0 endpoint asked for an access token with the given scopes (implicit flow). */
+export function accessTokenAuthorizationUrl(options: { clientId: string; redirectUri: string; scope: string; state: string; loginHint?: string }): string {
+  const params = new URLSearchParams({
+    client_id: options.clientId,
+    redirect_uri: options.redirectUri,
+    response_type: 'token',
+    scope: options.scope,
+    state: options.state,
+    include_granted_scopes: 'true',
+    ...(options.loginHint ? { login_hint: options.loginHint } : { prompt: 'select_account' }),
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+/** The access token and its lifetime from an OAuth redirect URL's fragment, when the state matches. */
+export function accessTokenFromRedirect(redirectUrl: string, expectedState: string): { accessToken: string; expiresInSeconds: number } | null {
+  const hash = redirectUrl.split('#')[1];
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get('access_token');
+  if (params.get('state') !== expectedState || !accessToken) return null;
+  return { accessToken, expiresInSeconds: Number(params.get('expires_in') ?? '0') || 0 };
+}
+
+/**
+ * An access token for a Google API scope, obtained through the extension's
+ * identity flow and reused until shortly before it expires. Used only for
+ * reading the instructor's own Slides deck order; never sent to our API.
+ */
+export function createExtensionAccessTokens(clientId: string, identity: ChromeIdentity = extensionIdentity()!, now: () => number = Date.now): (scope: string) => Promise<string> {
+  const held = new Map<string, { accessToken: string; expiresAt: number }>();
+  return async (scope) => {
+    const current = held.get(scope);
+    if (current && current.expiresAt - 60_000 > now()) return current.accessToken;
+    const state = randomToken();
+    const redirect = await identity.launchWebAuthFlow({
+      url: accessTokenAuthorizationUrl({ clientId, redirectUri: identity.getRedirectURL(), scope, state, loginHint: readSession(now())?.email }),
+      interactive: true,
+    });
+    const granted = redirect ? accessTokenFromRedirect(redirect, state) : null;
+    if (!granted) throw new Error('Google did not grant access to read your Slides deck.');
+    held.set(scope, { accessToken: granted.accessToken, expiresAt: now() + granted.expiresInSeconds * 1000 });
+    return granted.accessToken;
+  };
+}
