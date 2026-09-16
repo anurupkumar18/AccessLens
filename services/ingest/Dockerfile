@@ -61,9 +61,14 @@ COPY apps/extension/src/sources/screen ${LAMBDA_TASK_ROOT}/apps/extension/src/so
 COPY apps/extension/src/shared ${LAMBDA_TASK_ROOT}/apps/extension/src/shared
 RUN npm install --no-save --ignore-scripts --no-audit --no-fund \
       @aws-sdk/client-s3@3.1133.0 esbuild@0.28.2 \
+    # CommonJS, not ESM: the AWS SDK's bundled internals call require() for
+    # node:https and friends, and an ESM bundle answers that with "Dynamic
+    # require of \"node:https\" is not supported" at cold start -- which is
+    # exactly how the first deployed job died. The root package.json (type:
+    # module) is removed below, so index.js is read as CommonJS.
     && npx esbuild ${LAMBDA_TASK_ROOT}/services/ingest/src/handler.ts \
-      --bundle --platform=node --format=esm --target=node22 \
-      --outfile=${LAMBDA_TASK_ROOT}/index.mjs \
+      --bundle --platform=node --format=cjs --target=node22 \
+      --outfile=${LAMBDA_TASK_ROOT}/index.js \
       --packages=bundle \
     && rm -rf node_modules package.json package-lock.json services apps
 
