@@ -62,4 +62,16 @@ describe('ReviewExperience', () => {
     expect(marked.getAttribute('aria-pressed')).toBe('true');
     expect(container!.textContent).toContain('1 of 2 concepts marked explored on this device. This is private and not a grade.');
   });
+
+  it('moves review format tabs with Arrow keys, Home, and End', async () => {
+    render();
+    const tab = (name: string) => Array.from(container!.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find((button) => button.textContent === name)!;
+    await act(async () => tab('Read').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
+    expect(tab('Hear').getAttribute('aria-selected')).toBe('true');
+    await act(async () => tab('Hear').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })));
+    expect(tab('Focus').getAttribute('aria-selected')).toBe('true');
+    await act(async () => tab('Focus').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })));
+    expect(tab('Hear').getAttribute('aria-selected')).toBe('true');
+    expect(container!.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe('review-mode-tab-hear');
+  });
 });

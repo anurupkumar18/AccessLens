@@ -71,6 +71,19 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
     ...(concept.hasAr ? [{ id: 'ar' as const, label: 'AR' }] : []),
   ];
   const activeMode = availableModes.some((candidate) => candidate.id === mode) ? mode : 'read';
+  const panelId = `review-panel-${activeMode}`;
+
+  function moveMode(currentIndex: number, key: string): void {
+    let nextIndex = currentIndex;
+    if (key === 'ArrowRight') nextIndex = (currentIndex + 1) % availableModes.length;
+    else if (key === 'ArrowLeft') nextIndex = (currentIndex - 1 + availableModes.length) % availableModes.length;
+    else if (key === 'Home') nextIndex = 0;
+    else if (key === 'End') nextIndex = availableModes.length - 1;
+    else return;
+    const nextMode = availableModes[nextIndex]!.id;
+    setMode(nextMode);
+    window.setTimeout(() => document.querySelector<HTMLElement>(`#review-mode-tab-${nextMode}`)?.focus(), 0);
+  }
 
   function toggleBookmark(): void {
     const next = bookmarked ? bookmarks.filter((id) => id !== concept.id) : [...bookmarks, concept.id];
@@ -102,9 +115,9 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
         <p role="status">{explored.length} of {concepts.length} concepts marked explored on this device. This is private and not a grade.</p>
       </div>
       <div className="mode-tabs" role="tablist" aria-label="Choose a review format">
-        {availableModes.map((candidate) => <button key={candidate.id} type="button" role="tab" aria-selected={activeMode === candidate.id} onClick={() => setMode(candidate.id)}>{candidate.label}</button>)}
+        {availableModes.map((candidate, index) => <button key={candidate.id} id={`review-mode-tab-${candidate.id}`} type="button" role="tab" aria-selected={activeMode === candidate.id} aria-controls={panelId} tabIndex={activeMode === candidate.id ? 0 : -1} onClick={() => setMode(candidate.id)} onKeyDown={(event) => moveMode(index, event.key)}>{candidate.label}</button>)}
       </div>
-      <div className="student-content review-content" role="tabpanel" tabIndex={0}>
+      <div className="student-content review-content" id={panelId} role="tabpanel" aria-labelledby={`review-mode-tab-${activeMode}`} tabIndex={0}>
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={concept.assetId} regionId={concept.regionId} /> : null}
         {activeMode === 'read' ? <StructuredTextView pack={pack} assetId={concept.assetId} regionId={concept.regionId} /> : null}
         {activeMode === 'hear' ? <AudioView pack={pack} assetId={concept.assetId} regionId={concept.regionId} speechRate={preferences.speechRate} /> : null}
