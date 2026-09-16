@@ -17,6 +17,7 @@ import {
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { Relay } from './relay.js';
 import { SessionStore } from './store.js';
+import { IvsStage } from './ivsStage.js';
 import { indexPack, type PackIndex } from './rules.js';
 import { log } from './log.js';
 import packJson from './pack.json' with { type: 'json' };
@@ -84,7 +85,7 @@ function build(endpoint: string): { relay: Relay; post: Post } {
     : undefined;
 
   cached = {
-    relay: new Relay({ store, pack, resolvePack, secret: required('CAPABILITY_SECRET'), post }),
+    relay: new Relay({ store, stage: new IvsStage(), pack, resolvePack, secret: required('CAPABILITY_SECRET'), post }),
     pack,
     post,
   };
@@ -190,4 +191,33 @@ export const handler = async (event: WebSocketEvent) => {
     default:
       return reply({ kind: 'error', reason: 'message-kind-not-allowlisted' });
   }
+};
+
+// ---- Expiry sweep ---------------------------------------------------------
+
+interface StreamRecord {
+  eventName?: string;
+  dynamodb?: { OldImage?: { sessionId?: { S?: string }; stageArn?: { S?: string } } };
+}
+
+/**
+ * Delete the video stage of a session whose row left the sessions table.
+ *
+ * `close` and `session.ended` delete the stage on the spot; this is the backstop
+ * for a session nobody closed, which DynamoDB's TTL removes on its own schedule
+ * (hours late, sometimes). The row's old image carries the stage ARN, and
+ * deleting an already-deleted stage is a no-op, so a session closed the normal
+ * way costs one harmless call here when its row finally expires.
+ */
+export const onSessionRemoved = async (event: { Records?: StreamRecord[] }) => {
+  const stage = new IvsStage();
+  for (const record of event.Records ?? []) {
+    if (record.eventName !== 'REMOVE') continue;
+    const image = record.dynamodb?.OldImage;
+    const stageArn = image?.stageArn?.S;
+    if (!stageArn) continue;
+    await stage.deleteStage(stageArn);
+    log.info('stage-deleted', { sessionId: image?.sessionId?.S ?? '', swept: true });
+  }
+  return { ok: true };
 };

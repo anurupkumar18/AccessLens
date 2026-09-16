@@ -30,8 +30,9 @@ import {
 import { CorsHttpMethod, HttpApi, HttpMethod, WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration, WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { AttributeType, BillingMode, ProjectionType, StreamViewType, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { Code, FilterCriteria, FilterRule, Function as LambdaFunction, Runtime, StartingPosition } from 'aws-cdk-lib/aws-lambda';
+import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
@@ -60,6 +61,9 @@ export class LiveSessionStack extends Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'expiresAt',
       removalPolicy: RemovalPolicy.DESTROY,
+      // Old images only, and only so the sweeper below can read `stageArn` off
+      // a row TTL just removed and delete that session's video stage.
+      stream: StreamViewType.OLD_IMAGE,
     });
 
     const connections = new Table(this, 'Connections', {
@@ -121,6 +125,40 @@ export class LiveSessionStack extends Stack {
 
     sessions.grantReadWriteData(handler);
     connections.grantReadWriteData(handler);
+
+    // ---- Video: one IVS Real-Time stage per session -------------------------
+    //
+    // The relay creates a stage with each session, mints participant tokens
+    // beside the role capabilities, and deletes the stage on close. IAM spells
+    // the Real-Time actions with the `ivs:` prefix. Stages are the only
+    // resource these touch; CreateStage has no resource to scope to.
+    const stageArns = `arn:aws:ivs:${this.region}:${this.account}:stage/*`;
+    handler.addToRolePolicy(new PolicyStatement({ actions: ['ivs:CreateStage'], resources: ['*'] }));
+    handler.addToRolePolicy(new PolicyStatement({
+      actions: ['ivs:DeleteStage', 'ivs:CreateParticipantToken'],
+      resources: [stageArns],
+    }));
+
+    // Hard rule: the stage is deleted when the session closes *or expires*.
+    // Expiry is DynamoDB's TTL, which deletes on its own schedule with nobody
+    // watching, so the table's stream drives a second function (same bundle,
+    // different export) that deletes the stage named in the removed row.
+    const sweeper = new LambdaFunction(this, 'StageSweeper', {
+      code: Code.fromAsset(join(repoRoot, 'services/live-session/dist')),
+      handler: 'index.onSessionRemoved',
+      runtime: Runtime.NODEJS_22_X,
+      timeout: Duration.seconds(30),
+      memorySize: 256,
+      logGroup: relayLogs,
+    });
+    sweeper.addToRolePolicy(new PolicyStatement({ actions: ['ivs:DeleteStage'], resources: [stageArns] }));
+    sweeper.addEventSource(new DynamoEventSource(sessions, {
+      startingPosition: StartingPosition.TRIM_HORIZON,
+      batchSize: 10,
+      retryAttempts: 3,
+      bisectBatchOnError: true,
+      filters: [FilterCriteria.filter({ eventName: FilterRule.isEqual('REMOVE') })],
+    }));
 
     const api = new WebSocketApi(this, 'LiveSessionApi', {
       apiName: 'accesslens-live-session',

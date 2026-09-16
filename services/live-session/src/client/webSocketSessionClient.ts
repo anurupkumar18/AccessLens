@@ -32,6 +32,8 @@ export interface RoleCapability {
   issuedAt: string;
   expiresAt: string;
   token: string;
+  /** Video stage token, when the session has video. Opaque here. */
+  streamToken?: string;
 }
 
 /** Structurally identical to Part 1's `LiveEvent`; kept local so this package
@@ -158,7 +160,10 @@ export class WebSocketSessionClient implements SessionClient {
     // the role of a connection it has never seen. `SessionMessageSchema` is
     // strict, so this cannot ride on a message.
     if (!this.capability || !this.sessionId) return this.options.url;
-    const encoded = base64Url(JSON.stringify(this.capability));
+    // The stage token is for the video service, not the relay, and is the one
+    // field long enough to matter in a URL; the relay resumes without it.
+    const { streamToken: _omitted, ...presented } = this.capability;
+    const encoded = base64Url(JSON.stringify(presented));
     const separator = this.options.url.includes('?') ? '&' : '?';
     return `${this.options.url}${separator}sessionId=${encodeURIComponent(
       this.sessionId,

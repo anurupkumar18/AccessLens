@@ -7,7 +7,7 @@
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "type": {
-      "enum": ["session.started", "asset.changed", "region.changed", "caption.appended", "capture.paused", "capture.resumed", "capture.stopped", "source.unmatched", "session.ended"]
+      "enum": ["session.started", "asset.changed", "region.changed", "caption.appended", "capture.paused", "capture.resumed", "capture.stopped", "stream.started", "stream.stopped", "source.unmatched", "session.ended"]
     },
     "sessionId": { "type": "string", "minLength": 1 },
     "packId": { "type": "string", "minLength": 1 },
@@ -43,6 +43,10 @@
         "text": { "type": "string", "minLength": 1 },
         "isFinal": { "type": "boolean" }
       }
+    },
+    "surface": {
+      "description": "What the instructor is streaming live video of on stream.started: one browser tab or one window. A whole monitor is never streamed. The video itself travels over Amazon IVS Real-Time, never on this contract.",
+      "enum": ["browser", "window"]
     }
   },
   "allOf": [
@@ -50,23 +54,30 @@
       "if": { "properties": { "type": { "const": "asset.changed" } } },
       "then": {
         "required": ["assetId"],
-        "properties": { "regionId": false, "pointer": false, "arState": false, "caption": false }
+        "properties": { "regionId": false, "pointer": false, "arState": false, "caption": false, "surface": false }
       }
     },
     {
       "if": { "properties": { "type": { "const": "region.changed" } } },
       "then": {
         "required": ["assetId", "regionId"],
-        "properties": { "caption": false }
+        "properties": { "caption": false, "surface": false }
       }
     },
     {
       "if": {
         "properties": {
-          "type": { "enum": ["session.started", "capture.paused", "capture.resumed", "capture.stopped", "source.unmatched", "session.ended"] }
+          "type": { "enum": ["session.started", "capture.paused", "capture.resumed", "capture.stopped", "stream.stopped", "source.unmatched", "session.ended"] }
         }
       },
       "then": {
+        "properties": { "assetId": false, "regionId": false, "pointer": false, "arState": false, "caption": false, "surface": false }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "stream.started" } } },
+      "then": {
+        "required": ["surface"],
         "properties": { "assetId": false, "regionId": false, "pointer": false, "arState": false, "caption": false }
       }
     },
@@ -74,7 +85,7 @@
       "if": { "properties": { "type": { "const": "caption.appended" } } },
       "then": {
         "required": ["caption"],
-        "properties": { "regionId": false, "pointer": false, "arState": false }
+        "properties": { "regionId": false, "pointer": false, "arState": false, "surface": false }
       }
     }
   ],

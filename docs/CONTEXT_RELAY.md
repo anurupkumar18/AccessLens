@@ -150,6 +150,7 @@ section 3; do not silently build against it.
 | Five parts, fixed directory boundaries, small PRs into the integration branch, nothing straight to `master`. | `docs/PARALLEL_WORKSTREAMS.md` |
 | The reviewed pack owns the matching thresholds, so recognition tuning is reviewed content rather than a constant compiled into Part 2. | `packages/access-packs/bio-cell-demo/pack.json`, `matching` block |
 | Perceptual-hash ties resolve to 0 with a 0.75-of-255 epsilon. Any reimplementation of the matcher must keep this; without it, worst-case drift on a distorted capture is ~4x larger. | `docs/IMPLEMENTATION_PLAN.md` risk register |
+| **Live video of one instructor-chosen tab or window may be streamed to the session's students** when the instructor turns it on, per session, from a click; the console names the surface ("Streaming a tab" / "Streaming a window") while it is on. A whole monitor is never streamed. The video travels over Amazon IVS Real-Time (one stage per session, deleted with the session); the relay carries only stage tokens and the two `stream.*` state events, never media. This is the reviewed, visibly consented exception charter A2 requires, decided by the team on 2026-09-16; it does not widen to audio, cameras, recording, or other surfaces. | Team decision 2026-09-16; `docs/prompts/window-stream-build.md`; `services/live-session/src/stage.ts` |
 
 ---
 

@@ -11,6 +11,11 @@
     "role": { "enum": ["instructor", "student"] },
     "issuedAt": { "type": "string", "format": "date-time" },
     "expiresAt": { "type": "string", "format": "date-time" },
-    "token": { "type": "string", "minLength": 1 }
+    "token": { "type": "string", "minLength": 1 },
+    "streamToken": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Amazon IVS Real-Time participant token for the session's video stage, minted by the relay next to the capability: publish for the instructor, subscribe-only for students. Absent when the session has no video. Carries no identity."
+    }
   }
 }

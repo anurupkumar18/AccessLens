@@ -45,6 +45,8 @@ EVENT_TYPES = (
     "capture.paused",
     "capture.resumed",
     "capture.stopped",
+    "stream.started",
+    "stream.stopped",
     "source.unmatched",
     "session.ended",
 )

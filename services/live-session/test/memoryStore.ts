@@ -17,6 +17,7 @@ import {
   nowSeconds,
   SESSION_TTL_SECONDS,
   type ConnectionRecord,
+  type LatestUpdate,
   type Role,
   type SessionRecord,
   type SessionStoreApi,
@@ -30,6 +31,7 @@ export class MemorySessionStore implements SessionStoreApi {
     sessionId: string,
     packId: string,
     packVersion: number,
+    stageArn: string | undefined,
     now: Date = new Date(),
   ): Promise<SessionRecord> {
     if (this.sessions.has(sessionId)) {
@@ -43,6 +45,7 @@ export class MemorySessionStore implements SessionStoreApi {
       packVersion,
       status: 'open',
       lastSequence: 0,
+      ...(stageArn ? { stageArn } : {}),
       expiresAt: nowSeconds(now) + SESSION_TTL_SECONDS,
     };
     this.sessions.set(sessionId, record);
@@ -63,7 +66,7 @@ export class MemorySessionStore implements SessionStoreApi {
   async advanceSequence(
     sessionId: string,
     sequence: number,
-    latestState: Record<string, unknown> | undefined,
+    latest: LatestUpdate,
     now: Date = new Date(),
   ): Promise<boolean> {
     const record = this.sessions.get(sessionId);
@@ -72,7 +75,9 @@ export class MemorySessionStore implements SessionStoreApi {
     if (record.status !== 'open') return false;
     if (record.lastSequence >= sequence) return false;
     record.lastSequence = sequence;
-    if (latestState !== undefined) record.latestState = latestState;
+    if (latest.view !== undefined) record.latestState = latest.view;
+    if (latest.stream === null) delete record.latestStream;
+    else if (latest.stream !== undefined) record.latestStream = latest.stream;
     return true;
   }
 

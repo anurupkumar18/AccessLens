@@ -1,4 +1,4 @@
-import type { AccessPack, LiveEvent } from '../shared/contracts';
+import type { AccessPack, LiveEvent, StreamSurface } from '../shared/contracts';
 
 export type LiveStatus =
   | 'waiting'
@@ -16,6 +16,12 @@ export interface StudentLiveState {
   assetId?: string;
   regionId?: string;
   hotspotId?: string;
+  /**
+   * Live video of the instructor's tab or window is being streamed, and what
+   * kind of surface it is. Separate from `status` on purpose: video can start,
+   * stop or fail without touching slide following.
+   */
+  stream?: { surface: StreamSurface };
   message: string;
 }
 
@@ -66,8 +72,13 @@ export function applyLiveEvent(
         ...current,
         status: 'stopped',
         lastSequence: event.sequence,
+        stream: undefined,
         message: 'Instructor stopped sharing. Showing the last reviewed moment.',
       };
+    case 'stream.started':
+      return { ...current, lastSequence: event.sequence, stream: { surface: event.surface } };
+    case 'stream.stopped':
+      return { ...current, lastSequence: event.sequence, stream: undefined };
     case 'source.unmatched':
       return {
         status: 'unmatched',

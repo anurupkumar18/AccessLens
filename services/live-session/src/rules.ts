@@ -33,6 +33,8 @@ export const ALLOWED_EVENT_TYPES = [
   'capture.paused',
   'capture.resumed',
   'capture.stopped',
+  'stream.started',
+  'stream.stopped',
   'source.unmatched',
   'session.ended',
 ] as const;
@@ -51,7 +53,7 @@ export const REQUIRED_FIELDS = [
 export const CAPTION_MAX_LENGTH = 500;
 
 /**
- * Mirrors KNOWN_FIELDS in reference_event_check.py, `caption` included.
+ * Mirrors KNOWN_FIELDS in reference_event_check.py, `caption` and `surface` included.
  *
  * `caption` is the live caption of the instructor's speech on
  * `caption.appended` (T-16, closed): `{text, isFinal}` and nothing else,
@@ -69,7 +71,16 @@ export const KNOWN_FIELDS: ReadonlySet<string> = new Set([
   'pointer',
   'arState',
   'caption',
+  'surface',
 ]);
+
+/**
+ * The only surfaces a `stream.started` may name. A whole monitor is never
+ * streamed (decision in `docs/CONTEXT_RELAY.md` §4), and the relay refuses the
+ * announcement of one so a modified client cannot tell students to subscribe
+ * to it.
+ */
+export const STREAM_SURFACES: ReadonlySet<string> = new Set(['browser', 'window']);
 
 /**
  * Every event type is instructor-only. A student connection publishes nothing
@@ -221,6 +232,15 @@ export function checkEvent(
     }
   } else if (caption !== undefined && caption !== null) {
     broken.push('caption-on-wrong-event-type');
+  }
+
+  // `surface` says which kind of thing the instructor is streaming: a tab or a
+  // window, never a monitor. Only `stream.started` carries it.
+  const surface = event.surface;
+  if (type === 'stream.started') {
+    if (typeof surface !== 'string' || !STREAM_SURFACES.has(surface)) broken.push('stream-surface-invalid');
+  } else if (surface !== undefined && surface !== null) {
+    broken.push('surface-on-wrong-event-type');
   }
 
   // Charter A9. `source.unmatched` is base-only in the discriminated union, so

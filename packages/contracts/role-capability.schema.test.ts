@@ -29,6 +29,12 @@ describe('role-capability.schema.json', () => {
     expect(validate({...validCapability, role: 'admin'})).toBe(false);
   });
 
+  it('accepts an optional video stage token and nothing else extra', () => {
+    expect(validate({...validCapability, streamToken: 'ivs-participant-token'})).toBe(true);
+    expect(validate({...validCapability, streamToken: ''})).toBe(false);
+    expect(validate({...validCapability, studentId: 'x'})).toBe(false);
+  });
+
   it('rejects a capability missing its signed token', () => {
     const {token, ...withoutToken} = validCapability;
     expect(validate(withoutToken)).toBe(false);

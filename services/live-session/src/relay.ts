@@ -10,15 +10,25 @@
  *
  * The operations are the ones the contract freeze named: create, join, relay,
  * latest-state, disconnect, and close.
+ *
+ * Video. The relay owns the *lifecycle* of a session's video stage on Amazon
+ * IVS Real-Time and nothing else about video: it creates the stage with the
+ * session, mints a publish token for the instructor and subscribe-only tokens
+ * for students next to their capabilities, relays the two `stream.*` state
+ * events, and deletes the stage when the session closes. Not one frame passes
+ * through here; the events say that video exists and what kind of surface it
+ * shows, and the tokens let the browsers reach IVS directly.
  */
 import { checkEvent, type PackIndex } from './rules.js';
 import {
+  CAPABILITY_TTL_SECONDS,
   issueCapability,
   verifyCapability,
   type Role,
   type RoleCapability,
 } from './capability.js';
-import type { SessionStoreApi } from './records.js';
+import type { LatestUpdate, SessionRecord, SessionStoreApi } from './records.js';
+import type { StagePort, StreamRole } from './stage.js';
 import { log, logEvent } from './log.js';
 
 /** Events that establish the current student-visible lifecycle or reviewed view.
@@ -33,8 +43,16 @@ const VIEW_BEARING = new Set([
   'source.unmatched',
 ]);
 
+/** Events after which no video is streaming. `stream.started` is the one that says it is. */
+const STREAM_CLEARING = new Set(['stream.stopped', 'capture.stopped', 'session.ended']);
+
+/** A capability plus the video token minted beside it, when the session has video. */
+export type IssuedCapability = RoleCapability & { streamToken?: string };
+
 export interface RelayConfig {
   store: SessionStoreApi;
+  /** The video stage per session. Its failures never stop a session from opening. */
+  stage: StagePort;
   /** The reviewed pack the relay ships with; sessions teaching it need no lookup. */
   pack: PackIndex;
   /**
@@ -50,7 +68,7 @@ export interface RelayConfig {
 }
 
 export type RelayOutcome =
-  | { status: 'ok'; capability?: RoleCapability; delivered?: number }
+  | { status: 'ok'; capability?: IssuedCapability; delivered?: number }
   | { status: 'rejected'; rules: string[] }
   | { status: 'error'; reason: string };
 
@@ -73,6 +91,49 @@ export class Relay {
   }
 
   /**
+   * A capability, with a video token beside it when the session has a stage.
+   * Minting can fail (a throttled or unavailable video service); the session
+   * is still usable, so the capability goes out without the token and the
+   * console tells the instructor video is unavailable.
+   */
+  private async issue(
+    session: SessionRecord | undefined,
+    sessionId: string,
+    role: Role,
+    streamRole: StreamRole,
+    now: Date,
+  ): Promise<IssuedCapability> {
+    const capability = issueCapability(sessionId, role, this.config.secret, now);
+    if (!session?.stageArn) return capability;
+    try {
+      const streamToken = await this.config.stage.createToken(session.stageArn, streamRole, CAPABILITY_TTL_SECONDS);
+      return { ...capability, streamToken };
+    } catch (error) {
+      log.warn('stream-token-failed', { sessionId, role, error: String(error) });
+      return capability;
+    }
+  }
+
+  /** Delete the session's stage, if it has one. Idempotent; a failure is logged, not raised. */
+  private async releaseStage(session: SessionRecord | undefined): Promise<void> {
+    if (!session?.stageArn) return;
+    try {
+      await this.config.stage.deleteStage(session.stageArn);
+      log.info('stage-deleted', { sessionId: session.sessionId });
+    } catch (error) {
+      log.warn('stage-delete-failed', { sessionId: session.sessionId, error: String(error) });
+    }
+  }
+
+  /** Catch a student up: the latest view, then whether video is streaming, in sequence order. */
+  private async catchUp(connectionId: string, session: SessionRecord): Promise<void> {
+    const latest = [session.latestState, session.latestStream]
+      .filter((event): event is Record<string, unknown> => event !== undefined)
+      .sort((a, b) => Number(a.sequence) - Number(b.sequence));
+    for (const event of latest) await this.config.post(connectionId, { kind: 'event', event });
+  }
+
+  /**
    * Create a session and take the instructor capability for it.
    *
    * Creating is what makes you the instructor -- there is no separate grant
@@ -81,29 +142,46 @@ export class Relay {
    * get their capability back), but it must not reset the sequence counter,
    * which is why `createSession` is conditional and the failure is swallowed
    * only for the already-exists case.
+   *
+   * The video stage is created with the session. If the stage cannot be
+   * created the session still opens, without video (decision 9): slide
+   * following is the product and video is beside it.
    */
   async create(
     connectionId: string,
     sessionId: string,
     now: Date = new Date(),
   ): Promise<RelayOutcome> {
-    try {
-      // The pack is pinned by the first accepted event, not chosen here:
-      // `create` carries no pack on the frozen contract.
-      await this.config.store.createSession(sessionId, '', 0, now);
-    } catch (error) {
-      if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
-        log.error('session-create-failed', { sessionId, error: String(error) });
-        return { status: 'error', reason: 'session-create-failed' };
+    let session = await this.config.store.getSession(sessionId, now);
+    if (!session) {
+      let stageArn: string | undefined;
+      try {
+        stageArn = await this.config.stage.createStage(sessionId);
+      } catch (error) {
+        log.warn('stage-create-failed', { sessionId, error: String(error) });
       }
-      const existing = await this.config.store.getSession(sessionId, now);
-      if (!existing) return { status: 'error', reason: 'session-expired' };
-      if (existing.status === 'closed') return { status: 'error', reason: 'session-not-open' };
+      try {
+        // The pack is pinned by the first accepted event, not chosen here:
+        // `create` carries no pack on the frozen contract.
+        session = await this.config.store.createSession(sessionId, '', 0, stageArn, now);
+      } catch (error) {
+        // Whatever happened, the session record does not carry this stage.
+        if (stageArn) await this.releaseStage({ sessionId, stageArn } as SessionRecord);
+        if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
+          log.error('session-create-failed', { sessionId, error: String(error) });
+          return { status: 'error', reason: 'session-create-failed' };
+        }
+        // Lost a race with another create, or the row is expired but not yet
+        // swept: `getSession` tells the two apart.
+        session = await this.config.store.getSession(sessionId, now);
+        if (!session) return { status: 'error', reason: 'session-expired' };
+      }
     }
+    if (session.status === 'closed') return { status: 'error', reason: 'session-not-open' };
 
     await this.config.store.putConnection(connectionId, sessionId, 'instructor', now);
-    const capability = issueCapability(sessionId, 'instructor', this.config.secret, now);
-    log.info('session-created', { sessionId, role: 'instructor' });
+    const capability = await this.issue(session, sessionId, 'instructor', 'publish', now);
+    log.info('session-created', { sessionId, role: 'instructor', video: capability.streamToken !== undefined });
     return { status: 'ok', capability };
   }
 
@@ -113,7 +191,8 @@ export class Relay {
    * The catch-up is the latest view, not a replay. `reconnect-latest-state`'s
    * expectation is explicit about this, and it is also the privacy-preserving
    * choice: the relay holds one current view per session rather than the
-   * session's history.
+   * session's history. If the instructor is streaming video, the
+   * `stream.started` in force follows, so a late student subscribes too.
    */
   async join(
     connectionId: string,
@@ -130,12 +209,10 @@ export class Relay {
     if (role !== 'student') return { status: 'error', reason: 'role-not-grantable-by-join' };
 
     await this.config.store.putConnection(connectionId, sessionId, 'student', now);
-    const capability = issueCapability(sessionId, 'student', this.config.secret, now);
+    const capability = await this.issue(session, sessionId, 'student', 'subscribe', now);
     log.info('session-joined', { sessionId, role: 'student' });
 
-    if (session.latestState) {
-      await this.config.post(connectionId, { kind: 'event', event: session.latestState });
-    }
+    await this.catchUp(connectionId, session);
     return { status: 'ok', capability };
   }
 
@@ -144,6 +221,10 @@ export class Relay {
    * catch it up. This is the path where the capability earns its keep: the
    * connection is new, so the relay has no memory of this client at all, and
    * the token is the only evidence of what role it held.
+   *
+   * No video token is minted here. A resuming client still holds the one it
+   * was issued at create or join, which lives as long as the capability does;
+   * and this runs on `$connect`, where nothing can be posted back anyway.
    */
   async resume(
     connectionId: string,
@@ -161,9 +242,7 @@ export class Relay {
     if (session.status !== 'open') return { status: 'error', reason: 'session-not-open' };
 
     await this.config.store.putConnection(connectionId, sessionId, verdict.role, now);
-    if (verdict.role === 'student' && session.latestState) {
-      await this.config.post(connectionId, { kind: 'event', event: session.latestState });
-    }
+    if (verdict.role === 'student') await this.catchUp(connectionId, session);
     log.info('session-resumed', { sessionId, role: verdict.role });
     return { status: 'ok' };
   }
@@ -213,13 +292,12 @@ export class Relay {
       return { status: 'rejected', rules };
     }
 
-    const latestState = VIEW_BEARING.has(event.type as string) ? event : undefined;
-    const claimed = await this.config.store.advanceSequence(
-      sessionId,
-      event.sequence as number,
-      latestState,
-      now,
-    );
+    const type = event.type as string;
+    const latest: LatestUpdate = {};
+    if (VIEW_BEARING.has(type)) latest.view = event;
+    if (type === 'stream.started') latest.stream = event;
+    else if (STREAM_CLEARING.has(type)) latest.stream = null;
+    const claimed = await this.config.store.advanceSequence(sessionId, event.sequence as number, latest, now);
     if (!claimed) {
       // Lost the race, or the session closed between the read and the write.
       logEvent('warn', 'event-rejected', event, { rules: 'sequence-not-monotonic', count: 1 });
@@ -245,14 +323,18 @@ export class Relay {
     // `session.ended` is terminal. `capture.stopped` is deliberately not: it
     // freezes student views while leaving this temporary session available for
     // a fresh, explicit browser capture on the same join code.
-    if (event.type === 'session.ended') await this.config.store.closeSession(sessionId);
+    if (type === 'session.ended') {
+      await this.config.store.closeSession(sessionId);
+      await this.releaseStage(session);
+    }
 
     return { status: 'ok', delivered };
   }
 
   /**
    * Close a session. Instructor only, and immediate: the status flips before
-   * this returns, so the next event fails gate 1 and gate 2 both.
+   * this returns, so the next event fails gate 1 and gate 2 both. The video
+   * stage goes with it, disconnecting anyone still watching.
    */
   async close(
     connectionId: string,
@@ -266,7 +348,9 @@ export class Relay {
     if (connection.role !== 'instructor') {
       return { status: 'error', reason: 'role-not-permitted-to-close' };
     }
+    const session = await this.config.store.getSession(sessionId, now);
     await this.config.store.closeSession(sessionId);
+    await this.releaseStage(session);
     log.info('session-closed', { sessionId });
     return { status: 'ok' };
   }

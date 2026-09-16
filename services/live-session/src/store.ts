@@ -5,7 +5,7 @@
  * next event:
  *
  *   sessions     sessionId -> packId, packVersion, status, lastSequence,
- *                             latestState, expiresAt
+ *                             latestState, latestStream, stageArn, expiresAt
  *   connections  connectionId -> sessionId, role, expiresAt
  *                with a GSI on sessionId, so a broadcast is one query rather
  *                than a scan of every connection in the account.
@@ -42,6 +42,7 @@ import {
   nowSeconds,
   SESSION_TTL_SECONDS,
   type ConnectionRecord,
+  type LatestUpdate,
   type Role,
   type SessionRecord,
   type SessionStoreApi,
@@ -73,6 +74,7 @@ export class SessionStore implements SessionStoreApi {
     sessionId: string,
     packId: string,
     packVersion: number,
+    stageArn: string | undefined,
     now: Date = new Date(),
   ): Promise<SessionRecord> {
     const record: SessionRecord = {
@@ -81,6 +83,7 @@ export class SessionStore implements SessionStoreApi {
       packVersion,
       status: 'open',
       lastSequence: 0,
+      ...(stageArn ? { stageArn } : {}),
       expiresAt: nowSeconds(now) + SESSION_TTL_SECONDS,
     };
     // Idempotent create: re-issuing an instructor capability for a session that
@@ -128,25 +131,33 @@ export class SessionStore implements SessionStoreApi {
   async advanceSequence(
     sessionId: string,
     sequence: number,
-    latestState: Record<string, unknown> | undefined,
+    latest: LatestUpdate,
     now: Date = new Date(),
   ): Promise<boolean> {
     const sets = ['lastSequence = :sequence'];
+    const removes: string[] = [];
     const values: Record<string, unknown> = {
       ':sequence': sequence,
       ':at': nowSeconds(now),
       ':open': 'open',
     };
-    if (latestState !== undefined) {
+    if (latest.view !== undefined) {
       sets.push('latestState = :latestState');
-      values[':latestState'] = latestState;
+      values[':latestState'] = latest.view;
     }
+    if (latest.stream === null) {
+      removes.push('latestStream');
+    } else if (latest.stream !== undefined) {
+      sets.push('latestStream = :latestStream');
+      values[':latestStream'] = latest.stream;
+    }
+    const expression = `SET ${sets.join(', ')}${removes.length ? ` REMOVE ${removes.join(', ')}` : ''}`;
     try {
       await this.doc.send(
         new UpdateCommand({
           TableName: this.config.sessionsTable,
           Key: { sessionId },
-          UpdateExpression: `SET ${sets.join(', ')}`,
+          UpdateExpression: expression,
           ConditionExpression:
             'attribute_exists(sessionId) AND lastSequence < :sequence AND #status = :open AND expiresAt > :at',
           ExpressionAttributeNames: { '#status': 'status' },
