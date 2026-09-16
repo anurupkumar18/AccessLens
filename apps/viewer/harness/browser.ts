@@ -5,16 +5,21 @@ import { ArtifactManifestSchema, type ArtifactManifest } from '../../extension/s
 
 export interface BrowserRunOptions {
   artifactDir: string;
-  screenshotPath: string;
+  /** Optional because a critic may only need the pass/fail verdict. */
+  screenshotPath?: string;
   waitFrames?: number;
 }
 
+/** Stable result seam consumed by the Critic and catalog tooling. */
 export interface BrowserRunResult {
   ok: boolean;
+  consoleErrors: string[];
+  unhandledRejections: string[];
+  screenshotPath?: string;
+  // These fields make a local harness result self-describing without changing
+  // the small required seam above.
   artifactId: string;
   artifactVersion: number;
-  screenshotPath: string;
-  consoleErrors: string[];
   durationMs: number;
   initialized: boolean;
 }
@@ -43,8 +48,12 @@ function describeError(error: unknown): string {
 
 function nextFrame(window: Window): Promise<void> {
   return new Promise((resolveFrame) => {
-    // jsdom has no compositor. A timer is the deterministic equivalent of one
-    // animation frame while preserving the harness's two-frame contract.
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => resolveFrame());
+      return;
+    }
+    // jsdom versions without pretend-to-be-visual still get a deterministic
+    // frame boundary rather than an unbounded wait.
     window.setTimeout(resolveFrame, 0);
   });
 }
@@ -62,6 +71,7 @@ export class JsdomBrowserDriver implements BrowserDriver {
     const artifactDir = resolve(options.artifactDir);
     const manifest = await readManifest(artifactDir);
     const consoleErrors: string[] = [];
+    const unhandledRejections: string[] = [];
     const initialized = { value: false };
     const virtualConsole = new VirtualConsole();
     virtualConsole.on('error', (error) => consoleErrors.push(describeError(error)));
@@ -85,7 +95,7 @@ export class JsdomBrowserDriver implements BrowserDriver {
       consoleErrors.push(event.error ? describeError(event.error) : event.message);
     });
     window.addEventListener('unhandledrejection', (event) => {
-      consoleErrors.push(describeError(event.reason));
+      unhandledRejections.push(describeError(event.reason));
     });
 
     try {
@@ -104,15 +114,19 @@ export class JsdomBrowserDriver implements BrowserDriver {
       consoleErrors.push(describeError(error));
     }
 
-    await writeSnapshot(options.screenshotPath, manifest, dom.serialize());
+    if (options.screenshotPath) {
+      await writeSnapshot(options.screenshotPath, manifest, dom.serialize());
+    }
     dom.window.close();
     const uniqueErrors = [...new Set(consoleErrors.filter(Boolean))];
+    const uniqueRejections = [...new Set(unhandledRejections.filter(Boolean))];
     return {
-      ok: initialized.value && uniqueErrors.length === 0,
+      ok: initialized.value && uniqueErrors.length === 0 && uniqueRejections.length === 0,
+      consoleErrors: uniqueErrors,
+      unhandledRejections: uniqueRejections,
+      screenshotPath: options.screenshotPath ? resolve(options.screenshotPath) : undefined,
       artifactId: manifest.artifactId,
       artifactVersion: manifest.artifactVersion,
-      screenshotPath: resolve(options.screenshotPath),
-      consoleErrors: uniqueErrors,
       durationMs: Date.now() - startedAt,
       initialized: initialized.value,
     };

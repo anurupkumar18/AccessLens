@@ -27,8 +27,9 @@ describe('jsdom harness browser driver', () => {
     expect(result.artifactVersion).toBe(1);
     expect(result.initialized).toBe(true);
     expect(result.consoleErrors).toEqual([]);
-    expect(existsSync(result.screenshotPath)).toBe(true);
-    expect(readFileSync(result.screenshotPath, 'utf8')).toContain('AccessLens jsdom render snapshot');
+    expect(result.screenshotPath).toBeDefined();
+    expect(existsSync(result.screenshotPath!)).toBe(true);
+    expect(readFileSync(result.screenshotPath!, 'utf8')).toContain('AccessLens jsdom render snapshot');
   });
 
   it('fails an artifact that throws during accesslensInit and preserves the error', async () => {
