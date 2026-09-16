@@ -1,1 +1,35 @@
-{"manifest_version":3,"name":"AccessLens","version":"0.1.0","description":"Instructor-authorized accessible lesson companion","permissions":["storage","sidePanel"],"action":{"default_title":"Open AccessLens"},"side_panel":{"default_path":"index.html"},"background":{"service_worker":"service-worker.js","type":"module"}}
+{
+  "manifest_version": 3,
+  "name": "AccessLens",
+  "version": "0.1.0",
+  "description": "Instructor-authorized accessible lesson companion",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_title": "Open AccessLens"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "orb.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}
