@@ -297,6 +297,12 @@ def check_ar_framing(pack: dict) -> list[str]:
     its position and the largest scale component is its radius. The test is
     whether the node's angular radius plus its off-axis angle from the camera's
     aim fits inside half the field of view.
+
+    `fov` is treated as a single scalar with no aspect ratio, so this checks a
+    cone rather than a rectangular frustum. That is conservative for a viewport
+    wider than it is tall -- the real frame is larger horizontally -- and it is
+    adequate for this model. A scene with rotations, nested transforms, or
+    portrait viewports needs composed matrices and a per-axis field of view.
     """
     errors: list[str] = []
     cameras = pack.get("arCameras", {})

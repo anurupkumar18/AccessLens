@@ -5,7 +5,7 @@ this project mid-flight, and appends to on the way out. It exists so that contex
 travels between sessions and between people, and so that nothing quietly falls
 through the gap at the end of the hackathon.
 
-**State as of:** `0771bce` (Jacob takes Part 2), September 15, 2026.
+**State as of:** `a881f11` (Part 5 pack merged), September 15, 2026.
 
 This file is **append-mostly**. The tables are living state and get edited in
 place; the relay log at the bottom is append-only. Never delete a log entry, and
@@ -58,16 +58,19 @@ during the build.
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
-| 2. Instructor capture | Jacob | `workstream/2-instructor-capture`, PR #8 open | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Merged Part 3's student experience and the relay docs into the branch. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
-| 3. Student experience and AR | UNOWNED | `workstream/3-student-ar` | Code exists: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch does not name its author in the relay, so the owner cell stays honest. Part 2 merged it into PR #8 so the instructor panel and student view share one shell. | `npm run check` on `workstream/2-instructor-capture` |
-| 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
-| 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, and a content review sheet for A15. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
+| 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
+| 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
+| 4. AWS live service | UNOWNED | `docs/aws-access-verification` (unmerged) | Not started as a service. Recon only: the hackathon AWS account allows exactly one Bedrock model (`us.anthropic.claude-sonnet-4-6`), Polly/Translate respond, and the write path for Lambda/DynamoDB/API Gateway/S3 is unverified. No `infra/` or `services/live-session/`. | `git log origin/docs/aws-access-verification` |
+| 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
 
-**The single largest risk in this project is still the second column**, though it
-moved today: Part 2 now has an owner. Parts 3 and 4 do not. Part 3 is the student
-experience and the required AR renderer, which is most of what the demo shows, and
-Part 4 is the transport it all runs over. Part 5 exists precisely so 2, 3, and 4
-can each start without waiting for the other two — see section 6.
+**The single largest risk moved again.** Parts 1, 2, 3, and 5 are all on the
+integration branch now with `make check` green (181 extension tests, 61 pack
+tests, 24 relay tests). Nobody owns Part 4, and Part 4 is the one thing that
+turns this from "one browser profile, `BroadcastChannel`" into an actual
+multi-device demo. The other new risk is process, not code: three independent
+ID collisions (two episodic `0040`/`0041` filenames, one `T-20` thread ID) were
+found and fixed only because someone merging noticed — see T-17/T-18, still
+open.
 
 ---
 
@@ -86,10 +89,10 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-02 | `assetId` is `required` on every `LiveEvent`, so `source.unmatched` cannot be expressed. Violates charter A9 and breaks the runbook's 2:00–2:30 beat. | Part 1 | — | CLOSED | `c3ddc27` made `LiveEventSchema` a per-type discriminated union; `source.unmatched` is now structurally unable to name an asset |
 | T-03 | `live-event.schema.json` omitted `regionId` and `pointer` that the Zod schema accepts, so Part 1's own fixture failed Part 1's own JSON Schema. | Part 1 | — | CLOSED | `c3ddc27` mirrors the Zod matrix in the JSON Schema, with ajv tests |
 | T-04 | The event contract had no `arState`, but AR is a required renderer (A10, A12). | Part 1 + Part 3 | — | CLOSED | `c3ddc27` adds `arState {hotspotId, action}` to `region.changed`. Part 5 dropped the `camera` field it had wanted — it is derivable from the hotspot in the pack |
-| T-05 | `access-pack.schema.json` now sets `additionalProperties: false` on the **asset** object too, which makes `arScene` illegal. AR is a required renderer and `SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack cannot carry the scene the MVP requires. Also blocks `mediaUri`, `subtitle`, region `label`, and the four root blocks. | Part 1 | Part 3, Part 5 | IN PROGRESS | PR #8 widens both `AccessPackSchema` and `access-pack.schema.json` additively (`arScene`, `mediaUri`, `subtitle`, region `label`, `review`, `matching`, `arCameras`, `reservedReadingOrderIds`); `check_contract_conformance.py` reports the gaps CLOSED on that branch. Closes when #8 merges. |
+| T-05 | `access-pack.schema.json` now sets `additionalProperties: false` on the **asset** object too, which makes `arScene` illegal. AR is a required renderer and `SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack cannot carry the scene the MVP requires. Also blocks `mediaUri`, `subtitle`, region `label`, and the four root blocks. | Part 1 | Part 3, Part 5 | CLOSED | PR #8 merged; `AccessPackSchema` and `access-pack.schema.json` both widened additively (`arScene`, `mediaUri`, `subtitle`, region `label`, `review`, `matching`, `arCameras`, `reservedReadingOrderIds`). `check_contract_conformance.py` on the integration branch reports all eight of these gaps CLOSED; only two documented, intentional gaps remain (caption payload, forbidden-assetId negative fixtures). |
 | T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract, which cannot express it until T-05 lets the pack carry `arScene`. | Part 1 + Part 3 | Part 3 | BLOCKED | Blocked on T-05 |
 | T-07 | CI does not run on the integration branch. `.github/workflows/check.yml` pushes only on `[main, master]`, and no check has run on PR #4 or #5 either. The branch the whole hackathon lives on is unwatched. Manually verified green at `0771bce` (RL-013), so the risk has not bitten yet — but that was a person choosing to look, which is not a process. PR #5 fixes the trigger. | UNOWNED | Everyone | UNOWNED | `gh pr checks 4` reports no checks; RL-013 |
-| T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | IN PROGRESS | PR #5 added `setup-node` + `npm ci` but pinned Node 20; vitest 5, undici 8, and whatwg-url 17 need Node 22, so the seven jsdom test files still errored in CI (run 35037067542). PR #8 pins `node-version: "22"`. Closes when a green run lands on the integration branch. |
+| T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | CLOSED | PR #5 added `setup-node` + `npm ci`; PR #8's `node-version: "22"` pin fixed the follow-on jsdom/undici failure. Confirmed with an actual green CI run against the integration branch head after the merge: run `35039069067`, `conclusion: success`. |
 | T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack, so it must not be described as expert-reviewed or accessibility-audited. The Part 5 side is now unblocked — `review/content-review-sheet.html` draws every region on its slide beside the exact words a student gets, so there is something to review. **What remains needs a person: finding the two reviewers.** | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/review/content-review-sheet.html` |
 | T-10 | A17 camera adapter not started. Phase 6 by plan; must not delay or destabilise the screen-sharing demo. | Part 5 | Nothing | ACCEPTED | `docs/IMPLEMENTATION_PLAN.md` §3 Phase 6 |
 | T-11 | End-to-end suite. First slice landed now that `SessionClient` is frozen: `tests/e2e/fixture-replay.test.ts` covers fixture replay, reconnect idempotence, and session close. The rest — failure paths through a real UI, axe, screen-reader, rehearsals — still needs the student renderers. | Part 5 | Demo readiness | IN PROGRESS | `tests/e2e/fixture-replay.test.ts`, 7 tests |
@@ -97,10 +100,13 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-13 | Nobody owns merging `accesslens-extension-ar-pivot` into `master`, and no moment is defined for it. The build rule forbids merging to `master` during the hackathon, so this must happen deliberately at the end. | UNOWNED | Final handover | UNOWNED | `docs/PARALLEL_WORKSTREAMS.md`, merge and branch rules |
 | T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
-| T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. Hit **four times** across the `c3ddc27` and `38542ad` merges of #4 and #5. Proposal: let the pointer be a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | Four conflicts on the same line in one afternoon |
+| T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. It has now bitten **five times**, and `19770f6` is a teammate hitting it independently and fixing it by hand. The proposal stands: make the pointer a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | `19770f6` plus four conflicts across PRs #4, #5, #7, and #9 |
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
+| T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
+| T-23 | CDK was not bootstrapped in the hackathon AWS account, so no `cdk deploy` would have worked. | Part 5 | — | CLOSED | Bootstrapped 2026-09-15: `CDKToolkit` version 32, staging bucket `cdk-hnb659fds-assets-087328706621-us-east-1`. `deploy_preflight.py --aws` now reports it ready |
+| T-24 | This file is itself a conflict magnet. Every part is asked to append a log entry and edit the same tables, so parallel branches collide in section 8 — PR #8 conflicts on exactly `CONTEXT_RELAY.md` and `memory/INDEX.md` and nothing else. Same structural problem as T-18, caused by the fix for it. Proposal: split the relay log into one file per entry under `docs/relay/NNN-*.md` (the pattern `memory/episodic/` already uses successfully) and have `relay_check.py` assemble and validate them, leaving only the tables shared. | Part 5 | Everyone appending | OPEN | PR #8's conflict set; this file's own growth; renumbered from a collision with T-21/T-22 during PR #9's merge, proving the point a third time |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
-| T-20 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. Proposed: instructor key on `create`, relay enforcement in Part 4, and a shell gate. Not built — waiting on a go from the owner. | Part 2 + Part 4 | Demo integrity | OPEN | `apps/extension/src/shell/App.tsx` role switch; `docs/PART2_HANDOFF.md` open items |
+| T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. Proposed: instructor key on `create`, relay enforcement in Part 4, and a shell gate. Not built — waiting on a go from the owner. | Part 2 + Part 4 | Demo integrity | OPEN | `apps/extension/src/shell/App.tsx` role switch; `docs/PART2_HANDOFF.md` open items |
 | T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts`. Part 2's controller also starts at 1 (`captureController.test.ts`), so 1 is now the de facto answer; Part 1 still has to pin it in the schema. |
 
@@ -398,7 +404,46 @@ knows that is that someone went and looked. Until PR #5's workflow fix merges,
 assume nothing on the integration branch has been verified unless a relay entry
 says it was.
 
-### RL-014 — 2026-09-15 — Part 2 — Jacob
+### RL-014 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** PR #4 merged as `a881f11`, putting the reviewed pack, the simulator,
+the validators, and the E2E replay on the integration branch. PR #6 opened for
+the three minor points from the review, which arrived after the merge: a
+docstring on `check_ar_framing`'s scalar field-of-view assumption, a trip-wire
+failing any hotspot that uses more than 95% of its half field of view, and a
+warning at the definition of `TIE_EPSILON` that symmetrising it would silently
+change every fingerprint in the pack.
+
+Also acted on the review of PR #5: `tests/relay/test_relay_check.py` now encodes
+21 mutation cases, escaped pipes are honoured in table cells with an error that
+names the cause, and an owned part's branch cell must be a branch path, a
+`merged as <sha>` reference, or the exact words "not yet created".
+
+**Threads touched:** none closed.
+**Next agent needs to know:** the reviewer's sharpest point is worth repeating.
+The relay checker's whole justification was that an unchecked guard drifts
+silently, and it had shipped without a guard of its own — nine mutations run by
+hand, none committed. If you add a check to this repository, commit the
+mutations that prove it can fail, including a control asserting the good case
+passes. Without that control, a checker that rejects everything satisfies every
+other test you write.
+
+### RL-015 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** restored `relay-check` and `freeze-check` to the `Makefile` after
+merging PR #5 dropped them, and added assertions so the loss cannot repeat
+quietly. Rebuilt the relay mutation tests to address table rows by their first
+cell rather than embedding whole rows as string literals, so ordinary edits to
+this document no longer break tests that have nothing to do with the checker.
+**Threads touched:** T-20 opened and closed in the same pass.
+**Next agent needs to know:** the merge that dropped those targets is the exact
+failure this document exists to catch, and it still took a person noticing.
+`scripts/relay_check.py` and `tests/relay/` both survived the merge, so nothing
+looked wrong — the gate had simply stopped being called. After you resolve a
+conflict in `Makefile` or `.github/workflows/`, diff the list of targets and
+triggers, not just the file.
+
+### RL-016 — 2026-09-15 — Part 2 — Jacob
 
 **Landed:** `workstream/2-instructor-capture`, PR #8. Instructor capture end to
 end: `sources/screen/` (dhash12 fingerprint, matcher, sampler, display-media
@@ -408,7 +453,8 @@ first output `packs/hnsw/`). Pack schema widened additively. Part 3 and the
 relay docs merged in. CI workflow pinned to Node 22. Record:
 `memory/episodic/0041-part2-instructor-capture.md`.
 **Threads touched:** T-05 in progress (widening on #8), T-08 in progress (Node
-22 pin on #8), T-15 annotated (controller starts at 1), T-20 and T-21 opened.
+22 pin on #8), T-15 annotated (controller starts at 1), T-21 and T-22 opened
+(T-20 was already taken by Kunj's relay-gate thread; renumbered during merge).
 **Next agent needs to know:** the fingerprint is Part 5's algorithm ported
 verbatim, not a shim — if you change either side, `fingerprint.test.ts` compares
 byte-for-byte against `bio-cell-demo/pack.json` and will tell you. Thresholds
@@ -416,3 +462,95 @@ are not constants in the extension; they come from `pack.matching`. The HNSW
 pack is a draft under A3 and must not be shown as reviewed. Switching role in the
 shell disposes the capture silently, which is fine for a demo and wrong for a
 product.
+
+### RL-017 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** merged PR #6, #7, and #8 onto `accesslens-extension-ar-pivot`
+(`19770f6` fixed the stale `INDEX.md` pointer first, since it broke `make
+check` on the integration branch tip itself). PR #8's merge had two real
+conflicts -- both in this file and `memory/INDEX.md`, no application code --
+resolved by keeping both sides and renumbering: `INDEX.md`'s single pointer
+became the list T-18 already proposed, and Jacob's `T-20` (duplicate of
+Kunj's) is now `T-22`. Verified with a fresh `npm install` and `make check`:
+181 extension tests, 61 pack tests, 24 relay tests, all green; T-05 closed.
+**Threads touched:** T-05 closed. T-08 still IN PROGRESS -- Node 22 is in the
+merged workflow but not yet observed green in an actual CI run against this
+tree. T-20 and T-22 disambiguated.
+**Next agent needs to know:** three independent ID collisions were found in
+this one merge (two episodic filenames, one thread ID) and none of them were
+caught by anything automatic -- a person merging had to notice all three.
+T-17 and T-18 are not theoretical anymore. If you pick up Part 4, `Broadcast
+SessionClient` is the only working transport today; there is still no
+`infra/` or deployed service, and `docs/aws-access-verification` (unmerged)
+already knows two hard constraints worth reading before you design anything:
+only `us.anthropic.claude-sonnet-4-6` is invokable on this AWS account, and
+the write path for Lambda/DynamoDB/API Gateway/S3 is unverified.
+
+### RL-018 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** `scripts/deploy_preflight.py`, `make deploy-preflight`, and
+`docs/DEPLOYMENT.md`. The AWS account was probed rather than assumed: every
+create the planned stack needs succeeded and was cleaned up afterwards, so the
+`SYSTEM_DESIGN.md` §7 architecture is deployable in this account.
+**Threads touched:** T-23 opened.
+**Next agent needs to know:** the account expires when the event does, and the
+credentials expire sooner. Nothing deployed survives the demo, which makes the
+recorded fallback load-bearing rather than a nicety. Also `npx cdk bootstrap`
+has never been run here — that is T-23, it takes thirty seconds, and nothing
+deploys until someone does it.
+
+### RL-019 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** ran `cdk bootstrap` against the hackathon account. `CDKToolkit` is
+at version 32 with an S3 staging bucket and five IAM roles, so Part 4 can `cdk
+deploy` without any setup of its own.
+**Threads touched:** T-23 closed.
+**Next agent needs to know:** it was bootstrapped with CDK's default
+`AdministratorAccess` execution policy. That is normal for a throwaway event
+account and wrong for anything that outlives it — scope it with
+`--cloudformation-execution-policies` if this architecture is ever rebuilt
+somewhere permanent.
+
+### RL-020 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** nothing new; synced all three open branches onto `19770f6`.
+**Threads touched:** T-18 strengthened — that commit is a teammate hitting the
+same conflict independently and fixing it by hand, which is the fifth
+occurrence.
+**Next agent needs to know:** T-18 is now costing other people time, not just
+mine, and the commit message for `19770f6` cites the thread by name — so the
+register is being read. That is the argument for spending ten minutes on the
+fix rather than continuing to pay the toll.
+
+### RL-021 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** nothing. Opening a thread against this document.
+**Threads touched:** T-24 opened (renumbered from a collision with T-21/T-22
+found while merging this into the integration branch, RL-022).
+**Next agent needs to know:** PR #8 conflicts on exactly two files —
+`CONTEXT_RELAY.md` and `memory/INDEX.md` — and nothing else in 91 changed files.
+Both are things I added or lean on heavily. The relay was built to stop context
+being lost between parallel workstreams, and the way it asks for that (everyone
+appends to one file) reproduces the very problem it documents in T-18. Worth
+fixing before three more people start appending, not after.
+
+### RL-022 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** merged PR #9 (`docs/deployment-readiness`) onto
+`accesslens-extension-ar-pivot`. Same shape of conflict as PR #8: only
+`docs/CONTEXT_RELAY.md` and `memory/INDEX.md`, no application code. This time
+also found a filename collision (`memory/episodic/0042-deployment-readiness.md`
+renamed to `0043-...`, since `0042` was already this session's merge record)
+and two more thread-ID collisions in the table that auto-merged without a git
+conflict at all: Kunj's `T-21` (CDK bootstrap) collided with Jacob's existing
+`T-21` (`capture.stopped`), and Kunj's `T-22` (this file is a conflict magnet)
+collided with Jacob's existing `T-22` (student-can-be-instructor). Both of
+Kunj's are renumbered to `T-23`/`T-24` here and in RL-018/019/021 above.
+Verified with `make check` after resolving: still green.
+**Threads touched:** none closed. T-21/T-22 disambiguated a second time; T-23,
+T-24 assigned.
+**Next agent needs to know:** RL-021/T-24's point proved itself twice more in
+the same merge it was written to describe — table rows collide silently
+(no git conflict) even when the log entries do conflict. Read `T-24` before
+adding a new thread ID by hand; check the table for the number, not just your
+own memory of what you last used.
