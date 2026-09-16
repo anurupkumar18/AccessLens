@@ -1682,3 +1682,28 @@ treats it as content, not a pointer.
 **Landed:** Live captions in a live class. While sharing, the instructor clicks "Start live captions": `sources/audio/microphone.ts` opens the mic, `sources/audio/segmenter.ts` cuts utterances at pauses (or at the quietest gap before a 5 s cap), `instructor/liveCaptions.ts` sends each in order to the existing `services/captions` Lambda (AWS Transcribe) and publishes final results through the new `captureController.appendCaption`, so captions share the controller's sequence and pass the relay's monotonic check. Students' existing Live captions panel renders them. Root vitest 510 passed; driven in real Chrome with a fake microphone playing recorded speech, a mock captions endpoint, and a separate student page that joined the session and received every caption.
 **Threads touched:** none.
 **Next agent needs to know:** never run against real Transcribe; needs `AccessLensAccessibility` deployed and `VITE_ACCESSLENS_CAPTIONS_ENDPOINT` set (the fixed deploy workflow now passes it). Captions arrive roughly one utterance (≤5 s) plus transcription time behind speech; lower latency needs a held-open streaming connection, which a Function URL cannot provide. The Chrome side panel may be unable to show a microphone prompt; "Open in a full tab" is the fallback the error message names.
+
+### RL-073 — 2026-09-16 — cross-cutting — Omar Rizwan
+
+**Landed:** `accesslens-extension-ar-pivot` (Kunj's integration line, through
+PR #22) merged into `codex/demo-proof-sprint-qa` at `2932e9d`; 27 conflicted
+files resolved. `caption.appended` is now the union of both contracts in Zod,
+the JSON schema, the Python reference and the relay: text up to 2000
+characters, optional `lang`, optional `assetId`, still strict. Both instructor
+caption paths are kept: `SpeechCaptions.tsx` (Whisper or Transcribe through the
+AI gateway, renamed from `LiveCaptions.tsx`, which differed from Kunj's
+`liveCaptions.ts` only in case and resolved to the wrong module on macOS) and
+`liveCaptions.ts` (the captions service, with a language). The student's "Show
+instructor captions" preference also hides the accessibility bar's captions
+panel. `make check` passes except the three `[slow]` ingest tests that need
+Poppler and LibreOffice locally (CI installs them; they fail the same way
+before the merge); in a browser against the deployed relay, a session, pointer
+following, screen-reader announcements, Hear, Prepare media and the
+accessibility bar all work.
+**Threads touched:** Kunj's T-31/T-32 renumbered T-46/T-47 (both numbers were
+taken here); his RL-034..037 are RL-069..072 above.
+**Next agent needs to know:** the instructor panel now has two live-caption
+controls and the student view two caption displays. That duplication is
+deliberate for this merge, not a decision: the team should pick one path.
+`accesslens-extension-ar-pivot` itself is unchanged; merging this branch into it
+is now conflict-free.
