@@ -34,7 +34,7 @@ RUN dnf install -y \
       "https://download.documentfoundation.org/libreoffice/stable/${LIBREOFFICE_VERSION}/rpm/${LIBREOFFICE_ARCH}/LibreOffice_${LIBREOFFICE_VERSION}_Linux_x86-64_rpm.tar.gz" \
       -O /tmp/libreoffice.tar.gz \
     && tar -xzf /tmp/libreoffice.tar.gz -C /tmp/libreoffice --strip-components=1 \
-    && find /tmp/libreoffice -type f -name '*.rpm' -print0 | xargs -0 dnf install -y \
+    && dnf install -y /tmp/libreoffice/RPMS/*.rpm \
     && SOFFICE_PATH="$(find /opt /usr -type f -path '*/program/soffice' -print -quit)" \
     && test -n "${SOFFICE_PATH}" \
     && ln -s "${SOFFICE_PATH}" /usr/local/bin/soffice \
