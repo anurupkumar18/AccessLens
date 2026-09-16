@@ -1,5 +1,5 @@
 import { PollyClient, SynthesizeSpeechCommand, type SynthesizeSpeechCommandInput } from '@aws-sdk/client-polly';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { AccessPack } from '../../apps/extension/src/shared/contracts';
 
 export type AudioAsset = AccessPack['assets'][number];
@@ -163,9 +163,9 @@ export interface AudioHandlerOptions {
 export async function handleAudio(event: AudioEvent, options: AudioHandlerOptions = {}): Promise<SynthesizeSlideAudioResult> {
   const bucket = event.bucket ?? process.env.PACKS_BUCKET;
   if (!bucket && !options.putObject) throw new Error('Missing required PACKS_BUCKET environment variable');
+  const s3 = options.s3Client ?? (options.putObject ? undefined : new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' }));
   const putObject = options.putObject ?? (async write => {
-    if (!options.s3Client) throw new Error('s3Client is required when putObject is not supplied');
-    await options.s3Client.send(new PutObjectCommand({
+    await s3!.send(new PutObjectCommand({
       Bucket: bucket,
       Key: write.key,
       Body: write.body,

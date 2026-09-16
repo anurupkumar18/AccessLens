@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { readFileSync } from 'node:fs';
 import { SlideDraftSchema, type Lesson, type SlideDraft } from '../shared/jobs';
 import { AgentStageError, runAgentStage, type AgentResult, type MessagesClient } from '../shared/agentStage';
@@ -208,7 +208,9 @@ async function bytesFromBody(body: unknown): Promise<Uint8Array> {
 
 /** Lambda boundary for the per-slide stage. It writes only a job-scoped draft. */
 export async function handlePackAuthor(event: PackAuthorEvent, options: PackAuthorHandlerOptions = {}): Promise<PackAuthorResult> {
-  const s3 = options.s3Client;
+  // The Lambda boundary is the only place a real client is created (same
+  // rule as the analyst): tests inject readObject/writeObject and never touch S3.
+  const s3 = options.s3Client ?? (!options.readObject || !options.writeObject ? new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' }) : undefined);
   const bucket = requiredBucket(event);
   const readObject = options.readObject ?? (async (key: string) => {
     if (!s3) throw new Error('s3Client is required when readObject is not supplied');
