@@ -103,3 +103,43 @@ rather than a partial draft, and reports the exact rate either way.
 draft 2.17 to 1.57. Zero property violations across every slide that returned.
 
 **Date.** 2026-09-15.
+
+---
+
+## D4 — the planner never chose retrieval, so the catalog was dead weight — NOTED
+
+**Question.** The first Viz Planner evaluation run over the real deck chose
+`generate` for seven of eight slides and `retrieve` for none. The prompt
+already said "prefer retrieve because a proven artifact beats generated code",
+and the model ignored it. Fix the prompt, the routing, or accept it?
+
+**Why it happened.** The planner is asked to choose `retrieve` without ever
+seeing the catalog. Spec §8 runs the planner at stage 5 and the retriever at
+stage 6, so "no catalog shape can faithfully teach this concept" is a
+judgement the planner has no evidence for — and absent evidence, it reaches for
+the option it fully controls. The result inverts the spec's economics: 30
+seeded artifacts go unused and every slide pays for generation plus a harness
+run plus a critic loop.
+
+**Decision.** Two changes, neither of which moves the stage boundary.
+
+1. The planner prompt now names the shapes the catalog actually holds —
+   steppers, graph and tree explorers, sorting and search visualizers, function
+   plotters, distributions, simulations, circuit and state-machine diagrams,
+   hotspot diagrams, timelines, map overlays, supply-and-demand curves — and
+   states the cost asymmetry plainly: retrieval runs on whatever concept it
+   names and falls through to generation by itself when nothing matches, so
+   `retrieve` costs nothing when it is wrong, while `generate` skips the
+   catalog and commits the job to writing and repairing new code.
+2. The routing rule in `services/agents/route.ts` runs retrieval for **any**
+   non-`none` decision and generates only when retrieval returns nothing above
+   threshold, so the system does not depend on the planner guessing right.
+
+Neither change mentions this deck, HNSW, or nearest-neighbour search; the
+vocabulary is the catalog's and would read the same for a biology deck.
+
+**Result.** 6 `retrieve`, 1 `generate`, 1 `none`. Restraint held — the title
+slide still gets `none` — and seven of eight slides get a candidate
+visualization, which is above the run goal's "at least half".
+
+**Date.** 2026-09-15.

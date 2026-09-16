@@ -1,0 +1,112 @@
+{
+  "role": "viz-planner",
+  "model": "us.anthropic.claude-sonnet-4-6",
+  "startedAt": "2026-09-16T03:55:57.141Z",
+  "cases": [
+    {
+      "caseId": "slide-01",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "none",
+        "concept": "Title slide — How HNSW Works",
+        "rationale": "This is a title/cover slide containing only the course brand, section label (\"Engineering Explainer\"), the deck title (\""
+      }
+    },
+    {
+      "caseId": "slide-02",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "nearest neighbor search: brute-force O(N·d) vs approximate O(log N) with interactive query point and distance comparisons",
+        "rationale": "The slide's core instructional claim is that brute-force search requires computing distances to every single vector (O(N"
+      }
+    },
+    {
+      "caseId": "slide-03",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "skip list search stepper",
+        "rationale": "The slide's instructional payload is the step-by-step traversal of a skip list: start at L2, jump to 25, drop to L1, att"
+      }
+    },
+    {
+      "caseId": "slide-04",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "HNSW layered graph structure",
+        "rationale": "The slide's core message — HNSW stacks progressively sparser proximity graphs, nodes promoted upward with exponentially "
+      }
+    },
+    {
+      "caseId": "slide-05",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "HNSW greedy search traversal across layers",
+        "rationale": "The slide teaches a 4-step sequential algorithm: enter at the top layer, greedily hop to the closest neighbor, drop down"
+      }
+    },
+    {
+      "caseId": "slide-06",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "HNSW vector insertion stepper: random level draw from exponential distribution and greedy layer-by-layer search linking new node to M nearest neighbors",
+        "rationale": "This slide teaches a two-phase algorithm — (1) draw a random top level via exponential distribution and (2) descend thro"
+      }
+    },
+    {
+      "caseId": "slide-07",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "decision": "generate",
+        "concept": "HNSW tuning: M (links/node), efConstruction (build-time beam width), efSearch (query-time beam width) — sliders showing recall, memory, and latency trade-offs",
+        "rationale": "The slide lists three HNSW parameters (M, efConstruction, efSearch) with their trade-offs described in text. An interact"
+      }
+    },
+    {
+      "caseId": "slide-08",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "HNSW recall vs latency operating curve: efSearch sweep plot",
+        "rationale": "The slide's central teaching point is that efSearch is a continuous dial: increasing it raises recall (concave, saturati"
+      }
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "errored": 0,
+    "cleanRate": "8/8 (100%)",
+    "heldOutCleanRate": "n/a",
+    "tunedCleanRate": "8/8 (100%)",
+    "meanAttempts": "1.38",
+    "violationsByRule": {}
+  }
+}
