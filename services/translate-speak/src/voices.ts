@@ -58,8 +58,13 @@ const VOICES: Record<string, Omit<PickedVoice, 'voiceId'>> = {
   Seoyeon: { languageCode: 'ko-KR', supportsNeural: true },
   // Hindi. Kajal is neural-only; Aditi is the standard-engine voice, kept so a
   // caller who explicitly asks for it is not sent down the neural path.
-  Kajal: { languageCode: 'hi-IN', supportsNeural: true },
-  Aditi: { languageCode: 'hi-IN', supportsNeural: false },
+  // Polly reports Kajal and Aditi as `en-IN`, not `hi-IN`: they are bilingual
+  // Hindi/Indian-English voices registered under the English locale. Verified
+  // against live `describe-voices`. Harmless today because the handler omits
+  // LanguageCode from SynthesizeSpeech, but wrong data invites a future caller
+  // to pass it through and get a rejection.
+  Kajal: { languageCode: 'en-IN', supportsNeural: true },
+  Aditi: { languageCode: 'en-IN', supportsNeural: false },
   // Arabic. `Zeina` speaks Modern Standard Arabic (`arb`) and has no neural
   // build; `Hala` is Gulf Arabic and is neural-only.
   Zeina: { languageCode: 'arb', supportsNeural: false },

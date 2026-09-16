@@ -88,10 +88,13 @@ describe('pickVoice: neural flags match Polly reality', () => {
     expect(voice.supportsNeural).toBe(true);
   });
 
-  it('knows Aditi is the standard-engine Hindi voice', () => {
+  it('knows Aditi is the standard-engine Hindi voice, under en-IN', () => {
+    // Verified against live Polly describe-voices: the bilingual Hindi voices
+    // Kajal and Aditi are registered under `en-IN`, not `hi-IN`. This test
+    // asserted `hi-IN` from documentation and was wrong.
     expect(pickVoice('hi', 'Aditi')).toEqual({
       voiceId: 'Aditi',
-      languageCode: 'hi-IN',
+      languageCode: 'en-IN',
       supportsNeural: false,
     });
   });

@@ -353,6 +353,24 @@ describe('handler', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it('marks the outline as partial rather than letting a huge window look complete', async () => {
+    // Far past MAX_OUTLINE_CHARS, and the tail is what the student missed most
+    // recently, so the tail is what must survive.
+    const many = Array.from({ length: 400 }, (_, i) =>
+      event(i + 2, 'region.changed', { assetId: 'cell-slide-01', regionId: `region-${i}` }),
+    );
+    await handler(http({ events: many, pack: PACK }));
+
+    const { input } = send.mock.calls[0]![0] as {
+      input: { messages: { content: { text: string }[] }[] };
+    };
+    const prompt = input.messages[0]!.content[0]!.text;
+
+    expect(prompt).toContain('earlier beats in this window were omitted');
+    expect(prompt).toContain('region-399');
+    expect(prompt).not.toContain('region-0 ');
+  });
+
   it('decodes a base64 body', async () => {
     const response = await handler({
       requestContext: { http: { method: 'POST' } },

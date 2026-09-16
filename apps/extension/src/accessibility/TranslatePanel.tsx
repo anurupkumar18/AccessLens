@@ -23,11 +23,16 @@ interface Props {
 }
 
 interface TranslateResponse {
-  translated: string;
+  translatedText: string;
+  sourceLang?: string;
   targetLang: string;
+  notice?: string;
   audioBase64?: string;
   contentType?: string;
+  voiceId?: string;
   voiceEngine?: string;
+  /** Translation succeeded but speech did not; the text is still usable. */
+  speechUnavailable?: boolean;
 }
 
 // Kept short on purpose. A long list is a worse experience than a good short
@@ -73,6 +78,11 @@ export function TranslatePanel({ text, reducedMotion }: Props): React.ReactEleme
         );
         setResult(response);
         setMessage('Ready.');
+
+        if (speak && response.speechUnavailable) {
+          // A correct translation is still worth showing; only the audio failed.
+          setMessage('Translated. Speech is unavailable for this language right now.');
+        }
 
         if (speak && response.audioBase64) {
           audioRef.current?.pause();
@@ -134,11 +144,12 @@ export function TranslatePanel({ text, reducedMotion }: Props): React.ReactEleme
       {result ? (
         <div className="a11y-result">
           <p className="a11y-notice a11y-notice--reviewed">
-            <strong>From your instructor’s reviewed material,</strong> translated automatically.
+            <strong>Source:</strong>{' '}
+            {result.notice ?? 'Machine-translated from your instructor’s reviewed material.'}
           </p>
           {/* lang tells a screen reader to switch voices; without it the text
               is read with English phonetics and is close to unusable. */}
-          <p lang={result.targetLang}>{result.translated}</p>
+          <p lang={result.targetLang}>{result.translatedText}</p>
         </div>
       ) : null}
     </section>

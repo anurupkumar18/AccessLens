@@ -69,6 +69,14 @@ const MAX_OUTLINE_CHARS = 6000;
 const MAX_EVENTS = 5000;
 const MAX_CAPTIONS = 2000;
 
+/**
+ * Every cap in this file keeps the *end* of its input. A client that posts its
+ * whole session buffer with a recent `sinceSequence` has the events the recap
+ * needs at the tail; taking the head would discard exactly the window being
+ * asked about and answer confidently from the wrong part of the class.
+ */
+const tail = <T>(items: readonly T[], limit: number): T[] => items.slice(-limit);
+
 const bedrock = new BedrockRuntimeClient({});
 
 const SYSTEM = [
@@ -135,7 +143,7 @@ const json = (status: number, body: unknown) => ({
  */
 export function joinCaptions(captions: readonly CaptionChunk[] | undefined): string {
   const finals: string[] = [];
-  for (const chunk of (captions ?? []).slice(-MAX_CAPTIONS)) {
+  for (const chunk of tail(captions ?? [], MAX_CAPTIONS)) {
     if (chunk?.isFinal === false) continue;
     const text = typeof chunk?.text === 'string' ? chunk.text.trim() : '';
     if (text) finals.push(text);
@@ -173,7 +181,7 @@ async function respond(event: HttpEvent) {
     return json(400, { error: 'Body must be JSON.' });
   }
 
-  const events = Array.isArray(request.events) ? request.events.slice(0, MAX_EVENTS) : [];
+  const events = Array.isArray(request.events) ? tail(request.events, MAX_EVENTS) : [];
   const sinceSequence =
     typeof request.sinceSequence === 'number' && Number.isFinite(request.sinceSequence)
       ? request.sinceSequence
@@ -181,7 +189,17 @@ async function respond(event: HttpEvent) {
   const pack = request.pack;
 
   const covered = coverage(events, sinceSequence);
-  const outline = summariseTimeline(events, pack, sinceSequence).slice(0, MAX_OUTLINE_CHARS);
+  const full = summariseTimeline(events, pack, sinceSequence);
+  /**
+   * A truncated outline is labelled as truncated. Handing the model a partial
+   * window with no marker is how it ends up describing the first half of what
+   * the student missed as though it were all of it -- which reads as confident
+   * and complete, and is the one failure mode this service cannot afford.
+   */
+  const outline =
+    full.length > MAX_OUTLINE_CHARS
+      ? `(earlier beats in this window were omitted)\n${full.slice(-MAX_OUTLINE_CHARS)}`
+      : full;
   const captionText = joinCaptions(request.captions);
 
   warnOnPackDrift(events, pack);

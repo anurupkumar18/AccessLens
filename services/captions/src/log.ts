@@ -50,12 +50,17 @@ export const log = {
 export function logEvent(
   level: Level,
   message: string,
-  event: Record<string, unknown>,
+  // `object`, not `Record<string, unknown>`, so a precisely-typed event (which
+  // has no index signature) can be passed without the caller reaching for a
+  // cast -- a cast at the call site is one keystroke from becoming a cast that
+  // hand-picks fields.
+  event: object,
   extra: LogFields = {},
 ): void {
+  const source = event as Record<string, unknown>;
   const fields: LogFields = {};
   for (const field of OPERATIONAL_FIELDS) {
-    const value = event[field];
+    const value = source[field];
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       fields[field] = value;
     }

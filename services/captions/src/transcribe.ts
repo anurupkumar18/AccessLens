@@ -33,15 +33,43 @@ function getClient(): TranscribeStreamingClient {
 }
 
 /**
- * One buffered utterance, one event stream, closed immediately.
+ * Sample rate and frame size the API is documented against.
  *
- * The extension posts a complete chunk per request rather than holding a socket
- * open, so the generator yields once and returns -- and that return is what
- * tells Transcribe the audio has ended, which is what makes it flush a final
- * (non-partial) result instead of leaving the last sentence interim forever.
+ * An `AudioEvent` carries at most one second of audio. A whole utterance in a
+ * single event is rejected with `BadRequestException` -- which is exactly what
+ * the first live call returned -- so the buffer is cut into sub-second frames
+ * before being streamed.
+ *
+ * Half a second rather than a full one: the limit is documented in seconds but
+ * enforced on bytes, and leaving headroom costs nothing when the frames are
+ * being streamed back to back anyway.
  */
-async function* singleChunk(audio: Uint8Array): AsyncIterable<AudioStream> {
-  yield { AudioEvent: { AudioChunk: audio } };
+const BYTES_PER_SAMPLE = 2; // pcm16
+const FRAME_BYTES = (SAMPLE_RATE_HZ * BYTES_PER_SAMPLE) / 2;
+
+/** Cut a buffered utterance into frames Transcribe will accept. */
+export function frameAudio(audio: Uint8Array, frameBytes = FRAME_BYTES): Uint8Array[] {
+  if (audio.byteLength === 0) return [];
+  const frames: Uint8Array[] = [];
+  for (let offset = 0; offset < audio.byteLength; offset += frameBytes) {
+    frames.push(audio.subarray(offset, Math.min(offset + frameBytes, audio.byteLength)));
+  }
+  return frames;
+}
+
+/**
+ * One buffered utterance, streamed as sub-second frames, then closed.
+ *
+ * The extension posts a complete chunk per request rather than holding a
+ * socket open, so the generator drains its frames and returns -- and that
+ * return is what tells Transcribe the audio has ended, which is what makes it
+ * flush a final (non-partial) result instead of leaving the last sentence
+ * interim forever.
+ */
+async function* framedChunks(audio: Uint8Array): AsyncIterable<AudioStream> {
+  for (const frame of frameAudio(audio)) {
+    yield { AudioEvent: { AudioChunk: frame } };
+  }
 }
 
 /**
@@ -64,7 +92,7 @@ export async function transcribeChunk(
       LanguageCode: languageCode as LanguageCode,
       MediaEncoding: 'pcm',
       MediaSampleRateHertz: SAMPLE_RATE_HZ,
-      AudioStream: singleChunk(audio),
+      AudioStream: framedChunks(audio),
     }),
   );
 
