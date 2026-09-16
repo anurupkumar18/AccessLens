@@ -1129,3 +1129,20 @@ Real-Time uses the `ivs:` prefix, not `ivs-realtime:`. `resume` mints no
 token: it runs on `$connect`, where nothing can be posted, and the client
 keeps the token from create/join. Video actually rendering across two
 devices was not verified from a terminal.
+
+### RL-045 — 2026-09-16 — Part 3 — Jacob
+
+**Landed:** screen readers hear the reviewed description. The student
+shell's `role="status"` line (`apps/extension/src/student/liveState.ts`)
+now speaks `"<region label>: <shortDescription>"` on `region.changed` and
+`"Now on <slide title>."` on `asset.changed`, `aria-atomic`, once per event.
+The Focus figure's description moved from `aria-label` to a `figcaption`
+(`renderers/FocusView.tsx`) so say-all and line reading reach it. No
+permissions, no dependencies; works in the extension and the hosted shell.
+**Threads touched:** none.
+**Next agent needs to know:** there is no Chrome-native screen reader
+outside ChromeOS (ChromeVox is ChromeOS-only; `chrome.tts` is speech
+output, not a reader; `accessibilityFeatures.spokenFeedback` is ChromeOS
+only). The bar is "works with VoiceOver, NVDA/JAWS and ChromeVox", which
+this markup meets by construction; an in-app keyboard reading mode over
+`chrome.tts` is a separate, undecided feature.
