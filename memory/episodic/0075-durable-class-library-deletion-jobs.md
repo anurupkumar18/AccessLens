@@ -16,9 +16,9 @@ the approval-gated class-assistant data boundary.
 
 ## Validation evidence
 
-Focused deletion, classroom, and OpenAPI tests pass; root and infrastructure
-TypeScript checks pass; CDK synth succeeds. Full repository validation remains
-the final PR gate.
+Focused deletion-worker, deletion-job, classroom, profile-route, and OpenAPI
+tests pass; root and infrastructure TypeScript checks pass; CDK synth succeeds.
+Full repository validation remains the final PR gate.
 
 ## Blocker
 
@@ -27,8 +27,9 @@ the existing privacy, retention, OAuth, and institutional-review prerequisites.
 
 ## Boundary
 
-The course-assistant flag remains disabled by default. No raw media, student
-question/answer history, task, or preference is added. The physical
+The course-assistant flag remains disabled by default. Archived classes cannot
+start new indexing and a retry cannot skip metadata deletion. No raw media,
+student question/answer history, task, or preference is added. The physical
 per-instructor bucket and malware scanner are still future hardening work.
 
 ## Owner

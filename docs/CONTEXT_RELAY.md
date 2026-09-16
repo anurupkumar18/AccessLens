@@ -62,7 +62,7 @@ work is being made directly on `master` by explicit product-owner direction.
 | 3. Student experience and AR | Prachi | merged as `7a199c0` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. Follow-up adds a Dyslexic-friendly mode and hardens capture gesture handling for tab/window/screen sharing. | `npm run typecheck`; targeted Vitest checks; `docs/NEXT_STEPS.md` |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
-| 6. Authoring pipeline and visualization | Jacob / Codex (AL-056/057/058) | `workstream/6-authoring` / `codex/course-library-assistant` / `codex/student-course-experience` / `codex/class-library-deletion-jobs` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. AL-056 adds an approval-gated PDF class-assistant slice; AL-057 adds its separate signed-in student client, cited answers, and local-only task list; AL-058 makes profile deletion archive-first with durable purge status. The feature flag stays off by default and does not authorize real course data. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, `docs/work/tickets/al-056-approval-gated-course-library-and-cited-class-assistant.md`, `docs/work/tickets/al-057-student-class-library-experience.md`, `docs/work/tickets/al-058-durable-class-library-deletion-jobs.md`, RL-060, RL-068, RL-069, RL-070 |
+| 6. Authoring pipeline and visualization | Jacob / Codex (AL-056/057/058) | `workstream/6-authoring` / `codex/course-library-assistant` / `codex/student-course-experience` / `codex/class-library-deletion-jobs` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. AL-056 adds an approval-gated PDF class-assistant slice; AL-057 adds its separate signed-in student client, cited answers, and local-only task list; AL-058 makes profile deletion archive-first with durable purge status. The stacked corrections make invite redemption atomic, reject writes to archived classes, and complete metadata purges on retry; the feature flag stays off by default and does not authorize real course data. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, `docs/work/tickets/al-056-approval-gated-course-library-and-cited-class-assistant.md`, `docs/work/tickets/al-057-student-class-library-experience.md`, `docs/work/tickets/al-058-durable-class-library-deletion-jobs.md`, RL-060, RL-068, RL-069, RL-070, RL-071 |
 
 **The largest risk moved again, and it is no longer Part 4.** Parts 1, 2, 3, and
 5 are on the integration branch, and Part 4 now is too: the relay is built,
@@ -1678,3 +1678,18 @@ existing class document/vector/metadata teardown; physical per-instructor source
 buckets and malware scanning remain separate hardening work. Real activation
 still requires the documented privacy, retention, OAuth, and institutional
 review prerequisites.
+
+### RL-071 — 2026-09-16 — Part 6 — Codex
+
+**Landed:** Review corrections for AL-056/058: invitation redemption now uses
+one DynamoDB transaction, the disabled class-assistant boundary blocks new
+membership/fact persistence and automatic fact extraction, archived classes
+reject new indexing, and a deletion retry completes class metadata cleanup even
+after an earlier worker removed the profile.
+
+**Threads touched:** T-29 remains OPEN and non-blocking. These corrections do
+not enable the feature or approve real-course material.
+
+**Next agent needs to know:** source buckets are still shared by prefix; the
+physical per-instructor-bucket and malware-scanning controls remain open
+hardening work before any real-course activation.

@@ -50,6 +50,10 @@ export async function deleteProfile(input: ProfilePath, deps: LibraryRouteDeps):
 
 export async function registerDocument(input: RegisterDocumentInput, deps: LibraryRouteDeps): Promise<DocumentRecord> {
   const profile = await requireProfile(input.profileId, deps, input.ownerSub);
+  // Archive is the first deletion step. Refuse work before allocating a
+  // document id or invoking the async indexer, otherwise an in-flight purge
+  // can be followed by a newly written source/chunk/vector record.
+  if (profile.archiveState !== 'active') throw new RouteError('conflict', 'archived classes cannot receive new documents');
   try { validateLibraryDocumentMetadata(input); } catch (error) { throw new RouteError('bad-request', error instanceof Error ? error.message : 'course document was rejected'); }
   const upload = await storeGet(deps.uploads, input.uploadId);
   if (!upload) throw new RouteError('not-found', `upload ${input.uploadId} not found`);

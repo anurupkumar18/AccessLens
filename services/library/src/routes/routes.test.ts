@@ -38,6 +38,14 @@ describe('profile/document routes', () => {
     expect(d.startIndexing).toHaveBeenCalledWith(expect.objectContaining({ docId: 'generated-id' }));
   });
 
+  it('refuses document indexing once a class is archived', async () => {
+    const d = deps();
+    const created = await createProfile({ name: 'Algorithms', subject: 'CS', level: 'undergrad' }, d);
+    d.profiles.set!(created.profile.profileId, { ...created.profile, archiveState: 'archived' });
+    await expect(registerDocument({ profileId: created.profile.profileId, uploadId: 'upload-1', kind: 'notes', title: 'Notes' }, d)).rejects.toMatchObject({ code: 'conflict' });
+    expect(d.startIndexing).not.toHaveBeenCalled();
+  });
+
   it('only exposes an owning instructor document through the document route', async () => {
     const d = deps();
     d.documents.set!('doc-1', { docId: 'doc-1', profileId: 'profile-1', kind: 'notes', title: 'Notes', pages: 1, chunks: 1, status: 'ready' });

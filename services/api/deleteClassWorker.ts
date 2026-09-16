@@ -23,15 +23,16 @@ export async function handler(event: DeletionEvent): Promise<void> {
   const running = startDeletionJob(current, new Date().toISOString());
   await ddb.send(new PutCommand({ TableName: table, Item: running }));
   try {
-    await deleteProfile({ profileId: event.profileId }, libraryDeps());
+    try {
+      await deleteProfile({ profileId: event.profileId }, libraryDeps());
+    } catch (error) {
+      // A prior worker may have completed the library portion before failing
+      // the class-metadata portion. Continue so a retry can finish teardown.
+      if (!(error instanceof RouteError && error.code === 'not-found')) throw error;
+    }
     await purgeClassMetadata(event.profileId, await classroomDeps());
     await ddb.send(new PutCommand({ TableName: table, Item: succeedDeletionJob(running, new Date().toISOString()) }));
   } catch (error) {
-    // A second, idempotent worker may find an already-purged profile. That is
-    // a completed purge, not an error. All other failures remain retryable.
-    const done = error instanceof RouteError && error.code === 'not-found';
-    await ddb.send(new PutCommand({ TableName: table, Item: done
-      ? succeedDeletionJob(running, new Date().toISOString())
-      : failDeletionJob(running, 'purge_failed', new Date().toISOString()) }));
+    await ddb.send(new PutCommand({ TableName: table, Item: failDeletionJob(running, 'purge_failed', new Date().toISOString()) }));
   }
 }
