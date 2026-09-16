@@ -1,5 +1,5 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { LessonSchema, type Lesson } from '../shared/jobs';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeckSchema, LessonSchema, type Deck, type Lesson } from '../shared/jobs';
 import { AgentStageError, runAgentStage, type AgentResult, type MessagesClient } from '../shared/agentStage';
 import { verifyReferences, type Excerpt } from '../shared/references';
 
@@ -21,6 +21,26 @@ export interface DeckAnalystInput {
   extractedText: string;
   slides: readonly AnalystSlideInput[];
   excerpts?: readonly Excerpt[];
+}
+
+/**
+ * The Step Functions input retains the ingested Deck under `deck`; its slide
+ * PNGs remain in S3 staging rather than being copied through every state. The
+ * handler accepts that execution shape and hydrates the analyst's first-three
+ * image inputs at the Lambda boundary.
+ */
+export interface AnalystEvent {
+  jobId: string;
+  packId: string;
+  title: string;
+  description?: string;
+  deck?: Deck;
+  slideCount?: number;
+  extractedText?: string;
+  slides?: readonly AnalystSlideInput[];
+  excerpts?: readonly Excerpt[];
+  bucket?: string;
+  outputKey?: string;
 }
 
 export interface AnalystProgress {
@@ -105,10 +125,16 @@ export async function runDeckAnalyst(input: DeckAnalystInput, options: DeckAnaly
       images,
       logId: input.jobId,
     }, options.agentClient, options.promptDirectory);
-    const filteredReferences = verifyReferences(result.value.references, excerpts).kept;
-    const lesson = filteredReferences.length > 0
-      ? { ...result.value, references: filteredReferences }
-      : { ...result.value, references: [] };
+    const filteredReferences = verifyReferences(result.value.references, excerpts).kept.map(reference => ({
+      docId: reference.docId,
+      page: reference.page,
+      quote: reference.quote,
+    }));
+    // `LessonSchema.references` is the claimed-reference shape at the agent
+    // boundary. The excerpt title is deliberately not copied into lesson.json;
+    // only the pack-facing verified reference shape carries it after a stage
+    // that owns an AccessPack asset.
+    const lesson = LessonSchema.parse({ ...result.value, references: filteredReferences });
     options.onProgress?.({ stage: 'analyst', status: 'ok' });
     return { lesson, status: 'ok', attempts: result.attempts, issues: result.issues };
   } catch (error) {
@@ -120,30 +146,95 @@ export async function runDeckAnalyst(input: DeckAnalystInput, options: DeckAnaly
   }
 }
 
-export interface AnalystEvent extends Omit<DeckAnalystInput, 'slides'> {
-  slides: readonly AnalystSlideInput[];
-  bucket?: string;
-  outputKey?: string;
-}
-
 interface S3Transport { send(command: unknown): Promise<unknown> }
 
 export interface AnalystHandlerOptions extends DeckAnalystOptions {
   s3Client?: S3Transport;
+  readObject?: (key: string) => Promise<Uint8Array>;
   writeObject?: (key: string, body: string, contentType: string) => Promise<void>;
+}
+
+function ensureStagedOutputKey(key: string, jobId: string): void {
+  const prefix = `staging/${jobId}/`;
+  if (!key.startsWith(prefix) || key.includes('..')) {
+    throw new Error(`analyst output must be under ${prefix}; received ${key}`);
+  }
+}
+
+async function bodyBytes(body: unknown): Promise<Uint8Array> {
+  if (body instanceof Uint8Array) return body;
+  if (body && typeof body === 'object' && 'transformToByteArray' in body) {
+    const transform = (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray;
+    return transform.call(body);
+  }
+  if (body && typeof body === 'object' && Symbol.asyncIterator in body) {
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of body as AsyncIterable<Uint8Array | string>) {
+      chunks.push(typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk);
+    }
+    const length = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return bytes;
+  }
+  throw new Error('S3 object response did not contain a readable body');
+}
+
+function deckAnalystInput(event: AnalystEvent, slides: readonly AnalystSlideInput[]): DeckAnalystInput {
+  const deck = event.deck;
+  const resolvedSlides = slides.length > 0
+    ? slides
+    : deck?.slides.map(slide => ({
+      assetId: slide.assetId,
+      page: slide.page,
+      extractedText: slide.extractedText,
+    })) ?? [];
+  const extractedText = event.extractedText ?? (deck?.slides ?? resolvedSlides).map(slide => `${'assetId' in slide ? slide.assetId : ''}\n${slide.extractedText}`).join('\n\n');
+  return {
+    jobId: event.jobId,
+    packId: event.packId,
+    title: event.title,
+    ...(event.description === undefined ? {} : { description: event.description }),
+    slideCount: event.slideCount ?? deck?.slides.length ?? resolvedSlides.length,
+    extractedText,
+    slides: resolvedSlides,
+    excerpts: event.excerpts,
+  };
 }
 
 /** Lambda boundary. The lesson is an internal job artifact under staging. */
 export async function handleDeckAnalyst(event: AnalystEvent, options: AnalystHandlerOptions = {}): Promise<DeckAnalystResult> {
-  const result = await runDeckAnalyst(event, options);
-  if (!result.lesson) return result;
   const bucket = event.bucket ?? process.env.PACKS_BUCKET;
-  const outputKey = event.outputKey ?? `staging/${event.jobId}/lesson.json`;
-  const writeObject = options.writeObject ?? (async (key: string, body: string, contentType: string) => {
-    if (!options.s3Client) throw new Error('s3Client is required when writeObject is not supplied');
-    await options.s3Client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
+  const defaultS3 = options.s3Client ?? (!options.readObject || !options.writeObject ? new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' }) : undefined);
+  const readObject = options.readObject ?? (async (key: string) => {
+    if (!defaultS3 || !bucket) throw new Error('S3 and PACKS_BUCKET are required to hydrate analyst slide images');
+    const response = await defaultS3.send(new GetObjectCommand({ Bucket: bucket, Key: key })) as { Body?: unknown };
+    if (!response.Body) throw new Error(`S3 object ${key} had no body`);
+    return bodyBytes(response.Body);
   });
-  if (!bucket && !options.writeObject) throw new Error('Missing required PACKS_BUCKET environment variable');
+  const sourceSlides: AnalystSlideInput[] = (event.slides ?? event.deck?.slides.map(slide => ({
+    assetId: slide.assetId,
+    page: slide.page,
+    extractedText: slide.extractedText,
+  })) ?? []).map(slide => ({ ...slide }));
+  const hydratedSlides = await Promise.all(sourceSlides.map(async (slide, index): Promise<AnalystSlideInput> => {
+    if (index >= 3 || slide.imageBase64) return slide;
+    const sourceKey = event.deck?.slides.find(candidate => candidate.assetId === slide.assetId)?.mediaKey;
+    if (!sourceKey) return slide;
+    return { ...slide, imageBase64: Buffer.from(await readObject(sourceKey)).toString('base64') };
+  }));
+  const result = await runDeckAnalyst(deckAnalystInput(event, hydratedSlides), options);
+  if (!result.lesson) return result;
+  const outputKey = event.outputKey ?? `staging/${event.jobId}/lesson.json`;
+  ensureStagedOutputKey(outputKey, event.jobId);
+  const writeObject = options.writeObject ?? (async (key: string, body: string, contentType: string) => {
+    if (!defaultS3 || !bucket) throw new Error('S3 and PACKS_BUCKET are required to write analyst output');
+    await defaultS3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
+  });
   await writeObject(outputKey, JSON.stringify(result.lesson) + '\n', 'application/json');
   return result;
 }
