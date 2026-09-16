@@ -65,6 +65,16 @@ describe('authoringStateMachine without visualization Lambdas', () => {
     expect(spine.States.SlideMap.Catch).toEqual([{ ErrorEquals: ['States.ALL'], ResultPath: '$.stageError', Next: 'MarkFailed' }]);
   });
 
+  it('appends each slide to the job record so review and publish know the assets', () => {
+    expect(slide.FinishSlide.Next).toBe('RecordSlideProgress');
+    const record = slide.RecordSlideProgress as { Resource?: string; Parameters?: { UpdateExpression: string; ExpressionAttributeValues: { ':slide': { L: Array<{ M: Record<string, { S?: string }> }> } } }; ResultPath?: unknown; End?: boolean };
+    expect(record.Resource).toBe('arn:aws:states:::dynamodb:updateItem');
+    expect(record.Parameters?.UpdateExpression).toContain('list_append(if_not_exists(#slides, :empty), :slide)');
+    expect(record.Parameters?.ExpressionAttributeValues[':slide'].L[0].M.status.S).toBe('no_visual');
+    expect(record.ResultPath).toBeNull();
+    expect(record.End).toBe(true);
+  });
+
   it('records every slide as a clean no-visual', () => {
     expect(slide.FinishSlide.Parameters?.visualizationStatus).toBe('no-visual');
   });

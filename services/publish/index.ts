@@ -5,7 +5,8 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { AccessPackSchema, ArtifactManifestSchema, type AccessPack } from '../../apps/extension/src/shared/contracts';
 import { JobRecordSchema, type Deck, type JobRecord, type ReviewDecision } from '../shared/jobs';
 
@@ -435,11 +436,13 @@ export async function handlePublish(event: PublishEvent, options: PublishHandler
     client: new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' }),
     bucket: bucket!,
   });
+  // Same rule as the S3 store above: the table client exists only at the
+  // Lambda boundary, and only when a test has not injected loadJob.
+  const dynamodb = options.dynamodb ?? (options.loadJob ? undefined : DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION ?? 'us-east-1' })));
   const loadJob = options.loadJob ?? (async (jobId: string) => {
-    if (!options.dynamodb) throw new Error('dynamodb is required when loadJob is not supplied');
     const tableName = event.jobsTableName ?? process.env.JOBS_TABLE;
     if (!tableName) throw new Error('Missing required JOBS_TABLE environment variable');
-    const response = await options.dynamodb.send(new GetCommand({ TableName: tableName, Key: { jobId } })) as { Item?: unknown };
+    const response = await dynamodb!.send(new GetCommand({ TableName: tableName, Key: { jobId } })) as { Item?: unknown };
     if (!response.Item) throw new Error(`job ${jobId} was not found`);
     return JobRecordSchema.parse(response.Item);
   });
@@ -459,10 +462,10 @@ export async function handlePublish(event: PublishEvent, options: PublishHandler
     publishedAt: options.now?.() ?? new Date().toISOString(),
   }, s3);
 
-  if (options.dynamodb) {
+  if (dynamodb) {
     const tableName = event.jobsTableName ?? process.env.JOBS_TABLE;
     if (!tableName) throw new Error('Missing required JOBS_TABLE environment variable');
-    await options.dynamodb.send(new UpdateCommand({
+    await dynamodb.send(new UpdateCommand({
       TableName: tableName,
       Key: { jobId: job.jobId },
       UpdateExpression: 'SET #status = :status, #publishedVersion = :publishedVersion, #updatedAt = :updatedAt',

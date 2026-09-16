@@ -287,6 +287,33 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
           // is produced at all.
           : { visualizationStatus: 'no-visual' }),
       },
+      Next: 'RecordSlideProgress',
+    },
+    // The review and publish routes read the job record's `slides` to know
+    // which assets exist (the fifth real job's review answered "unknown
+    // asset slide-01" because nothing ever wrote them). Each slide appends
+    // its own progress row; list_append is atomic per update, so the Map's
+    // concurrency of five cannot lose rows. The Pass output above stays the
+    // Map item's result because this task's ResultPath is null.
+    RecordSlideProgress: {
+      Type: 'Task',
+      Resource: 'arn:aws:states:::dynamodb:updateItem',
+      Parameters: {
+        'TableName.$': '$$.Execution.Input.jobsTableName',
+        Key: { jobId: { 'S.$': '$$.Execution.Input.jobId' } },
+        UpdateExpression: 'SET #slides = list_append(if_not_exists(#slides, :empty), :slide), #updatedAt = :updatedAt',
+        ExpressionAttributeNames: { '#slides': 'slides', '#updatedAt': 'updatedAt' },
+        ExpressionAttributeValues: {
+          ':empty': { L: [] },
+          ':slide': { L: [{ M: {
+            assetId: { 'S.$': '$.assetId' },
+            stage: { S: withVisualization ? 'done' : 'audio' },
+            status: { S: withVisualization ? 'needs_review' : 'no_visual' },
+          } }] },
+          ':updatedAt': { 'S.$': '$$.State.EnteredTime' },
+        },
+      },
+      ResultPath: null,
       End: true,
     },
   };
