@@ -3,7 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { App } from './App';
+import { App, packChoices } from './App';
 import { InMemorySessionClient } from '../shared/contracts';
 import { loadPreferences, resetPreferencesForTests } from '../shared/preferences';
 import { FakeCaptureHost, FakeScheduler, testPack } from '../sources/screen/fixtures';
@@ -49,6 +49,30 @@ describe('App shell', () => {
     act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(container.textContent).toContain('Following nucleolus on slide-04');
+  });
+
+  it('resolves the student pack from the session events, not the instructor dropdown', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const client = new InMemorySessionClient();
+    const root = createRoot(container);
+    act(() => root.render(<App client={client} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} />));
+
+    const studentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
+    act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    // An instructor elsewhere is teaching the HNSW draft pack; this tab never touched the dropdown.
+    const hnsw = packChoices.find(c => c.id === 'hnsw-explainer')!.pack;
+    await client.join('ABC123');
+    act(() => client.send({
+      schemaVersion: '1.0', type: 'asset.changed', sessionId: 'ABC123', packId: hnsw.packId, packVersion: hnsw.version,
+      sequence: 1, sentAt: '2026-09-15T15:00:00Z', assetId: hnsw.assets[1].assetId,
+    }));
+
+    expect(container.textContent).not.toContain('different reviewed lesson version');
+    // Part 3's Focus view renders the followed slide's regions from the resolved pack.
+    expect(container.textContent).toContain(`Following ${hnsw.assets[1].assetId}.`);
+    expect(container.textContent).toContain(hnsw.assets[1].regions[0].regionId);
   });
 
   it('persists the student reduced-motion preference to local storage only', async () => {

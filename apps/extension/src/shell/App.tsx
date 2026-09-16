@@ -43,6 +43,12 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
   const choice = packChoices.find(c => c.id === choiceId) ?? packChoices[0];
   const activePack = pack ?? choice.pack;
   const activeIsDraft = pack ? false : choice.status === 'draft';
+  // Students never pick a pack: the session's events name the pack the
+  // instructor is teaching, and the student view follows that. Until the
+  // first event arrives there is nothing to render against, so any known
+  // pack will do.
+  const sessionPack = event ? packChoices.find(c => c.pack.packId === event.packId && c.pack.version === event.packVersion)?.pack : undefined;
+  const studentPack = pack ?? sessionPack ?? choice.pack;
 
   useEffect(() => client.subscribe(setEvent), [client]);
   useEffect(() => { loadPreferences().then(setPreferences); }, []);
@@ -79,7 +85,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
           <StudentExperience
             client={client}
             event={event}
-            pack={activePack}
+            pack={studentPack}
             preferences={preferences}
             onPreferencesChange={updatePreferences}
           />

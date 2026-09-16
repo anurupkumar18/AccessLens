@@ -27,8 +27,8 @@ const modes: Array<{ id: StudentPreferences['mode']; label: string }> = [
 ];
 
 export function StudentExperience({ client, event, pack, preferences, onPreferencesChange }: Props): React.ReactElement {
-  const [sessionId, setSessionId] = useState('demo-session');
-  const [joinMessage, setJoinMessage] = useState('Demo mode is ready.');
+  const [sessionId, setSessionId] = useState('');
+  const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
 
   useEffect(() => {
@@ -83,9 +83,19 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       </div>
 
       <form className="join-form" onSubmit={(submitEvent) => { submitEvent.preventDefault(); void join(); }}>
-        <label htmlFor="session-code">Session code</label>
+        <label htmlFor="session-code">Join code from your instructor</label>
         <div>
-          <input id="session-code" value={sessionId} onChange={(changeEvent) => setSessionId(changeEvent.target.value)} required />
+          <input
+            id="session-code"
+            className="join-code"
+            value={sessionId}
+            onChange={(changeEvent) => setSessionId(changeEvent.target.value.toUpperCase())}
+            placeholder="e.g. W85UUK"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            required
+          />
           <button type="submit">Join</button>
         </div>
       </form>
