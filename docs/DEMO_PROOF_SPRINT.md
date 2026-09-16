@@ -8,13 +8,14 @@ are intentionally not evidence. Do not replace them with a claim.
 
 | Field | Recorded value |
 | --- | --- |
-| Release candidate | `cd52f6e` — `merge: consolidate AccessLens integration` |
-| Local automated gate | `make check` passed on 2026-09-16: 61 Access Pack, 24 relay, 5 delivery-board, 274 extension, and 53 live-session tests |
+| Release candidate | `cd52f6e` — `merge: consolidate AccessLens integration`; QA re-verified on `1524027` |
+| Local automated gate | `make check` passed on 2026-09-16: 61 Access Pack, 24 relay, 5 delivery-board, 274 extension, and 53 live-session tests. Independently reproduced on `1524027` with identical counts |
 | Live relay lifecycle release | **BLOCKED** — local machine has no AWS CLI, profile, or environment credentials; no deployment was attempted |
-| Second review of `capture.stopped` | **OPEN** — required before deployment evidence can be claimed |
+| Second review of `capture.stopped` | **DONE with findings, 2026-09-16** — `docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`. Statements 2 and 3 confirmed; statement 1 qualified (instructor-only and no media/identity/preference confirmed, but the relay does not enforce base-only for asset/region as it does for `source.unmatched`); statement 4 not applicable until a deployment happens. Opened T-31, T-32 (T-33 subsequently closed via `2d04fad`) — resolve or explicitly accept before deployment |
 | Real browser/device evidence | **OPEN** — operator-only; browser permission cannot be granted by an unattended tool |
 | Existing deployed relay probe | `integration-test.mjs` passed its 19-event path and refusal checks; the 30-event bench measured 139.3/186.2 ms p50/p95 same-process receive latency and 2.4/11.7 ms skew, but the endpoint rejected `capture.stopped` as `event-type-not-allowlisted` |
 | Extension false-live safeguard | `2d04fad` locally handles a relay payload that fails `LiveEventSchema`: the student freezes the last trusted state as non-live without retaining the payload. Unit coverage is green; deployed and real-device evidence remains open. |
+| Independent re-probe of the stale endpoint | **2026-09-16, reproduced.** One disposable session, two events, closed immediately: `session.started` accepted, `capture.stopped` rejected as `event-type-not-allowlisted`. The existing endpoint is confirmed stale for AL-003; deployed stop-versus-end behavior must not be claimed |
 
 ## AL-003 — contract review and deployment gate
 
@@ -22,13 +23,33 @@ The reviewer must trace `capture.stopped` across the extension Zod and JSON
 schemas, Python reference validator, instructor controller, student state, and
 relay tests. Confirm all four statements before deployment:
 
-- [ ] It is base-only and instructor-only; it carries no raw media, asset,
+- [~] It is base-only and instructor-only; it carries no raw media, asset,
   region, preference, or identity field.
-- [ ] Stop and browser source termination release local capture but retain the
+  **Qualified, 2026-09-16.** Instructor-only confirmed at every layer. No raw
+  media, preference, or identity confirmed — `frameData`, `studentId`, and
+  `preferences` each bounce as `field-not-on-contract`. Base-only for
+  asset/region holds in the Zod and JSON schemas **only**: the relay and the
+  Python reference accept a `capture.stopped` carrying a real `assetId` and
+  `regionId`, where the same fields on `source.unmatched` are refused. See T-31.
+- [x] Stop and browser source termination release local capture but retain the
   temporary session and last trusted student state.
-- [ ] A later `session.started` can resume the same session with a monotonic
+  **Confirmed, 2026-09-16.** One `endSharing()` serves both `stop()` and the
+  browser's `onEnded`; `sessionId` is retained, the relay keeps the session open
+  and stores the event as latest state, and `liveState.ts` spreads `...current`
+  so the last trusted asset/region/hotspot survives.
+- [x] A later `session.started` can resume the same session with a monotonic
   sequence; only `session.ended` closes delivery.
+  **Confirmed, 2026-09-16.** Restart reuses the retained session id without
+  re-`create`, the sequence counter is never reset, and only `session.ended`
+  reaches `closeSession`; `join` and `resume` both refuse a closed session.
 - [ ] The reviewed service has been rebuilt before CDK deployment.
+  **Not applicable yet.** The build is green locally (esbuild → `dist/index.mjs`,
+  24.9 kb); no deployment has been attempted, so this cannot be ticked by review.
+
+The full reviewer record, including the reproduction commands, is
+`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`. T-31 and T-32 must
+be resolved or explicitly accepted before this lifecycle is deployed or claimed
+(T-33 closed via `2d04fad`).
 
 After the independent review, configure the temporary hackathon profile according
 to `docs/AWS_ACCESS_VERIFICATION.md` without committing or sharing credentials,
@@ -83,10 +104,17 @@ Repeat the same sequence on two physical student devices with a single
 time-synchronized recording or other redacted timing record before describing live
 multi-device latency or reliability.
 
-T-33 adds local fail-closed coverage for an inbound event the extension rejects:
-the UI must say that the next update could not be verified and retain the last
-reviewed state. This does not prove the deployed relay's behavior; record the
-physical malformed-event or version-skew exercise in the false-live column.
+T-33 (closed via `2d04fad`) added local fail-closed coverage for an inbound event
+the extension rejects: the UI must say that the next update could not be verified
+and retain the last reviewed state. This does not prove the deployed relay's
+behavior; record the physical malformed-event or version-skew exercise in the
+false-live column.
+
+**Known coverage limit (T-32).** The bench's "rejoining student" reconnects as a
+brand-new anonymous `join`. The shipped `WebSocketSessionClient` reconnects by
+presenting its stored capability on `$connect`, which reaches `Relay.resume()` —
+a different code path with no test anywhere. A green bench therefore proves
+join-time catch-up, not the reconnect the demo actually performs.
 
 | Run | Release / endpoint | 30/30 A | 30/30 B | p50 / p95 latency | p50 / p95 skew | Reconnect | False-live state | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

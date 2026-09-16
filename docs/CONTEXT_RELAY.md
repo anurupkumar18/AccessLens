@@ -118,7 +118,9 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-34 | Chrome capture may reject window or display sharing if `getDisplayMedia()` begins only after awaited session creation consumes the Start click's transient user activation. The controller now starts the explicit browser chooser first and has an order regression test; the physical Windows tab/window/display matrix is still required. | Part 2 + QA | AL-001 capture matrix and real-device demo proof | IN PROGRESS | `apps/extension/src/instructor/captureController.ts`; `captureController.test.ts` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
-| T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. `2d04fad` also prevents an invalid inbound lifecycle event from silently leaving a student marked live. Shared-contract human review and deployed-relay update remain before closure. |
+| T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. **The second shared-contract review is now done** (`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`): stop-retains-session and restart-resumes-session are confirmed, base-only is confirmed against media/identity/preference but **not** enforced relay-side for asset/region (T-31). The existing endpoint was independently re-probed and still rejects `capture.stopped` as `event-type-not-allowlisted`. `2d04fad` separately prevents an invalid inbound lifecycle event from silently leaving a student marked live (T-33, closed). Deployed-relay update and T-31/T-32 remain before closure. |
+| T-31 | `capture.stopped` is base-only in `LiveEventSchema` and `live-event.schema.json`, but neither `services/live-session/src/rules.ts` nor `reference_event_check.py` enforces that server-side. A `capture.stopped` carrying a real `assetId` and `regionId` is accepted and stored as the session's latest state, while the identical fields on `source.unmatched` are refused as `unmatched-event-names-content:*`. The media/identity/preference half is safe — `frameData`, `studentId`, and `preferences` all bounce off the `KNOWN_FIELDS` allowlist — so this is client-trust hardening, not a demo-blocking defect: the shipped controller's `Emittable` type cannot express it. But `rules.ts`'s own docstring states the principle it misses here, and charter A9 earned the guard for the sibling type. Fixing it is additive in two files plus a parity fixture. Same shape of gap AL-050 closed for `caption`'s field *contents* this session — this one is about `assetId`/`regionId` *pack membership* on `capture.stopped` specifically. | Part 4 + Part 5 | AL-003 deployment claim | OPEN | Verified by running `reference_event_check.check_event` directly; `docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md` |
+| T-32 | `Relay.resume()` and the `$connect` route that reaches it have **no test anywhere** — there is no `handler.test.ts`, and `relay.test.ts` never calls `resume`. This is not a dormant path: `WebSocketSessionClient` reconnects by presenting its stored capability as `$connect?sessionId=…&capability=…`, so every real network blip in the demo goes through untested code, and `resume` is also the only way a fresh connection can recover an **instructor** role. AL-004's bench does not cover it either — its "rejoining student" is a brand-new anonymous `join`, which is the other branch. | Part 4 | Reconnect claims, AL-004 evidence | OPEN | `services/live-session/test/` has no handler test; `grep -rn '\.resume(' services/live-session/test` is empty; `webSocketSessionClient.ts` builds the capability query string |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | CLOSED | Pinned to 1 by the relay, matching Part 5's reference: `sequence: 0` is refused as `sequence-not-a-positive-integer` (`services/live-session/src/rules.ts`, asserted by the parity test). The shared Zod contract still permits 0, so a client can construct one — the relay is what refuses it |
 
 ---
@@ -1149,3 +1151,29 @@ anywhere, redeclare `color`/`background` explicitly on that scope, not just
 the custom properties -- `style.test.ts` only guards the two instances found
 today. `memory/episodic/0069-fix-inert-and-inverted-high-contrast.md` has
 the full diagnosis.
+
+### RL-052 — 2026-09-16 — cross-cutting — Claude (integrated from `claude/accesslens-demo-proof-qa-31tqrj`)
+
+**Landed:** the independent second review AL-003 was gated on, recorded in
+`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md` and reflected in
+`docs/DEMO_PROOF_SPRINT.md`. Of the four pre-deployment statements, stop-retains-
+session and restart-resumes-session are confirmed with code and test citations;
+base-only is confirmed against raw media, identity, and preferences but only
+schema-deep for asset/region; the rebuild statement cannot be ticked by a review.
+`make check` was reproduced green on `1524027` with identical counts (61/24/5/274/53),
+and the previous session's critical finding was independently re-probed against the
+existing endpoint — one disposable two-event session, closed immediately — which
+still rejects `capture.stopped` as `event-type-not-allowlisted`. No code changed.
+**Threads touched:** T-31 and T-32 opened. The reviewing session's own T-33 finding
+(`liveRelayClient.ts:48` silently drops a non-conforming event) had, independently
+and concurrently, already been fixed in this branch as `2d04fad`/RL-035 (this file's
+existing T-33 row) before this record was integrated — renumbered here to avoid the
+collision rather than opening a second T-33. T-21 stays IN PROGRESS with the review
+box now ticked.
+**Next agent needs to know:** the review does **not** clear AL-003 for deployment
+on its own. T-31 composes with a fixed T-33 into the failure AL-003 exists to
+prevent — this is the same cell AL-004's bench table still marks "Not measured",
+now narrower since the silent-drop half is closed. T-32 matters because the
+bench's reconnect check exercises `join`, while the shipped client reconnects
+through the untested `resume`. Deployment was not attempted: that session's
+container had no AWS CLI or authorized hackathon profile, same as this one.
