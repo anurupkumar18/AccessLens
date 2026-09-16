@@ -143,3 +143,30 @@ slide still gets `none` — and seven of eight slides get a candidate
 visualization, which is above the run goal's "at least half".
 
 **Date.** 2026-09-15.
+
+## D5 — catalog embeddings are computed by a local build script, not a Lambda — DECISION NEEDED
+
+**Question.** Hard rule 12 says Bedrock and Polly are called only from Lambda.
+`scripts/catalog/embed.ts` calls Titan embed v2 (256 dimensions) from the
+developer's machine to write `packages/catalog/vectors.json`, which is a
+checked-in build artifact the Retriever loads at runtime. The catalog lane
+(R2) built it that way, the lead merged it, and the V12 lane now regenerating
+`vectors.json` against the real harness is doing the same. The rule's intent
+is that no runtime path and no student-facing request touches a model outside
+the account's Lambda boundary; a build step that runs before deploy and
+commits its output is arguably outside that intent, but it is a literal
+deviation from a numbered hard rule, and those are the user's to grant.
+
+**Lead's position.** Keep it as build tooling. Moving 30–150 one-off
+embedding calls into a Lambda adds a deploy dependency to a catalog edit and
+buys no safety: the same credentials, the same model, the same region, and
+the output is reviewed in a diff before it is committed. The only runtime
+Titan call — course-library indexing (R1) — already lives in Lambda.
+
+**What changes if the user disagrees.** Add an `EmbedCatalog` Lambda under
+`infra/lib/vectors-extension.ts`, invoke it from `scripts/catalog/embed.ts`
+via `lambda:Invoke`, and revoke local Bedrock use in the script. About an
+hour; no data-model change.
+
+**Status.** The lead has proceeded on its own position so the run is not
+blocked. This entry stays open until the user confirms or reverses it.
