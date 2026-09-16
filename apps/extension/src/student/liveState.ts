@@ -12,6 +12,8 @@ export type LiveStatus =
 
 export interface StudentLiveState {
   status: LiveStatus;
+  /** An invalid relay payload must not be reset to live by socket recovery alone. */
+  staleReason?: 'connection' | 'protocol';
   lastSequence: number;
   assetId?: string;
   regionId?: string;
@@ -58,13 +60,14 @@ export function applyLiveEvent(
         message: `Following ${event.regionId} on ${event.assetId}.`,
       };
     case 'capture.paused':
-      return { ...current, status: 'paused', lastSequence: event.sequence, message: 'Instructor sharing is paused.' };
+      return { ...current, status: 'paused', staleReason: undefined, lastSequence: event.sequence, message: 'Instructor sharing is paused.' };
     case 'capture.resumed':
-      return { ...current, status: 'live', lastSequence: event.sequence, message: 'Instructor sharing resumed.' };
+      return { ...current, status: 'live', staleReason: undefined, lastSequence: event.sequence, message: 'Instructor sharing resumed.' };
     case 'capture.stopped':
       return {
         ...current,
         status: 'stopped',
+        staleReason: undefined,
         lastSequence: event.sequence,
         message: 'Instructor stopped sharing. Showing the last reviewed moment.',
       };
@@ -79,16 +82,25 @@ export function applyLiveEvent(
     case 'session.started':
       return { status: 'live', lastSequence: event.sequence, message: 'Connected to the live lesson.' };
     case 'caption.appended':
-      return { ...current, lastSequence: event.sequence };
+      return { ...current, staleReason: undefined, lastSequence: event.sequence };
   }
 }
 
 export function markLiveStateStale(current: StudentLiveState): StudentLiveState {
   if (current.status !== 'live') return current;
-  return { ...current, status: 'stale', message: 'Connection interrupted. Showing the last reviewed state.' };
+  return { ...current, status: 'stale', staleReason: 'connection', message: 'Connection interrupted. Showing the last reviewed state.' };
 }
 
 export function markLiveStateReconnected(current: StudentLiveState): StudentLiveState {
-  if (current.status !== 'stale') return current;
-  return { ...current, status: 'live', message: 'Reconnected.' };
+  if (current.status !== 'stale' || current.staleReason === 'protocol') return current;
+  return { ...current, status: 'live', staleReason: undefined, message: 'Reconnected.' };
+}
+
+/** Fail closed when the transport drops an event at the contract boundary. */
+export function markLiveStateProtocolInvalid(current: StudentLiveState): StudentLiveState {
+  if (current.status === 'ended' || current.status === 'stopped' || current.status === 'incompatible') return current;
+  const message = current.lastSequence < 0
+    ? 'A live update could not be verified. Waiting for a reviewed update.'
+    : 'A live update could not be verified. Showing the last reviewed state.';
+  return { ...current, status: 'stale', staleReason: 'protocol', message };
 }

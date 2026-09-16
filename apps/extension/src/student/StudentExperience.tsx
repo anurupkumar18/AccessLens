@@ -4,7 +4,7 @@ import type { StudentPreferences } from '../shared/preferences';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { AudioView } from '../renderers/AudioView';
-import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
+import { applyLiveEvent, initialStudentLiveState, markLiveStateProtocolInvalid, markLiveStateStale, markLiveStateReconnected } from './liveState';
 
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
@@ -52,6 +52,17 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
     if (!connectionAware.onConnectionChange) return;
     return connectionAware.onConnectionChange((connected) => {
       setLive((current) => (connected ? markLiveStateReconnected(current) : markLiveStateStale(current)));
+    });
+  }, [client]);
+
+  useEffect(() => {
+    // The network wrapper emits this only after rejecting a payload against the
+    // shared schema. Do not surface the raw event: the safe action is to freeze
+    // the last reviewed state and say that the next update was not trustworthy.
+    const protocolAware = client as { onInvalidEvent?: (listener: () => void) => () => void };
+    if (!protocolAware.onInvalidEvent) return;
+    return protocolAware.onInvalidEvent(() => {
+      setLive(markLiveStateProtocolInvalid);
     });
   }, [client]);
 

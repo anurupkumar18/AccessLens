@@ -49,6 +49,21 @@ describe('wrapLiveRelayClient', () => {
     expect(received).toEqual([]);
   });
 
+  it('notifies consumers of a rejected inbound event without exposing its payload', () => {
+    const underlying = fakeUnderlying();
+    const client = wrapLiveRelayClient(underlying);
+    const received: unknown[] = [];
+    const notified = vi.fn();
+    client.subscribe(event => received.push(event));
+    client.onInvalidEvent!(notified);
+
+    underlying.emit({ not: 'a live event' });
+
+    expect(received).toEqual([]);
+    expect(notified).toHaveBeenCalledOnce();
+    expect(notified).toHaveBeenCalledWith();
+  });
+
   it('delegates send with the given event', () => {
     const underlying = fakeUnderlying();
     const client = wrapLiveRelayClient(underlying);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveEvent } from '../shared/contracts';
 import { validEvent, validPack } from '../shared/fixtures';
-import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
+import { applyLiveEvent, initialStudentLiveState, markLiveStateProtocolInvalid, markLiveStateStale, markLiveStateReconnected } from './liveState';
 
 describe('student live state', () => {
   it('applies the newest reviewed region and AR hotspot', () => {
@@ -85,6 +85,23 @@ describe('student live state', () => {
   it('leaves a non-stale status alone on a reconnect notification', () => {
     const ended = applyLiveEvent(initialStudentLiveState, { ...validEvent, type: 'session.ended', sequence: 9 } as LiveEvent, validPack);
     expect(markLiveStateReconnected(ended)).toBe(ended);
+  });
+
+  it('fails closed on an invalid relay payload until a later valid event arrives', () => {
+    const live = applyLiveEvent(initialStudentLiveState, validEvent, validPack);
+    const invalid = markLiveStateProtocolInvalid(live);
+    expect(invalid).toMatchObject({
+      status: 'stale',
+      staleReason: 'protocol',
+      assetId: 'cell-slide-03',
+      regionId: 'mitochondrion',
+      message: 'A live update could not be verified. Showing the last reviewed state.',
+    });
+    expect(markLiveStateReconnected(invalid)).toBe(invalid);
+
+    const recovered = applyLiveEvent(invalid, { ...validEvent, sequence: 2 } as LiveEvent, validPack);
+    expect(recovered).toMatchObject({ status: 'live', lastSequence: 2 });
+    expect(recovered.staleReason).toBeUndefined();
   });
 
   it('shows unmatched without inventing an asset or region', () => {

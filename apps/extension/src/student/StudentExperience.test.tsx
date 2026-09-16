@@ -24,6 +24,17 @@ class FakeConnectionAwareClient extends InMemorySessionClient {
   }
 }
 
+class FakeProtocolAwareClient extends InMemorySessionClient {
+  private invalidEventListeners = new Set<() => void>();
+  onInvalidEvent(listener: () => void): () => void {
+    this.invalidEventListeners.add(listener);
+    return () => this.invalidEventListeners.delete(listener);
+  }
+  emitInvalidEvent(): void {
+    this.invalidEventListeners.forEach((listener) => listener());
+  }
+}
+
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('StudentExperience', () => {
@@ -130,6 +141,17 @@ describe('StudentExperience', () => {
     await act(async () => client.emitConnectionChange(true));
     expect(container?.querySelector('.connection-pill')?.textContent).toBe('live');
     expect(container?.textContent).toContain('Reconnected.');
+  });
+
+  it('fails closed when the relay wrapper rejects a live event', async () => {
+    const client = new FakeProtocolAwareClient();
+    renderExperience(validEvent, arPack, client);
+    expect(container?.querySelector('.connection-pill')?.textContent).toBe('live');
+
+    await act(async () => client.emitInvalidEvent());
+
+    expect(container?.querySelector('.connection-pill')?.textContent).toBe('stale');
+    expect(container?.textContent).toContain('A live update could not be verified. Showing the last reviewed state.');
   });
 
   it('stays live when content is quiet, for a transport with no connection status to report', async () => {
