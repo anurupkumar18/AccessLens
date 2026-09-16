@@ -122,21 +122,22 @@ describe('Ask this class', () => {
 describe('Hear mode with Amazon Polly', () => {
   it('plays the reviewed description through the gateway after joining, and falls back to the browser voice when it fails', async () => {
     const play = vi.fn(async () => undefined);
-    vi.stubGlobal('Audio', vi.fn(function FakeAudio() { return { play, addEventListener: vi.fn() }; }));
+    vi.stubGlobal('Audio', vi.fn(function FakeAudio() { return { play, pause: vi.fn(), addEventListener: vi.fn() }; }));
     const createObjectURL = vi.fn(() => 'blob:audio');
     Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
     const speak = vi.fn(async () => new Blob([new Uint8Array([1])], { type: 'audio/mpeg' }));
     render(new SignedClient(), { speak } as unknown as AiClient, { ...defaultPreferences, mode: 'audio' });
     await join();
-    const playButton = [...container!.querySelectorAll('button')].find(b => b.textContent === 'Play description')!;
+    // Hear mode lists every region; the student picks the mitochondrion themselves, whatever the instructor is on.
+    const playButton = [...container!.querySelectorAll<HTMLButtonElement>('.hear-play')].find(b => /mitochondrion/i.test(b.getAttribute('aria-label') ?? ''))!;
     await act(async () => { playButton.click(); });
     expect(speak).toHaveBeenCalledWith(expect.objectContaining({ token: 'signed-by-relay' }), 'bio-cell-demo', 1, 'cell-slide-03', 'mitochondrion', 'shortDescription');
     expect(play).toHaveBeenCalled();
-    expect(container!.textContent).toContain('(Amazon Polly)');
+    expect(container!.textContent).toContain('Amazon Polly');
 
     speak.mockRejectedValueOnce(new Error('offline'));
     await act(async () => { playButton.click(); });
-    expect(container!.textContent).toMatch(/Speech is unavailable here|Playing description/);
+    expect(container!.textContent).toMatch(/speech is unavailable here|browser voice/);
     vi.unstubAllGlobals();
   });
 });

@@ -563,6 +563,21 @@ input[type='range'] { accent-color: var(--ink); }
 .dyslexic-view--enabled .dyslexic-reading li { max-width: 42rem; }
 .dyslexic-toggle { margin-top: .25rem; }
 
+/* Read / Hear / Dyslexic: the whole lesson, student-paced. */
+.read-contents { display: flex; flex-wrap: wrap; gap: .4rem 1rem; padding: 0; margin: 0 0 1rem; list-style: none; }
+.read-contents li { font-size: .9em; }
+.read-slide { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.read-slide h4 { margin: 0 0 .5rem; }
+.read-regions, .hear-regions { padding-left: 1.25rem; margin: 0; }
+.read-regions li, .hear-regions li { margin: .6rem 0; }
+.read-regions h5 { margin: 0 0 .15rem; font-size: 1em; }
+.read-regions p { margin: 0 0 .25rem; }
+.hear-slide { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.hear-slide h4 { margin: 0 0 .5rem; }
+.hear-play { margin: 0 0 .25rem; }
+.hear-play[aria-pressed="true"] { outline: 2px solid var(--accent, currentColor); outline-offset: 2px; }
+.hear-regions li p { margin: 0; }
+
 .active-concept {
   display: flex;
   flex-direction: column;

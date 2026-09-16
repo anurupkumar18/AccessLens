@@ -45,11 +45,6 @@ const button = (name: string) => {
 };
 const click = async (name: string) => act(async () => { button(name).dispatchEvent(new MouseEvent('click', { bubbles: true })); });
 const status = () => container!.querySelector('[role="status"]')!.textContent ?? '';
-const select = (id: string, value: string) => act(() => {
-  const el = container!.querySelector<HTMLSelectElement>(`#${id}`)!;
-  el.value = value;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-});
 
 describe('InstructorPanel', () => {
   it('before Start, the host has no calls and only Start is offered', () => {
@@ -95,31 +90,6 @@ describe('InstructorPanel', () => {
     expect(events.map(e => e.type)).toEqual(['session.started', 'source.unmatched']);
   });
 
-  it('correcting to an asset and region emits asset.changed then region.changed and names the region', async () => {
-    const { events } = render();
-    await click('Start');
-    select('correct-asset', 'slide-04');
-    select('correct-region', 'nucleolus');
-    await click('Apply correction');
-    expect(events.slice(1)).toMatchObject([
-      { type: 'asset.changed', assetId: 'slide-04' },
-      { type: 'region.changed', assetId: 'slide-04', regionId: 'nucleolus' },
-    ]);
-    expect(status()).toContain('The nucleus');
-    expect(status()).toContain('nucleolus');
-  });
-
-  it('indicating a region on the current asset emits region.changed', async () => {
-    const { stream, scheduler, events } = render();
-    await click('Start');
-    stream.enqueue(loadDemoFrame('slide-05'));
-    act(() => scheduler.tick(1));
-    select('indicate-region', 'reticulum');
-    await click('Indicate region');
-    expect(events.at(-1)).toMatchObject({ type: 'region.changed', assetId: 'slide-05', regionId: 'reticulum' });
-    expect(status()).toContain('reticulum');
-  });
-
   it('Pause, Resume, Stop, and End Session each emit their event and change the button set', async () => {
     const { events, stream } = render();
     await click('Start');
@@ -158,7 +128,6 @@ describe('InstructorPanel', () => {
       expect((b.textContent?.trim() || b.getAttribute('aria-label') || '').length).toBeGreaterThan(0);
     }
     const controls = Array.from(container!.querySelectorAll<HTMLElement>('select, input, textarea'));
-    expect(controls.length).toBeGreaterThan(0);
     for (const control of controls) {
       const label = control.id ? container!.querySelector(`label[for="${control.id}"]`) : null;
       const named = (label?.textContent?.trim() || control.getAttribute('aria-label') || '').length > 0;

@@ -28,32 +28,6 @@ describe('App shell', () => {
     }
   });
 
-  it('lets the student view follow an instructor correction, with no network client', async () => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    const client = new InMemorySessionClient();
-    const host = new FakeCaptureHost();
-    const root = createRoot(container);
-    act(() => root.render(<App client={client} pack={syntheticPack} host={host} scheduler={new FakeScheduler()} />));
-
-    expect(host.calls).toEqual([]);
-    const startButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start')!;
-    await act(async () => { startButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-    expect(host.calls).toEqual(['requestStream']);
-
-    const assetSelect = container.querySelector<HTMLSelectElement>('#correct-asset')!;
-    act(() => { assetSelect.value = 'slide-04'; assetSelect.dispatchEvent(new Event('change', { bubbles: true })); });
-    const regionSelect = container.querySelector<HTMLSelectElement>('#correct-region')!;
-    act(() => { regionSelect.value = 'nucleolus'; regionSelect.dispatchEvent(new Event('change', { bubbles: true })); });
-    const apply = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Apply correction')!;
-    await act(async () => { apply.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-
-    const studentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
-    act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-
-    expect(container.textContent).toContain('Following nucleolus on slide-04');
-  });
-
   it('fetches the published pack a session names when no bundled pack matches', async () => {
     container = document.createElement('div');
     document.body.appendChild(container);

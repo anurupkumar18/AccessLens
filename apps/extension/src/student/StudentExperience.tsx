@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import type { AccessPack, LiveEvent, RoleCapability, SessionClient } from '../shared/contracts';
 import { defaultAiClient, isRelayCapability, type AiClient } from '../shared/aiClient';
 import { AskClass } from './AskClass';
@@ -44,9 +44,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
   const [capability, setCapability] = useState<RoleCapability | null>(null);
-  const speak = ai && isRelayCapability(capability)
+  // Read, Hear and Dyslexic show the whole lesson for the student to move
+  // through in any order; only Focus (and AR) follow the instructor's position.
+  const speak = useMemo(() => ai && isRelayCapability(capability)
     ? (assetId: string, regionId: string) => ai.speak(capability, pack.packId, pack.version, assetId, regionId, 'shortDescription')
-    : undefined;
+    : undefined, [ai, capability, pack.packId, pack.version]);
 
   // A different pack is a different lesson: the shell swaps the pack in when
   // the session names one this build did not hold (fetched from the published
@@ -154,9 +156,9 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
 
       <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} speak={speak} /> : null}
-        {activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'structured-text' ? <StructuredTextView pack={pack} /> : null}
+        {activeMode === 'audio' ? <AudioView pack={pack} speak={speak} /> : null}
+        {activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
             <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />

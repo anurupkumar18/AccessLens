@@ -1,76 +1,79 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { AccessPack } from '../shared/contracts';
-import { regionAudioUrl } from '../shared/packMedia';
+import { packOutline, regionName } from '../student/packOutline';
+import { createRegionPlayer, type PlaybackSource, type RegionPlayerDeps } from '../student/regionAudio';
 
-interface Props {
+interface Props extends RegionPlayerDeps {
   pack: AccessPack;
-  assetId?: string;
-  regionId?: string;
-  /** Reviewed-text speech from the AI gateway (Amazon Polly), used when the pack ships no audio of its own. Absent or failing, the browser voice reads the same text. */
-  speak?: (assetId: string, regionId: string) => Promise<Blob>;
-  /** Injected in tests; otherwise the browser's Audio element. */
-  createAudio?: (url: string) => HTMLAudioElement;
 }
 
-function defaultCreateAudio(url: string): HTMLAudioElement {
-  return new Audio(url);
-}
+const sourceNote: Record<PlaybackSource, string> = {
+  published: 'reviewed audio published with the pack',
+  synthesized: 'reviewed description, Amazon Polly',
+  browser: 'reviewed description, browser voice',
+  unavailable: 'speech is unavailable here; the same description is shown as text',
+};
 
-export function AudioView({ pack, assetId, regionId, speak, createAudio = defaultCreateAudio }: Props): React.ReactElement {
-  const [message, setMessage] = useState('Audio is ready and will play only when requested.');
-  const asset = pack.assets.find((candidate) => candidate.assetId === assetId) ?? pack.assets[0];
-  const region = asset?.regions.find((candidate) => candidate.regionId === regionId) ?? asset?.regions[0];
+/**
+ * Hear mode: every region of every slide, playable in any order the student
+ * chooses. It never follows the instructor; Focus mode does that.
+ */
+export function AudioView({ pack, speak, createAudio, speechSynthesis }: Props): React.ReactElement {
+  const player = useMemo(() => createRegionPlayer(pack, { speak, createAudio, speechSynthesis }), [pack, speak, createAudio, speechSynthesis]);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [message, setMessage] = useState('Choose any description below to hear it. Nothing plays until you ask.');
+  const slides = packOutline(pack);
 
-  async function play(): Promise<void> {
-    if (!region || !asset) return;
-    // The pack's own reviewed audio comes first: the publish route wrote one
-    // MP3 per region next to the pack, so a published pack never needs live
-    // synthesis. Speech is only for packs that ship no audio.
-    const published = regionAudioUrl(pack, region);
-    if (published) {
-      try {
-        await createAudio(published).play();
-        setMessage(`Playing the reviewed audio for ${region.regionId} (published with the pack).`);
-        return;
-      } catch {
-        // Fall through: the same reviewed text, synthesized instead.
-      }
-    }
-    if (speak) {
-      try {
-        const url = URL.createObjectURL(await speak(asset.assetId, region.regionId));
-        const audio = createAudio(url);
-        audio.addEventListener('ended', () => URL.revokeObjectURL(url), { once: true });
-        await audio.play();
-        setMessage(`Playing the reviewed description for ${region.regionId} (Amazon Polly).`);
-        return;
-      } catch {
-        // Fall through to the browser voice: same reviewed text, no network.
-      }
-    }
-    speakWithBrowser();
+  useEffect(() => {
+    const off = player.onEnded(() => setPlaying(null));
+    return () => { off(); player.stop(); };
+  }, [player]);
+
+  async function play(assetId: string, key: string, region: (typeof slides)[number]['regions'][number]): Promise<void> {
+    setPlaying(key);
+    const source = await player.play(assetId, region);
+    if (source === 'unavailable') { setPlaying(null); setMessage(`Could not play ${regionName(region)}: ${sourceNote.unavailable}.`); return; }
+    setMessage(`Playing ${regionName(region)} (${sourceNote[source]}).`);
   }
 
-  function speakWithBrowser(): void {
-    if (!region) return;
-    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-      setMessage('Speech is unavailable here. The same description is shown as text.');
-      return;
-    }
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(region.shortDescription));
-    setMessage(`Playing description for ${region.regionId}.`);
+  function stop(): void {
+    player.stop();
+    setPlaying(null);
+    setMessage('Stopped.');
   }
 
-  if (!region) return <p role="status">Waiting for a reviewed audio description.</p>;
+  if (slides.every((slide) => slide.regions.length === 0)) return <p role="status">This lesson has no reviewed audio descriptions yet.</p>;
 
   return (
-    <section className="mode-panel" aria-labelledby="audio-title">
-      <p className="eyebrow">Requested audio</p>
-      <h3 id="audio-title">{region.regionId}</h3>
-      <p>{region.shortDescription}</p>
-      <button type="button" onClick={() => { void play(); }}>Play description</button>
-      <p role="status" className="supporting-text">{message}</p>
+    <section className="mode-panel hear-view" aria-labelledby="audio-title">
+      <p className="eyebrow">Hear</p>
+      <h3 id="audio-title">{pack.title}</h3>
+      <p role="status" className="supporting-text" aria-live="polite">{message}</p>
+      {playing && <button type="button" className="secondary" onClick={stop}>Stop</button>}
+      {slides.map(({ asset, regions }) => regions.length === 0 ? null : (
+        <section key={asset.assetId} className="hear-slide" aria-labelledby={`hear-${asset.assetId}`}>
+          <h4 id={`hear-${asset.assetId}`}>{asset.title}</h4>
+          <ol className="hear-regions">
+            {regions.map((region) => {
+              const key = `${asset.assetId}/${region.regionId}`;
+              return (
+                <li key={region.regionId}>
+                  <button
+                    type="button"
+                    className="hear-play"
+                    aria-pressed={playing === key}
+                    aria-label={`Play ${regionName(region)}`}
+                    onClick={() => { void play(asset.assetId, key, region); }}
+                  >
+                    <span aria-hidden="true">{playing === key ? '▮▮' : '▶'}</span> {regionName(region)}
+                  </button>
+                  <p>{region.shortDescription}</p>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      ))}
     </section>
   );
 }

@@ -74,9 +74,6 @@ function stepIndex(state: ControllerSnapshot): number {
 export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai = defaultAiClient, captionDeps }: Props): React.ReactElement {
   const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
-  const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
-  const [correctRegion, setCorrectRegion] = useState('');
-  const [indicateRegion, setIndicateRegion] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,9 +82,6 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
   }, [controller]);
 
   const active = state.phase === 'sharing' || state.phase === 'paused';
-  const currentAssetId = state.current.kind === 'matched' ? state.current.assetId : null;
-  const currentAsset = currentAssetId ? pack.assets.find(a => a.assetId === currentAssetId) : undefined;
-  const correctionAsset = pack.assets.find(a => a.assetId === correctAsset) ?? pack.assets[0];
   const b = banner(state, pack);
   const step = stepIndex(state);
 
@@ -100,21 +94,10 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
     }
   }
 
-  function submitCorrection(event: React.FormEvent): void {
-    event.preventDefault();
-    guarded(() => controller.correct({ assetId: correctionAsset.assetId, regionId: correctRegion || undefined }));
-  }
-
-  function submitIndication(event: React.FormEvent): void {
-    event.preventDefault();
-    if (!indicateRegion) { setFormError('Choose a region first.'); return; }
-    guarded(() => controller.indicateRegion(indicateRegion));
-  }
-
   const steps = [
     'Click Start and pick the tab, window, or screen showing your slides.',
     'Read the join code to students. They enter it in their AccessLens.',
-    'Present. Reviewed slides are recognised on this device and synced; fix a wrong match below.',
+    'Present. Reviewed slides are recognised on this device and synced to students, who read and listen at their own pace.',
   ];
 
   return (
@@ -166,40 +149,6 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
           );
         })}
       </ol>
-
-      {active && (
-        <form onSubmit={submitCorrection}>
-          <h3>Fix a wrong match</h3>
-          <p>
-            <label htmlFor="correct-asset">Reviewed slide</label>
-            <select id="correct-asset" value={correctionAsset.assetId} onChange={e => { setCorrectAsset(e.target.value); setCorrectRegion(''); }}>
-              {pack.assets.map(a => <option key={a.assetId} value={a.assetId}>{a.title}</option>)}
-            </select>
-          </p>
-          <p>
-            <label htmlFor="correct-region">Region (optional)</label>
-            <select id="correct-region" value={correctRegion} onChange={e => setCorrectRegion(e.target.value)}>
-              <option value="">No region</option>
-              {correctionAsset.regions.map(r => <option key={r.regionId} value={r.regionId}>{r.regionId}</option>)}
-            </select>
-          </p>
-          <button type="submit">Apply correction</button>
-        </form>
-      )}
-
-      {active && currentAsset && (
-        <form onSubmit={submitIndication}>
-          <h3>Point students at a region</h3>
-          <p>
-            <label htmlFor="indicate-region">Region of {currentAsset.title}</label>
-            <select id="indicate-region" value={indicateRegion} onChange={e => setIndicateRegion(e.target.value)}>
-              <option value="">Choose a region</option>
-              {currentAsset.regions.map(r => <option key={r.regionId} value={r.regionId}>{r.regionId}</option>)}
-            </select>
-          </p>
-          <button type="submit">Indicate region</button>
-        </form>
-      )}
 
       {formError && <p role="alert">{formError}</p>}
       </div>
