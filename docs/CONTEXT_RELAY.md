@@ -811,3 +811,10 @@ preference falls back to Focus otherwise. `scripts/build-pack.ts` emits
 rather than the pack's `modelUri`. Gating on `arScene` is enough while only
 one pack has a scene; a second AR pack needs the renderer to read the scene
 from the pack.
+
+### RL-034 — 2026-09-16 — Part 2 — Kunj Rathod
+
+**Landed:** Graceful handling of model-truncated SVG diagrams in `orb-explain` service (`splitSvg`) and preflight check for extension build endpoints (`deploy_preflight.py`).
+**Threads touched:** none.
+**Next agent needs to know:** Truncated SVG diagrams degrade cleanly to prose description so screen readers and panel layout are not broken by partial SVG markup.
+

@@ -6,7 +6,7 @@ var bedrock = new BedrockRuntimeClient({});
 var INSTRUCTIONS = {
   explain: "Explain the key concept on this page for a university student who may have a print disability, low vision, or a learning difference. Lead with the single most important idea in one sentence, then add two or three sentences of support. Use plain language. Do not use markdown, headings, or bullet points; this text will be read aloud by a screen reader.",
   simplify: "Restate the key concept on this page in the simplest accurate language you can. Short sentences. Everyday words. Keep it true -- do not simplify it into something that is wrong. Four sentences at most. No markdown; this will be read aloud.",
-  diagram: "Produce a simple, labelled SVG diagram of the key concept on this page, then one short paragraph describing the same thing in words for someone who cannot see it. Return the SVG first inside a ```svg fenced block, then the paragraph. The SVG must use a viewBox, no scripts, no external references, and readable font sizes."
+  diagram: "Produce a simple, labelled SVG diagram of the key concept on this page, then one short paragraph describing the same thing in words for someone who cannot see it. Return the SVG first inside a ```svg fenced block, then the paragraph. Write the paragraph as plain prose with no markdown, no asterisks and no backticks; it is read aloud by screen readers. The SVG must use a viewBox, no scripts, no external references, and readable font sizes."
 };
 var SYSTEM = [
   "You help disabled students understand course material they are reading.",
@@ -18,11 +18,21 @@ function isMode(value) {
   return value === "explain" || value === "simplify" || value === "diagram";
 }
 function splitSvg(reply) {
-  const fence = reply.match(/```svg\s*([\s\S]*?)```/i);
-  if (!fence) return { text: reply.trim() };
-  const svg = fence[1].trim();
-  const text = reply.replace(fence[0], "").trim();
-  return { text: text || "A diagram of the concept on this page.", svg };
+  const closed = reply.match(/```svg\s*([\s\S]*?)```/i);
+  if (closed) {
+    const svg = closed[1].trim();
+    const text = reply.replace(closed[0], "").trim();
+    return { text: text || "A diagram of the concept on this page.", svg };
+  }
+  const opening = reply.match(/```svg\s*/i);
+  if (opening) {
+    const prose = reply.slice(0, opening.index ?? 0).trim();
+    return {
+      text: prose || "This page was too long to draw. Try selecting just the part you want explained.",
+      truncated: true
+    };
+  }
+  return { text: reply.trim() };
 }
 var CORS = {};
 var json = (status, body) => ({
@@ -66,7 +76,9 @@ ${text}`
             ]
           }
         ],
-        inferenceConfig: { maxTokens: mode === "diagram" ? 1600 : 500, temperature: 0.2 }
+        // 1600 truncated real Canvas pages mid-SVG. A labelled diagram plus its
+        // written description runs longer than it looks.
+        inferenceConfig: { maxTokens: mode === "diagram" ? 4e3 : 500, temperature: 0.2 }
       })
     );
     const reply = response.output?.message?.content?.find((part) => "text" in part)?.text ?? "";

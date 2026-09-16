@@ -43,7 +43,9 @@ const INSTRUCTIONS: Record<ExplainMode, string> = {
   diagram:
     'Produce a simple, labelled SVG diagram of the key concept on this page, then one ' +
     'short paragraph describing the same thing in words for someone who cannot see it. ' +
-    'Return the SVG first inside a ```svg fenced block, then the paragraph. The SVG must ' +
+    'Return the SVG first inside a ```svg fenced block, then the paragraph. Write the ' +
+    'paragraph as plain prose with no markdown, no asterisks and no backticks; it is read ' +
+    'aloud by screen readers. The SVG must ' +
     'use a viewBox, no scripts, no external references, and readable font sizes.',
 };
 
@@ -65,13 +67,39 @@ function isMode(value: unknown): value is ExplainMode {
   return value === 'explain' || value === 'simplify' || value === 'diagram';
 }
 
-/** Pull a fenced ```svg block out of the model's reply, if it wrote one. */
-export function splitSvg(reply: string): { text: string; svg?: string } {
-  const fence = reply.match(/```svg\s*([\s\S]*?)```/i);
-  if (!fence) return { text: reply.trim() };
-  const svg = fence[1].trim();
-  const text = reply.replace(fence[0], '').trim();
-  return { text: text || 'A diagram of the concept on this page.', svg };
+/**
+ * Split the model's reply into prose and an SVG, tolerating a truncated one.
+ *
+ * The earlier version required a closing fence. When a rich page pushed the
+ * reply past the token cap the fence never closed, the match failed, and the
+ * raw ```svg plus half an SVG was rendered into the panel as body text --
+ * which is what a student actually saw on a real Canvas page.
+ *
+ * A half-written SVG cannot be salvaged: it is markup with unclosed tags, and
+ * the sanitiser would reject it anyway. So a truncated diagram degrades to the
+ * prose, which is the accessible route and the one that has to survive.
+ */
+export function splitSvg(reply: string): { text: string; svg?: string; truncated?: boolean } {
+  const closed = reply.match(/```svg\s*([\s\S]*?)```/i);
+  if (closed) {
+    const svg = closed[1].trim();
+    const text = reply.replace(closed[0], '').trim();
+    return { text: text || 'A diagram of the concept on this page.', svg };
+  }
+
+  const opening = reply.match(/```svg\s*/i);
+  if (opening) {
+    // Everything from the opening fence on is an unusable partial SVG. Keep
+    // whatever prose came before or after it, and say the diagram failed
+    // rather than showing markup to someone who asked for a picture.
+    const prose = reply.slice(0, opening.index ?? 0).trim();
+    return {
+      text: prose || 'This page was too long to draw. Try selecting just the part you want explained.',
+      truncated: true,
+    };
+  }
+
+  return { text: reply.trim() };
 }
 
 export interface HttpEvent {
@@ -133,7 +161,9 @@ export async function handler(event: HttpEvent) {
             ],
           },
         ],
-        inferenceConfig: { maxTokens: mode === 'diagram' ? 1600 : 500, temperature: 0.2 },
+        // 1600 truncated real Canvas pages mid-SVG. A labelled diagram plus its
+        // written description runs longer than it looks.
+        inferenceConfig: { maxTokens: mode === 'diagram' ? 4000 : 500, temperature: 0.2 },
       }),
     );
 
