@@ -13,6 +13,17 @@ import type { PresentingSlide, SlidesSource } from '../sources/slides';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const pack = AccessPackSchema.parse(testPack);
+const arPack = AccessPackSchema.parse({
+  ...testPack,
+  assets: testPack.assets.map((asset) => asset.assetId === 'slide-03' ? {
+    ...asset,
+    arScene: {
+      modelUri: 'models/cell.glb',
+      defaultCamera: 'default',
+      hotspots: [{ hotspotId: 'slide-03:mitochondrion', regionId: 'mitochondrion', nodeName: 'mitochondrion', label: 'Mitochondrion' }],
+    },
+  } : asset),
+});
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
 
@@ -23,7 +34,7 @@ afterEach(() => {
   root = null;
 });
 
-function render(host = new FakeCaptureHost(), slides?: SlidesSource) {
+function render(host = new FakeCaptureHost(), slides?: SlidesSource, selectedPack = pack) {
   container = document.createElement('div');
   document.body.appendChild(container);
   const client = new InMemorySessionClient();
@@ -32,7 +43,7 @@ function render(host = new FakeCaptureHost(), slides?: SlidesSource) {
   client.subscribe(e => events.push(e));
   root = createRoot(container);
   act(() => root!.render(
-    <InstructorPanel client={client} pack={pack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} slides={slides} />,
+    <InstructorPanel client={client} pack={selectedPack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} slides={slides} />,
   ));
   return { host, client, scheduler, events, stream: host.stream };
 }
@@ -132,6 +143,19 @@ describe('InstructorPanel', () => {
     expect(events.at(-1)?.type).toBe('capture.stopped');
     expect(deck.watching()).toBe(false);
     expect(deck.source.slideOrder).toHaveBeenCalledTimes(3);
+  });
+
+  it('offers Find AR for a matched slide with a reviewed scene', async () => {
+    const { stream, scheduler, events } = render(new FakeCaptureHost(), undefined, arPack);
+    await click('Start');
+    stream.enqueue(loadDemoFrame('slide-03'));
+    act(() => scheduler.tick(1));
+    await click('Find AR for this slide');
+    expect(events.at(-1)).toMatchObject({
+      type: 'region.changed',
+      assetId: 'slide-03',
+      arState: { action: 'focus' },
+    });
   });
 
   it('Pause, Resume, Stop, and End Session each emit their event and change the button set', async () => {

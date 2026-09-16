@@ -71,6 +71,8 @@ export interface CaptureController {
   caption(text: string, isFinal: boolean): boolean;
   /** The relay-signed instructor capability for the open session, for the AI gateway. Null before a session opens. */
   getCapability(): RoleCapability | null;
+  /** Finds the first reviewed AR hotspot for the current slide and focuses it. */
+  findAr(): void;
   /** Halts sampling without emitting anything; for unmount. */
   dispose(): void;
 }
@@ -97,7 +99,7 @@ export const SHARING_REQUIRED_MESSAGE =
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
   | { type: 'caption.appended'; assetId?: string; caption: { text: string; isFinal: boolean } }
   | { type: 'asset.changed'; assetId: string }
-  | { type: 'region.changed'; assetId: string; regionId: string };
+  | { type: 'region.changed'; assetId: string; regionId: string; arState?: { hotspotId: string; action: 'focus' | 'highlight' | 'clear' } };
 
 export function createCaptureController(options: ControllerOptions): CaptureController {
   const { client, pack, host } = options;
@@ -413,6 +415,23 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     },
 
     getCapability: () => capability,
+
+    findAr() {
+      if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot find AR while ${phase}`);
+      if (current.kind !== 'matched') throw new Error('No current asset to find AR for');
+      const asset = findAsset(current.assetId);
+      const hotspot = asset.arScene?.hotspots[0];
+      if (!hotspot) throw new Error(`No reviewed AR scene is available for ${asset.title}`);
+      current = { ...current, regionId: hotspot.regionId };
+      emit({
+        type: 'region.changed',
+        assetId: current.assetId,
+        regionId: hotspot.regionId,
+        arState: { hotspotId: hotspot.hotspotId, action: 'focus' },
+      });
+      message = `AR ready: ${hotspot.label}. Students can open the AR mode.`;
+      notify();
+    },
 
     dispose() {
       releaseStream();

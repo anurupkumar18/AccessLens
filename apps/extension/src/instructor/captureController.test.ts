@@ -16,19 +16,30 @@ function loadPng(repoPath: string): Frame {
 }
 
 const pack = AccessPackSchema.parse(testPack);
+const arPack = AccessPackSchema.parse({
+  ...testPack,
+  assets: testPack.assets.map((asset) => asset.assetId === 'slide-03' ? {
+    ...asset,
+    arScene: {
+      modelUri: 'models/cell.glb',
+      defaultCamera: 'default',
+      hotspots: [{ hotspotId: 'slide-03:mitochondrion', regionId: 'mitochondrion', nodeName: 'mitochondrion', label: 'Mitochondrion' }],
+    },
+  } : asset),
+});
 
-function setup(host = new FakeCaptureHost()) {
+function setup(host = new FakeCaptureHost(), selectedPack = pack) {
   const client = new InMemorySessionClient();
   const scheduler = new FakeScheduler();
   const clock = new FakeClock();
   const events: LiveEvent[] = [];
   client.subscribe(e => events.push(e));
-  const controller = createCaptureController({ client, pack, host, scheduler, clock, ids: fixedIds('sess-1') });
+  const controller = createCaptureController({ client, pack: selectedPack, host, scheduler, clock, ids: fixedIds('sess-1') });
   return { controller, client, host, scheduler, clock, events, stream: host.stream };
 }
 
-async function sharing() {
-  const s = setup();
+async function sharing(selectedPack = pack) {
+  const s = setup(new FakeCaptureHost(), selectedPack);
   await s.controller.start();
   return s;
 }
@@ -246,6 +257,19 @@ describe('capture controller: manual correction and region indication (A5)', () 
     scheduler.tick(1);
     controller.indicateRegion('reticulum');
     expect(events.at(-1)).toMatchObject({ type: 'region.changed', assetId: 'slide-05', regionId: 'reticulum' });
+  });
+
+  it('findAr focuses the first reviewed hotspot for the current slide', async () => {
+    const { controller, stream, scheduler, events } = await sharing(arPack);
+    stream.enqueue(demo('slide-03'));
+    scheduler.tick(1);
+    controller.findAr();
+    expect(events.at(-1)).toMatchObject({
+      type: 'region.changed',
+      assetId: 'slide-03',
+      regionId: 'mitochondrion',
+      arState: { hotspotId: 'slide-03:mitochondrion', action: 'focus' },
+    });
   });
 
   it('rejects unknown asset or region IDs without emitting', async () => {
