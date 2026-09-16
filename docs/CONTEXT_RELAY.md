@@ -834,3 +834,17 @@ claimed by this slice.
 **Next agent needs to know:** the local preview should be run from `master` after
 `npm ci`. The two teammate documentation edits are intentionally kept in the
 stash while product work proceeds directly on `master`.
+### RL-035 - 2026-09-16 - cross-cutting - Codex
+
+**Landed:** added `docs/ADVANCED_FEATURES.md`, defining a non-recording Review
+Mode built from approved documents and semantic lesson summaries; live focus,
+repeat, captions, and bookmarks; private accessibility-safe quests; and a future
+instructor/shared-device camera source for non-screen-shareable labs. The document
+includes an organic-chemistry gesture-to-semantic-event example and explicitly
+keeps camera input feeding Focus, Read, Hear, Dyslexic, and AR rather than adding
+a camera-only student mode.
+
+**Next agent needs to know:** these are future features, not current MVP claims.
+Review Mode must not replay a professor or require raw recordings. Camera work
+needs mentor/accessibility validation, explicit consent, local processing where
+practical, and a manual camera-free fallback.
