@@ -112,6 +112,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-26 | The deployed endpoint has no authorizer on `$connect`: anyone who can reach the URL can create a session, and the session id is the only secret. Acceptable for a reviewed demo pack with no student data, and stated in `services/live-session/README.md`, but it must not be described as secure, and it is not a shape to carry into anything holding real course content. | Part 4 | Claims made about the demo | ACCEPTED | Deliberate scope call for the hackathon; `services/live-session/README.md` "What is not built" |
 | T-27 | `.github/workflows/check.yml` ran `npm ci` at the repo root only. `services/live-session` is its own package with its own lockfile (Part 4's `live-session-check` Makefile target says so explicitly), so CI has failed on every push since Part 4 merged (`0fba221` onward) with `Cannot find module '@aws-sdk/client-dynamodb'` -- the same shape of gap as T-08, in a new directory nobody updated the workflow for. | Part 1 | Everyone | CLOSED | Added `npm ci --prefix services/live-session` to the workflow; reproduced the failure locally first (`rm -rf services/live-session/node_modules && make check`), confirmed the fix the same way |
 | T-28 | `StudentExperience.tsx` marked the view "stale" after 15 seconds with no new event -- a content-silence guess standing in for a connection check. An instructor explaining one region for more than 15 seconds (normal pacing) produced a false "Connection interrupted," which is exactly what the team hit live-testing the real extension against the real relay. | Part 1 + Part 3 + Part 4 | Trust in the demo's own status indicator | CLOSED | `WebSocketSessionClient.onConnectionChange` (real socket open/close, additive to the frozen interface) threaded through `liveRelayClient.ts` to `StudentExperience.tsx`, replacing the timer. `markLiveStateReconnected` added as the stale->live counterpart. +9 tests across the four files (`services/live-session` 52 total, extension 259 total) |
+| T-29 | Two internal critiques of this project (a harsh criterion-by-criterion scorecard, and a proposed scope-narrowing revision responding to it) existed only on one person's machine, uncommitted, since 2026-09-15, and were never seen by any of the other four contributors. Nobody can be aligned on a decision they have never seen. Compounding it: the scorecard is now 24h stale against what's actually built, and needs updating with real external research before anyone acts on it. | All five parts | Any further implementation the team invests hours in | OPEN | `docs/TEAM_ALIGNMENT_CHECK.md` (now committed, with an updated scorecard, research citations, and a required response from every contributor); `AGENTS.md` and `CLAUDE.md` both hard-stop on it. Closes when every part listed in its Responses section has answered. |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
@@ -705,3 +706,33 @@ another timer-based guess standing in for a real signal anywhere in this
 codebase, this is the second time in one day that pattern produced a false
 alarm in front of an actual user (the first was T-08/T-27's CI gaps). Prefer
 the real signal even when the guess is easier to write.
+
+### RL-028 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** committed two documents that existed only on my machine since
+2026-09-15 and were never seen by anyone else on this team --
+`HACKATHON_CRITIQUE.md` (the original harsh scorecard, written when zero
+code existed) and `docs/ACCESSLENS_MVP_REVISION.md` (a proposed
+scope-narrowing response to it, cutting the extension/capture/required-AR
+entirely, which nobody has decided on and which everyone kept building
+against the *opposite* of). Added `docs/TEAM_ALIGNMENT_CHECK.md`: an updated,
+re-scored version of the critique against what's actually built and deployed
+today, plus external research (a real, free, ubiquitous competitor
+-`PowerPoint Live Captions` - that the original critique didn't name; third-party
+UDL effectiveness numbers to cite instead of inventing impact claims; a
+correction on who the AR mode actually serves, since accessibility research
+favors tactile models for blind users over screen-rendered AR), plus 14
+questions every contributor needs to answer. Hard-stopped it in both
+`AGENTS.md` and a new `CLAUDE.md` (Claude Code's auto-loaded entry point,
+which did not exist before) so no session -- human-directed or not -- can
+miss it.
+**Threads touched:** T-29 opened, not closed -- it closes only once every
+part listed in the new file's Responses section has actually answered.
+**Next agent needs to know:** if you're reading this via `AGENTS.md`'s normal
+read order and haven't seen the STOP section at its top, re-read from the
+top -- it was inserted above the standard read-order list specifically so it
+can't be skipped. Don't build more of the personalization/content-authoring
+work discussed this session (T-29 question 14) until this thread closes;
+it's real design but unbuilt, and the cheaper, higher-leverage fixes (one
+real user interview, the two rehearsals, the `master`/integration divergence)
+haven't happened yet either.

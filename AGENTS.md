@@ -1,5 +1,20 @@
 # AccessLens agent guide
 
+## STOP — mandatory team alignment check (as of 2026-09-16)
+
+Before any further implementation work in this repository, read
+[`docs/TEAM_ALIGNMENT_CHECK.md`](docs/TEAM_ALIGNMENT_CHECK.md) in full and add
+a signed response in its Responses section. This is not optional and does
+not expire until every contributor listed there has responded. It contains a
+harsh, honest scorecard of this project against the hackathon's own judging
+criteria, external research that changes how the pitch should be framed, and
+a still-undecided product-direction question everyone needs to actually see.
+
+If you are an agent picking this repository up and your owner's name is not
+already filled in under Responses in that file, stop and tell them this gate
+exists before writing code. This applies to every part, every session, human
+or AI.
+
 ## Read in this order
 
 1. `docs/CONTEXT_RELAY.md` — current state, open threads, decisions already made
