@@ -242,3 +242,33 @@ in `apps/extension/src/`, logged here if it happens. Not in scope: an
 instructor review UI (V5), a renderer for `audioUri` or `visualization`
 (V6/V9). Hear mode falls back to local speech synthesis; every slide in this
 deploy is `no-visual`, so no interactive would appear regardless.
+
+## D8 — AWS credentials expired mid-run — USER ACTION NEEDED
+
+**What happened.** The second deploy (`make deploy`, carrying the ingest
+CommonJS fix) exited 2, and every AWS call since answers
+`Your session has expired. Please reauthenticate using 'aws login'`. The
+real job that ran right after it (`97739724-7048-4d44-b237-3497a6531fdd`)
+went straight to `failed` with no execution ARN, which is `createJob`'s
+own catch path when `StartExecution` throws — consistent with the API's
+Lambdas being fine and the caller's credentials, not the stack, being the
+problem for the describe calls; the lead cannot tell which without a
+session.
+
+**What the lead cannot do.** Inspect the stack's state, read the createJob
+or ingest logs, redeploy, or run the job. The build prompt is explicit that
+an expired credential is a user block, never something to route around.
+
+**What the user does.** Sign in again through Workshop Studio (or run
+`aws login` for the participant role) and say so. The lead then: confirms
+the stack status (expect `UPDATE_COMPLETE` or `UPDATE_ROLLBACK_COMPLETE`),
+redeploys once, runs the real job, reviews and publishes it through the
+API, verifies the pack and media on CloudFront, and runs the D7 student-view
+test against the published pack.
+
+**State at the block.** Everything is committed; the working tree holds
+only the runbook edits (`docs/DEPLOY.md`, `infra/scripts/smoke.sh`) that
+describe the running pipeline, held back until the job proves them. Local
+gates are green: 466 tests, `tsc` clean, `make check` green. The ingest
+image with the CommonJS fix builds and loads locally; whether it reached
+the stack depends on where the deploy died.
