@@ -6,6 +6,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { AccessPackSchema, InMemorySessionClient, type LiveEvent, type RoleCapability } from '../shared/contracts';
 import type { AiClient } from '../shared/aiClient';
 import type { CaptionDeps } from './LiveCaptions';
+import type { WhisperStreamOptions } from '../sources/voice/whisperStream';
 import { InstructorPanel } from './index';
 import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, solidFrame, testPack } from '../sources/screen/fixtures';
 
@@ -203,23 +204,71 @@ describe('InstructorPanel', () => {
     function fakes() {
       const track = { stop: vi.fn() };
       let onPiece: ((piece: { text: string; isFinal: boolean }) => void) | null = null;
+      let whisper: WhisperStreamOptions | null = null;
       let clock = 0;
-      const ai = { transcribeUrl: vi.fn(async () => ({ url: 'wss://transcribe.example', sampleRate: 16000, expiresIn: 300 })) } as unknown as AiClient;
+      const ai = {
+        transcribeUrl: vi.fn(async () => ({ url: 'wss://transcribe.example', sampleRate: 16000, expiresIn: 300 })),
+        transcribeClip: vi.fn(async () => 'Now look at the nucleus.'),
+      } as unknown as AiClient;
       const deps: CaptionDeps = {
         getMicrophone: vi.fn(async () => ({ getTracks: () => [track] }) as unknown as MediaStream),
         startStream: vi.fn(async options => { onPiece = options.onPiece; return { stop: vi.fn() }; }),
+        startWhisper: vi.fn(async options => { whisper = options; onPiece = options.onPiece; return { stop: vi.fn() }; }),
         now: () => clock,
       };
-      return { ai, deps, track, say: (text: string, isFinal: boolean) => act(() => onPiece!({ text, isFinal })), advance: (ms: number) => { clock += ms; } };
+      return {
+        ai, deps, track,
+        whisper: () => whisper!,
+        say: (text: string, isFinal: boolean) => act(() => onPiece!({ text, isFinal })),
+        advance: (ms: number) => { clock += ms; },
+      };
     }
 
-    it('is hidden before a session opens, and explains the AWS notice before anything is captured', async () => {
+    const chooseTranscribe = () => act(() => { container!.querySelector<HTMLInputElement>('#caption-engine-transcribe')!.click(); });
+
+    it('is hidden before a session opens, and names where the audio goes before anything is captured', async () => {
       const f = fakes();
       renderWithCaptions(f.ai, f.deps);
       expect(container!.textContent).not.toContain('Live captions');
       await click('Start');
+      expect(container!.textContent).toContain('to Whisper running on Amazon SageMaker');
+      chooseTranscribe();
       expect(container!.textContent).toContain('sends your microphone audio to Amazon Transcribe');
       expect(f.deps.getMicrophone).not.toHaveBeenCalled();
+    });
+
+    it('captions through Whisper by default: each clip goes to the gateway as the instructor, and a named region moves students', async () => {
+      const f = fakes();
+      const { events, scheduler, stream } = renderWithCaptions(f.ai, f.deps);
+      await click('Start');
+      await act(async () => { stream.enqueue(loadDemoFrame('slide-04')); scheduler.tick(1); });
+      await click('Start captions');
+      expect(f.deps.startWhisper).toHaveBeenCalledTimes(1);
+      expect(f.deps.startStream).not.toHaveBeenCalled();
+      expect(f.ai.transcribeUrl).not.toHaveBeenCalled();
+      expect(container!.querySelector<HTMLFieldSetElement>('.caption-engine')!.disabled).toBe(true);
+
+      const clip = new Uint8Array([82, 73, 70, 70]);
+      await expect(f.whisper().transcribe(clip)).resolves.toBe('Now look at the nucleus.');
+      expect(f.ai.transcribeClip).toHaveBeenCalledWith(expect.objectContaining({ role: 'instructor', token: 'signed-by-relay' }), clip);
+
+      f.say('Now look at the nucleus.', true);
+      expect(events.filter(e => e.type === 'caption.appended')).toHaveLength(1);
+      expect(events.at(-1)).toMatchObject({ type: 'region.changed', assetId: 'slide-04', regionId: 'nucleus' });
+    });
+
+    it('says to choose Amazon Transcribe when Whisper is not running, and offers Start again', async () => {
+      const f = fakes();
+      renderWithCaptions(f.ai, f.deps);
+      await click('Start');
+      await click('Start captions');
+      act(() => {
+        f.whisper().onError('Whisper is not running on AWS right now. Choose Amazon Transcribe instead.');
+        f.whisper().onClosed();
+      });
+      expect(container!.textContent).toContain('Whisper is not running on AWS right now');
+      expect(button('Start captions')).toBeTruthy();
+      expect(container!.querySelector<HTMLFieldSetElement>('.caption-engine')!.disabled).toBe(false);
     });
 
     it('opens the microphone only from Start captions, sends caption text, and moves students to a named region', async () => {
@@ -227,6 +276,7 @@ describe('InstructorPanel', () => {
       const { events, scheduler, stream } = renderWithCaptions(f.ai, f.deps);
       await click('Start');
       await act(async () => { stream.enqueue(loadDemoFrame('slide-04')); scheduler.tick(1); });
+      chooseTranscribe();
       await click('Start captions');
       expect(f.deps.getMicrophone).toHaveBeenCalledTimes(1);
       expect(f.ai.transcribeUrl).toHaveBeenCalledWith(expect.objectContaining({ role: 'instructor', token: 'signed-by-relay' }));
@@ -245,6 +295,7 @@ describe('InstructorPanel', () => {
       const { events, scheduler, stream } = renderWithCaptions(f.ai, f.deps);
       await click('Start');
       await act(async () => { stream.enqueue(loadDemoFrame('slide-04')); scheduler.tick(1); });
+      chooseTranscribe();
       await click('Start captions');
       act(() => { container!.querySelector<HTMLInputElement>('#caption-follow')!.click(); });
       f.say('The nucleolus is inside.', true);
@@ -260,6 +311,7 @@ describe('InstructorPanel', () => {
       await click('Start captions');
       expect(container!.textContent).toMatch(/Open in a full tab/);
       expect(f.ai.transcribeUrl).not.toHaveBeenCalled();
+      expect(f.deps.startWhisper).not.toHaveBeenCalled();
     });
 
     it('says captions need the AWS session when no AI endpoint is configured', async () => {

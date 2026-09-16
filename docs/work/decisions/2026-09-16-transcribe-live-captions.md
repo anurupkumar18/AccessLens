@@ -30,6 +30,27 @@ not reliably available, so it would not have kept audio local either.
 - Voice-driven sync only selects regions of the currently matched reviewed slide; the instructor can turn it off.
 - Gateway logs contain no caption, question, or answer text.
 
+## Amendment (2026-09-16): Whisper on Amazon SageMaker as the default engine
+
+**Decided by:** Omar Rizwan, choosing "Whisper on AWS (SageMaker)" over on-device Whisper and over keeping Transcribe alone.
+
+The instructor now chooses the speech engine beside *Start captions*: **Whisper
+large-v3-turbo on a SageMaker endpoint in this project's AWS account** (the
+default) or Amazon Transcribe. With Whisper, the extension cuts the microphone
+into clips at the instructor's pauses (`sources/voice/segmenter.ts`) and posts
+each clip as 16 kHz WAV to the gateway's instructor-only `/transcribe-chunk`
+route, which passes it to the endpoint in memory and returns only text. Each
+clip's text arrives as one final caption about a second after the pause.
+
+Same guardrails as above, plus:
+
+- The consent text names the engine chosen: "Whisper running on Amazon SageMaker in this project's AWS account" or "Amazon Transcribe (AWS)".
+- Audio does pass through the gateway Lambda on this path (as a clip in the request body); it is never stored or logged, and the endpoint has no data capture configured.
+- Silence and short noises are never sent: the extension's energy gate drops them, and the gateway refuses to call Whisper for a silent clip, because Whisper invents text ("Thank you.") from silence. Stock subtitle phrases it invents from noise are dropped.
+- The endpoint is a separate stack (`infra/lib/whisper-stack.ts`, `AccessLensWhisper`) that bills hourly; it is deployed for rehearsals and demos and destroyed afterwards. While it does not exist the route answers `whisper-unavailable` and the panel tells the instructor to choose Amazon Transcribe.
+
+This amendment is covered by the same pending second human review.
+
 ## Not decided here
 
 Student questions to Bedrock ("Ask this class") send question text, not media,

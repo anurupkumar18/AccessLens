@@ -1,13 +1,14 @@
 # AccessLens AI gateway
 
-The AWS model routes behind three extension features. One Lambda behind an API
-Gateway HTTP API, deployed by `infra/` in the same stack as the relay.
+The AWS model routes behind the extension's AI features. One Lambda behind an
+API Gateway HTTP API, deployed by `infra/` in the same stack as the relay.
 
 | Route | Who | What | AWS |
 | --- | --- | --- | --- |
 | `POST /ask` | instructor or student in a live session | "Ask this class": a cited answer from the class's **reviewed** Access Pack, or a decline | Bedrock, `us.anthropic.claude-sonnet-4-6` |
 | `POST /speak` | instructor or student in a live session | Hear mode: one field of one reviewed region as mp3 | Polly (neural) |
 | `POST /transcribe-url` | instructor only | A 5-minute presigned URL the instructor's browser uses to stream its microphone to Transcribe | Transcribe streaming |
+| `POST /transcribe-chunk` | instructor only | One spoken clip (16 kHz mono WAV, at most 12 s) to caption text | Whisper large-v3-turbo on a SageMaker endpoint (`AccessLensWhisper` stack) |
 
 Sonnet 4.6 because it is the only Claude model this hackathon account can invoke
 (`docs/AWS_ACCESS_VERIFICATION.md` §3).
@@ -43,6 +44,12 @@ passes through the relay or this Lambda, and no AWS credential reaches the
 extension. Only caption **text** travels on the live contract
 (`caption.appended`, text only, at most 500 characters, checked by Zod, the
 JSON schema, and the relay).
+
+**Transcribe chunk** takes a WAV clip the extension cut at a pause, checks it is
+16 kHz mono 16-bit and 0.25-12 s long, and never calls Whisper for a silent clip
+(Whisper invents text from silence). The clip goes to the endpoint in memory;
+only the text comes back, and neither is logged. It answers 503
+`whisper-unavailable` when the endpoint is not deployed.
 
 ## Charter A2 decision: remote audio for live captions
 
@@ -97,3 +104,16 @@ Built by the same `cdk deploy` as the relay (see `docs/DEPLOYMENT.md`), after
 `AiApiUrl`; put it in `.env.local` as `VITE_ACCESSLENS_AI_URL` and rebuild the
 extension. With it unset, the extension hides Ask and caption controls behind an
 explanation and Hear mode uses the browser voice.
+
+Whisper is a separate stack because its GPU endpoint (one `ml.g5.xlarge`) bills
+by the hour whether or not anyone is teaching. Deploy it for a rehearsal or demo
+and destroy it afterwards; nothing else depends on it:
+
+```sh
+cd infra
+npx cdk deploy AccessLensWhisper    # 10-15 minutes until the endpoint is InService
+npx cdk destroy AccessLensWhisper   # stops the charge
+```
+
+The smoke test sends Polly speech to Whisper as one clip and skips that check
+when the stack is not deployed.

@@ -3,6 +3,7 @@ import type { AccessPack } from '../shared/contracts';
 import { isRelayCapability, type AiClient } from '../shared/aiClient';
 import { spokenRegion } from '../sources/voice/spokenRegion';
 import { startCaptionStream, type CaptionStream, type CaptionStreamOptions } from '../sources/voice/transcribeStream';
+import { startWhisperCaptions, type WhisperStreamOptions } from '../sources/voice/whisperStream';
 import type { CaptureController, ControllerSnapshot } from './captureController';
 
 /** Partial captions are sent at most this often; finals always go. Each one is a relay event. */
@@ -11,13 +12,32 @@ export const PARTIAL_CAPTION_INTERVAL_MS = 1200;
 export interface CaptionDeps {
   getMicrophone(): Promise<MediaStream>;
   startStream(options: CaptionStreamOptions): Promise<CaptionStream>;
+  startWhisper(options: WhisperStreamOptions): Promise<CaptionStream>;
   now(): number;
 }
 
 const browserDeps: CaptionDeps = {
   getMicrophone: () => navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }),
   startStream: startCaptionStream,
+  startWhisper: options => startWhisperCaptions(options),
   now: () => Date.now(),
+};
+
+export type CaptionEngine = 'whisper' | 'transcribe';
+
+const ENGINES: Record<CaptionEngine, { label: string; hint: string; consent: string; on: string }> = {
+  whisper: {
+    label: 'Whisper on Amazon SageMaker',
+    hint: 'a caption after each pause',
+    consent: 'Turning captions on sends your microphone audio, a few seconds at a time, to Whisper running on Amazon SageMaker in this project\'s AWS account, to turn speech into text.',
+    on: 'Captions are on. Whisper captions each phrase when you pause; students see your words as text.',
+  },
+  transcribe: {
+    label: 'Amazon Transcribe',
+    hint: 'word by word',
+    consent: 'Turning captions on sends your microphone audio to Amazon Transcribe (AWS) to turn speech into text.',
+    on: 'Captions are on. Students see your words as text.',
+  },
 };
 
 interface Props {
@@ -31,16 +51,17 @@ interface Props {
 type Status = 'off' | 'starting' | 'on';
 
 /**
- * Instructor live captions through Amazon Transcribe (charter A2 decision in
- * services/ai-gateway/README.md). Off until the instructor clicks Start, which
- * is also what opens the microphone (A1). The notice says plainly where the
- * audio goes; only caption text reaches students.
+ * Instructor live captions through Whisper on SageMaker or Amazon Transcribe
+ * (charter A2 decision in services/ai-gateway/README.md). Off until the
+ * instructor clicks Start, which is also what opens the microphone (A1). The
+ * notice names the service the audio goes to; only caption text reaches students.
  */
 export function LiveCaptions({ controller, state, pack, ai, deps = browserDeps }: Props): React.ReactElement | null {
   const [status, setStatus] = useState<Status>('off');
   const [note, setNote] = useState('Captions are off.');
   const [preview, setPreview] = useState('');
   const [followVoice, setFollowVoice] = useState(true);
+  const [engine, setEngine] = useState<CaptionEngine>('whisper');
   const stream = useRef<CaptionStream | null>(null);
   const latest = useRef({ state, followVoice, lastPartialAt: Number.NEGATIVE_INFINITY, lastPartial: '' });
   latest.current.state = state;
@@ -101,22 +122,22 @@ export function LiveCaptions({ controller, state, pack, ai, deps = browserDeps }
       setNote('The microphone was not allowed. Chrome does not show the permission prompt inside the side panel: use "Open in a full tab", then allow the microphone.');
       return;
     }
+    const onError = (message: string) => setNote(`Captions hit a problem: ${message}`);
+    const onClosed = () => {
+      stream.current = null;
+      setStatus('off');
+      setNote(current => (current.startsWith('Captions hit a problem') ? current : 'Captions are off.'));
+    };
     try {
-      const grant = await ai.transcribeUrl(capability);
-      stream.current = await deps.startStream({
-        url: grant.url,
-        sampleRate: grant.sampleRate,
-        media,
-        onPiece,
-        onError: message => setNote(`Captions hit a problem: ${message}`),
-        onClosed: () => {
-          stream.current = null;
-          setStatus('off');
-          setNote(current => (current.startsWith('Captions hit a problem') ? current : 'Captions are off.'));
-        },
-      });
+      if (engine === 'whisper') {
+        const signed = capability;
+        stream.current = await deps.startWhisper({ media, transcribe: wav => ai.transcribeClip(signed, wav), onPiece, onError, onClosed });
+      } else {
+        const grant = await ai.transcribeUrl(capability);
+        stream.current = await deps.startStream({ url: grant.url, sampleRate: grant.sampleRate, media, onPiece, onError, onClosed });
+      }
       setStatus('on');
-      setNote('Captions are on. Students see your words as text.');
+      setNote(ENGINES[engine].on);
     } catch {
       media.getTracks().forEach(track => track.stop());
       setStatus('off');
@@ -135,11 +156,19 @@ export function LiveCaptions({ controller, state, pack, ai, deps = browserDeps }
     <section className="live-captions" aria-labelledby="captions-heading">
       <h3 id="captions-heading">Live captions</h3>
       <p className="consent">
-        Turning captions on sends your microphone audio to Amazon Transcribe (AWS) to turn speech into text.
-        Students get only the text. AccessLens does not record or keep your audio.
+        {ENGINES[engine].consent} Students get only the text. AccessLens does not record or keep your audio.
       </p>
       {available ? (
         <>
+          <fieldset className="caption-engine" disabled={status !== 'off'}>
+            <legend>Speech recognition</legend>
+            {(Object.keys(ENGINES) as CaptionEngine[]).map(id => (
+              <p key={id} className="caption-option">
+                <input id={`caption-engine-${id}`} type="radio" name="caption-engine" checked={engine === id} onChange={() => setEngine(id)} />
+                <label htmlFor={`caption-engine-${id}`}>{ENGINES[id].label} <span className="muted">({ENGINES[id].hint})</span></label>
+              </p>
+            ))}
+          </fieldset>
           <p className="caption-option">
             <input id="caption-follow" type="checkbox" checked={followVoice} onChange={() => setFollowVoice(!followVoice)} />
             <label htmlFor="caption-follow">Move students to the parts of the slide I name</label>

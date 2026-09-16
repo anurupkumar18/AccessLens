@@ -6,6 +6,7 @@
  *   POST /ask             any session role   grounded answer from reviewed packs (Bedrock)
  *   POST /speak           any session role   reviewed region text as speech (Polly)
  *   POST /transcribe-url  instructor only    presigned Transcribe streaming URL
+ *   POST /transcribe-chunk instructor only   one spoken clip to text (Whisper on SageMaker)
  */
 import { answerQuestion, RESPOND_TOOL, type ModelCall } from './ask.js';
 import { authorize } from './auth.js';
@@ -13,6 +14,7 @@ import { log } from './log.js';
 import { reviewedPack } from './packs.js';
 import { reviewedText } from './speak.js';
 import { presignTranscribeUrl, TRANSCRIBE_SAMPLE_RATE, TRANSCRIBE_URL_TTL_SECONDS, type Presigner } from './transcribe.js';
+import { transcribeClip, type InvokeWhisper } from './whisper.js';
 
 export interface HttpEvent {
   rawPath?: string;
@@ -29,12 +31,17 @@ export interface Deps {
   callModel: ModelCall;
   synthesize(text: string): Promise<Uint8Array>;
   signer: Presigner;
+  /** Whisper endpoint call; absent when no endpoint is configured. */
+  invokeWhisper?: InvokeWhisper;
   now(): Date;
 }
 
 /** Requests a single session may make per route per minute, per warm container. A cost guard, not a security boundary. */
-export const RATE_LIMIT_PER_MINUTE = { ask: 20, speak: 60, 'transcribe-url': 10 } as const;
+export const RATE_LIMIT_PER_MINUTE = { ask: 20, speak: 60, 'transcribe-url': 10, 'transcribe-chunk': 60 } as const;
 const MAX_BODY_BYTES = 4096;
+/** A 12 s clip of 16 kHz 16-bit mono is 384 KB, and base64 in JSON adds a third. */
+const MAX_CLIP_BODY_BYTES = 540_000;
+const INSTRUCTOR_ONLY = new Set(['transcribe-url', 'transcribe-chunk']);
 
 const respond = (statusCode: number, payload: unknown): HttpResult => ({
   statusCode,
@@ -42,10 +49,10 @@ const respond = (statusCode: number, payload: unknown): HttpResult => ({
   body: JSON.stringify(payload),
 });
 
-function parseBody(event: HttpEvent): Record<string, unknown> | null {
+function parseBody(event: HttpEvent, maxBytes = MAX_BODY_BYTES): Record<string, unknown> | null {
   if (!event.body) return null;
   const raw = event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body;
-  if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) return null;
+  if (Buffer.byteLength(raw, 'utf8') > maxBytes) return null;
   try {
     const parsed: unknown = JSON.parse(raw);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
@@ -73,14 +80,14 @@ export function createHandler(deps: Deps): (event: HttpEvent) => Promise<HttpRes
   return async function handle(event) {
     const started = Date.now();
     const method = event.requestContext?.http?.method ?? 'GET';
-    const route = (event.rawPath ?? event.requestContext?.http?.path ?? '').replace(/^\/+/, '').replace(/^[^/]+\/(?=ask$|speak$|transcribe-url$)/, '');
+    const route = (event.rawPath ?? event.requestContext?.http?.path ?? '').replace(/^\/+/, '').replace(/^[^/]+\/(?=ask$|speak$|transcribe-url$|transcribe-chunk$)/, '');
     if (method !== 'POST' || !(route in RATE_LIMIT_PER_MINUTE)) return respond(404, { error: 'not-found' });
     const name = route as keyof typeof RATE_LIMIT_PER_MINUTE;
 
-    const body = parseBody(event);
+    const body = parseBody(event, name === 'transcribe-chunk' ? MAX_CLIP_BODY_BYTES : MAX_BODY_BYTES);
     if (!body) return respond(400, { error: 'body-invalid' });
 
-    const auth = authorize(body.capability, deps.secret, name === 'transcribe-url' ? ['instructor'] : ['instructor', 'student'], deps.now());
+    const auth = authorize(body.capability, deps.secret, INSTRUCTOR_ONLY.has(name) ? ['instructor'] : ['instructor', 'student'], deps.now());
     if (!auth.ok) {
       log('warn', 'refused', { route: name, status: auth.status, reason: auth.reason });
       return respond(auth.status, { error: auth.reason });
@@ -91,6 +98,21 @@ export function createHandler(deps: Deps): (event: HttpEvent) => Promise<HttpRes
       const url = await presignTranscribeUrl(deps.signer, deps.region, deps.now());
       log('info', 'transcribe-url issued', { route: name, role: auth.role, durationMs: Date.now() - started });
       return respond(200, { url, sampleRate: TRANSCRIBE_SAMPLE_RATE, expiresIn: TRANSCRIBE_URL_TTL_SECONDS });
+    }
+
+    if (name === 'transcribe-chunk') {
+      if (!deps.invokeWhisper) return respond(503, { error: 'whisper-unavailable' });
+      if (typeof body.audio !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.audio)) return respond(400, { error: 'audio-invalid' });
+      const result = await transcribeClip(Buffer.from(body.audio, 'base64'), deps.invokeWhisper);
+      // The clip and its text are content (A4): neither has a path to this line.
+      log(result.status === 'unavailable' ? 'error' : 'info', 'transcribe-chunk', {
+        route: name, role: auth.role, status: result.status,
+        reason: result.status === 'invalid' ? result.reason : undefined,
+        durationMs: Date.now() - started,
+      });
+      if (result.status === 'invalid') return respond(400, { error: result.reason });
+      if (result.status === 'unavailable') return respond(503, { error: 'whisper-unavailable' });
+      return respond(200, { text: result.text });
     }
 
     const pack = reviewedPack(body.packId, body.packVersion);
@@ -129,9 +151,10 @@ let handleWithAws: ((event: HttpEvent) => Promise<HttpResult>) | undefined;
 /** Lambda entry point. AWS clients are created once per container, on first use. */
 export async function handler(event: HttpEvent): Promise<HttpResult> {
   if (!handleWithAws) {
-    const [{ AnthropicBedrock }, { PollyClient, SynthesizeSpeechCommand }, { SignatureV4 }, { Sha256 }, { defaultProvider }] = await Promise.all([
+    const [{ AnthropicBedrock }, { PollyClient, SynthesizeSpeechCommand }, { SageMakerRuntimeClient, InvokeEndpointCommand }, { SignatureV4 }, { Sha256 }, { defaultProvider }] = await Promise.all([
       import('@anthropic-ai/bedrock-sdk'),
       import('@aws-sdk/client-polly'),
+      import('@aws-sdk/client-sagemaker-runtime'),
       import('@smithy/signature-v4'),
       import('@aws-crypto/sha256-js'),
       import('@aws-sdk/credential-provider-node'),
@@ -142,6 +165,8 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
     const model = process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-6';
     const bedrock = new AnthropicBedrock({ awsRegion: region });
     const polly = new PollyClient({ region });
+    const whisperEndpoint = process.env.WHISPER_ENDPOINT_NAME;
+    const sagemaker = whisperEndpoint ? new SageMakerRuntimeClient({ region }) : undefined;
 
     handleWithAws = createHandler({
       secret,
@@ -166,6 +191,13 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
         return result.AudioStream.transformToByteArray();
       },
       signer: new SignatureV4({ credentials: defaultProvider(), region, service: 'transcribe', sha256: Sha256 }),
+      invokeWhisper: sagemaker && whisperEndpoint
+        ? async wav => {
+          // audio/x-audio: the Hugging Face toolkit hands the bytes to the ASR pipeline, which decodes WAV with ffmpeg.
+          const result = await sagemaker.send(new InvokeEndpointCommand({ EndpointName: whisperEndpoint, ContentType: 'audio/x-audio', Accept: 'application/json', Body: wav }));
+          return JSON.parse(new TextDecoder().decode(result.Body));
+        }
+        : undefined,
     });
   }
   return handleWithAws(event);

@@ -35,6 +35,7 @@ import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambd
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
+import { WHISPER_ENDPOINT_NAME } from './whisper-stack.js';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -169,6 +170,9 @@ export class LiveSessionStack extends Stack {
       environment: {
         CAPABILITY_SECRET: SecretValue.secretsManager(capabilitySecret.secretArn).unsafeUnwrap(),
         BEDROCK_MODEL_ID: bedrockModelId,
+        // By name, not reference: the endpoint's stack is deployed only when wanted,
+        // and the route answers whisper-unavailable while it does not exist.
+        WHISPER_ENDPOINT_NAME,
       },
     });
 
@@ -186,6 +190,10 @@ export class LiveSessionStack extends Stack {
     }));
     aiHandler.addToRolePolicy(new PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }));
     aiHandler.addToRolePolicy(new PolicyStatement({ actions: ['transcribe:StartStreamTranscriptionWebSocket'], resources: ['*'] }));
+    aiHandler.addToRolePolicy(new PolicyStatement({
+      actions: ['sagemaker:InvokeEndpoint'],
+      resources: [`arn:aws:sagemaker:${this.region}:${this.account}:endpoint/${WHISPER_ENDPOINT_NAME}`],
+    }));
 
     const aiApi = new HttpApi(this, 'AiApi', {
       apiName: 'accesslens-ai',
@@ -201,7 +209,7 @@ export class LiveSessionStack extends Stack {
       },
     });
     const aiIntegration = new HttpLambdaIntegration('AiIntegration', aiHandler);
-    for (const path of ['/ask', '/speak', '/transcribe-url']) {
+    for (const path of ['/ask', '/speak', '/transcribe-url', '/transcribe-chunk']) {
       aiApi.addRoutes({ path, methods: [HttpMethod.POST], integration: aiIntegration });
     }
 

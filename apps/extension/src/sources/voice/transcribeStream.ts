@@ -1,6 +1,5 @@
-import workletUrl from './pcmCapture.worklet.js?url';
 import { audioEvent, decodeMessage, transcriptFrom, type TranscriptPiece } from './eventStream';
-import { downsampleToPcm16 } from './pcm';
+import { startMicCapture, type MicCapture } from './micCapture';
 
 export interface CaptionStream { stop(): void }
 
@@ -29,31 +28,16 @@ export async function startCaptionStream(options: CaptionStreamOptions): Promise
     socket.addEventListener('error', () => reject(new Error('Could not reach Amazon Transcribe.')), { once: true });
   });
 
-  const context = new AudioContext();
   let stopped = false;
-  const cleanup = () => {
-    options.media.getTracks().forEach(track => track.stop());
-    void context.close().catch(() => undefined);
-  };
-
+  let mic: MicCapture;
   try {
-    await context.audioWorklet.addModule(workletUrl);
+    mic = await startMicCapture(options.media, options.sampleRate, pcm => {
+      if (!stopped && socket.readyState === WebSocket.OPEN) socket.send(audioEvent(pcm));
+    });
   } catch (error) {
     socket.close();
-    cleanup();
     throw error;
   }
-  const source = context.createMediaStreamSource(options.media);
-  const capture = new AudioWorkletNode(context, 'pcm-capture');
-  // A worklet is only pulled while connected to the destination; a silent gain keeps it running without playing the mic back.
-  const silent = context.createGain();
-  silent.gain.value = 0;
-  source.connect(capture).connect(silent).connect(context.destination);
-
-  capture.port.onmessage = (message: MessageEvent<Float32Array>) => {
-    if (stopped || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(audioEvent(downsampleToPcm16(message.data, context.sampleRate, options.sampleRate)));
-  };
 
   socket.addEventListener('message', message => {
     try {
@@ -63,9 +47,7 @@ export async function startCaptionStream(options: CaptionStreamOptions): Promise
     }
   });
   socket.addEventListener('close', () => {
-    capture.port.onmessage = null;
-    source.disconnect();
-    cleanup();
+    mic.stop();
     options.onClosed();
   });
 

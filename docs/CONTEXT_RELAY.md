@@ -903,3 +903,25 @@ message in the frozen protocol, a team decision).
 they drive the relay without the extension client, so they show the relay's
 own behaviour that the client now works around. Test the unpacked build, not
 only `npx vite`: three of these bugs existed only under the extension origin.
+
+### RL-038 — 2026-09-16 — Part 4 + Part 1 — Omar Rizwan
+
+**Landed:** Whisper for the instructor's voice. `infra/lib/whisper-stack.ts`
+(`AccessLensWhisper`, separate from the live stack) runs
+`openai/whisper-large-v3-turbo` on one `ml.g5.xlarge` SageMaker endpoint in the
+Hugging Face inference container. The gateway's instructor-only
+`/transcribe-chunk` route takes one 16 kHz mono WAV clip (0.25-12 s), skips
+silent clips, calls the endpoint, and returns text. In the extension, Live
+captions offers "Whisper on Amazon SageMaker" (default) or Amazon Transcribe;
+Whisper captions arrive per phrase, cut at pauses by
+`sources/voice/segmenter.ts`, and still drive voice-driven region sync. Consent
+text names the chosen engine. The A2 decision record has an amendment for this.
+`make check` green (extension 349, relay 58, gateway 24).
+**Threads touched:** T-31 still open (the amendment is under the same pending
+second review).
+**Next agent needs to know:** the endpoint bills about $1.41 an hour while it
+exists, used or not: `npx cdk destroy AccessLensWhisper` after a demo. The live
+stack must be redeployed for the new route and its `sagemaker:InvokeEndpoint`
+permission. Whisper invents text from silence, which is why both the extension
+and the gateway gate on audio level; do not remove either gate. Not yet
+exercised against a real endpoint when this entry was written.

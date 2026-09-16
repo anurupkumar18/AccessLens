@@ -9,6 +9,21 @@ import { reviewedPack, type ReviewedPack } from '../src/packs.js';
 import { passagesFor, retrieve } from '../src/retrieve.js';
 import { reviewedText } from '../src/speak.js';
 import { presignTranscribeUrl } from '../src/transcribe.js';
+import { readWav, transcribeClip } from '../src/whisper.js';
+
+/** 16-bit mono WAV of a tone at `amplitude` (0 for silence). */
+function wav(seconds: number, amplitude = 3000, sampleRate = 16000, channels = 1): Uint8Array {
+  const count = Math.round(seconds * sampleRate);
+  const bytes = new Uint8Array(44 + count * 2 * channels);
+  const view = new DataView(bytes.buffer);
+  const ascii = (offset: number, text: string) => [...text].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  ascii(0, 'RIFF'); view.setUint32(4, bytes.length - 8, true); ascii(8, 'WAVE');
+  ascii(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2 * channels, true); view.setUint16(32, 2 * channels, true); view.setUint16(34, 16, true);
+  ascii(36, 'data'); view.setUint32(40, count * 2 * channels, true);
+  for (let i = 0; i < count * channels; i++) view.setInt16(44 + i * 2, Math.round(amplitude * Math.sin(i / 8)), true);
+  return bytes;
+}
 
 const SECRET = 'test-secret-with-enough-entropy-000000000000';
 const NOW = new Date('2026-09-16T18:00:00Z');
@@ -119,6 +134,34 @@ describe('presignTranscribeUrl', () => {
   });
 });
 
+describe('transcribeClip (Whisper)', () => {
+  it('reads a 16 kHz mono WAV and returns the endpoint text, tidied', async () => {
+    expect(readWav(wav(1))).toMatchObject({ sampleRate: 16000, channels: 1, bitsPerSample: 16, format: 1 });
+    const invoke = vi.fn(async () => ({ text: '  Now look at   the nucleus. ' }));
+    await expect(transcribeClip(wav(1.5), invoke)).resolves.toEqual({ status: 'ok', text: 'Now look at the nucleus.' });
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('never sends silence, and drops the stock phrases Whisper invents from noise', async () => {
+    const invoke = vi.fn(async () => [{ text: 'Thanks for watching!' }]);
+    await expect(transcribeClip(wav(1, 0), invoke)).resolves.toEqual({ status: 'ok', text: '' });
+    expect(invoke).not.toHaveBeenCalled();
+    await expect(transcribeClip(wav(1), invoke)).resolves.toEqual({ status: 'ok', text: '' });
+  });
+
+  it('refuses what is not a short 16 kHz mono clip, and reports an endpoint failure as unavailable', async () => {
+    const invoke = vi.fn(async () => ({ text: 'x' }));
+    await expect(transcribeClip(new TextEncoder().encode('not audio at all, just some words'), invoke)).resolves.toMatchObject({ reason: 'audio-not-wav' });
+    await expect(transcribeClip(wav(1, 3000, 44100), invoke)).resolves.toMatchObject({ reason: 'audio-format-unsupported' });
+    await expect(transcribeClip(wav(1, 3000, 16000, 2), invoke)).resolves.toMatchObject({ reason: 'audio-format-unsupported' });
+    await expect(transcribeClip(wav(0.1), invoke)).resolves.toMatchObject({ reason: 'audio-too-short' });
+    await expect(transcribeClip(wav(13), invoke)).resolves.toMatchObject({ reason: 'audio-too-long' });
+    expect(invoke).not.toHaveBeenCalled();
+    await expect(transcribeClip(wav(1), async () => { throw new Error('ValidationError: endpoint not found'); })).resolves.toEqual({ status: 'unavailable' });
+    await expect(transcribeClip(wav(1), async () => ({ unexpected: true }))).resolves.toEqual({ status: 'unavailable' });
+  });
+});
+
 describe('handler', () => {
   function setup(overrides: Partial<Deps> = {}) {
     const deps: Deps = {
@@ -167,6 +210,33 @@ describe('handler', () => {
     expect(JSON.parse(first.body)).toEqual({ contentType: 'audio/mpeg', audio: 'AQID' });
     expect(deps.synthesize).toHaveBeenCalledTimes(1);
     expect((await handle(post('speak', { ...body, field: 'text', text: 'Say anything' }))).statusCode).toBe(404);
+  });
+
+  it('transcribes an instructor clip with Whisper, never a student one, and says when Whisper is not deployed', async () => {
+    const invokeWhisper = vi.fn(async () => ({ text: 'The mitochondrion releases energy.' }));
+    const { handle } = setup({ invokeWhisper });
+    const audio = Buffer.from(wav(2)).toString('base64');
+    expect((await handle(post('transcribe-chunk', { capability: student, audio }))).statusCode).toBe(403);
+    const result = await handle(post('transcribe-chunk', { capability: instructor, audio }));
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body)).toEqual({ text: 'The mitochondrion releases energy.' });
+    expect((await handle(post('transcribe-chunk', { capability: instructor, audio: 'not base64!' }))).statusCode).toBe(400);
+    expect((await handle(post('transcribe-chunk', { capability: instructor, audio: Buffer.from(wav(0.1)).toString('base64') }))).statusCode).toBe(400);
+
+    const { handle: withoutEndpoint } = setup();
+    const missing = await withoutEndpoint(post('transcribe-chunk', { capability: instructor, audio }));
+    expect(missing.statusCode).toBe(503);
+    expect(JSON.parse(missing.body)).toEqual({ error: 'whisper-unavailable' });
+  });
+
+  it('does not log clip text', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((line: string) => { lines.push(line); });
+    const { handle } = setup({ invokeWhisper: async () => ({ text: 'secret lecture words' }) });
+    await handle(post('transcribe-chunk', { capability: instructor, audio: Buffer.from(wav(1)).toString('base64') }));
+    spy.mockRestore();
+    expect(lines.join('\n')).toContain('transcribe-chunk');
+    expect(lines.join('\n')).not.toContain('secret lecture words');
   });
 
   it('rejects unknown routes, non-POST methods, bad bodies, and oversized bodies', async () => {

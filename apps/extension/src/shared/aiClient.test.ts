@@ -34,6 +34,17 @@ describe('aiClient', () => {
     await expect(bad.transcribeUrl(capability)).rejects.toBeInstanceOf(AiUnavailableError);
   });
 
+  it('sends a Whisper clip as base64 WAV to /transcribe-chunk and returns its text', async () => {
+    const fetchImpl = reply(200, { text: 'Now look at the nucleus.' });
+    const client = createAiClient('https://ai.example', fetchImpl as unknown as typeof fetch);
+    await expect(client.transcribeClip(capability, new Uint8Array([82, 73, 70, 70]))).resolves.toBe('Now look at the nucleus.');
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://ai.example/transcribe-chunk');
+    expect(JSON.parse(init.body as string)).toEqual({ capability, audio: 'UklGRg==' });
+    const missing = createAiClient('https://ai.example', reply(503, { error: 'whisper-unavailable' }) as unknown as typeof fetch);
+    await expect(missing.transcribeClip(capability, new Uint8Array([1]))).rejects.toMatchObject({ status: 503 });
+  });
+
   it('treats mock-transport capabilities as not signed by the relay', () => {
     expect(isRelayCapability(capability)).toBe(true);
     expect(isRelayCapability({ ...capability, token: 'mock-student-S1' })).toBe(false);
