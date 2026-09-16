@@ -43,6 +43,14 @@ export const packChoices: PackChoice[] = [
   { id: 'bio-cell-demo', label: 'Cell Structure (reviewed)', pack: AccessPackSchema.parse(reviewedBioPack), status: 'reviewed' },
 ];
 
+/** Published, instructor-reviewed packs any instructor can present without
+ *  signing in, fetched from the asset distribution exactly like a signed-in
+ *  instructor's own. They keep demo lessons reachable where Google sign-in is
+ *  not available (an origin the OAuth client does not list, T-41). */
+export const publishedDemoPacks: PublishedPackSummary[] = [
+  { packId: 'introduction-to-hnsw', title: 'Introduction to HNSW', version: 1, packUrl: 'packs/introduction-to-hnsw/1.json', publishedAt: '2026-09-16T18:24:16.000Z' },
+];
+
 function publishedChoiceId(pack: PublishedPackSummary): string { return `published:${pack.packId}`; }
 
 interface Props {
@@ -79,7 +87,8 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
   // The pack is chosen once per instructor session: the panel is keyed on it
   // so switching packs remounts the controller instead of mixing packs.
   const choice = packChoices.find(c => c.id === choiceId) ?? packChoices[0];
-  const publishedChoice = publishedPacks.find(p => publishedChoiceId(p) === choiceId);
+  const demoPacks = publishedDemoPacks.filter(demo => !publishedPacks.some(own => own.packId === demo.packId));
+  const publishedChoice = [...publishedPacks, ...demoPacks].find(p => publishedChoiceId(p) === choiceId);
   useEffect(() => {
     if (!publishedChoice) { setInstructorPack(null); setInstructorPackError(null); return; }
     let stale = false;
@@ -150,6 +159,11 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
                   {publishedPacks.length > 0 && (
                     <optgroup label="Your published packs">
                       {publishedPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
+                    </optgroup>
+                  )}
+                  {demoPacks.length > 0 && (
+                    <optgroup label="Published demo packs">
+                      {demoPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
                     </optgroup>
                   )}
                   <optgroup label="Bundled demo packs">

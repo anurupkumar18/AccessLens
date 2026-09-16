@@ -177,6 +177,34 @@ describe('App shell', () => {
     root.unmount();
   });
 
+  it('offers the published demo packs without signing in, and presents one when picked', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const published = AccessPackSchema.parse({ ...testPack, packId: 'introduction-to-hnsw', title: 'Introduction to HNSW', version: 1 });
+    const fetchPublishedPack = vi.fn(async () => published);
+    const authoringClient = { me: vi.fn(async () => { throw new Error('not signed in'); }) } as unknown as AuthoringClient;
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<App client={new InMemorySessionClient()} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} fetchPublishedPack={fetchPublishedPack} authoringClient={authoringClient} />);
+      await Promise.resolve();
+    });
+
+    const select = container.querySelector<HTMLSelectElement>('#pack-choice')!;
+    expect(Array.from(select.options).map(o => o.textContent)).toEqual(['Introduction to HNSW (v1)', 'Cell Structure (reviewed)']);
+    expect(select.value).toBe('bio-cell-demo');
+    expect(fetchPublishedPack).not.toHaveBeenCalled();
+
+    await act(async () => {
+      select.value = 'published:introduction-to-hnsw';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+    });
+    await act(async () => { await Promise.resolve(); });
+    expect(fetchPublishedPack).toHaveBeenCalledWith('introduction-to-hnsw', 1);
+    expect(container.textContent).toContain('Pack: Introduction to HNSW · v1');
+    root.unmount();
+  });
+
   it('offers the signed-in instructor their published packs and presents the newest one', async () => {
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -193,7 +221,8 @@ describe('App shell', () => {
     await act(async () => { await Promise.resolve(); });
 
     const select = container.querySelector<HTMLSelectElement>('#pack-choice')!;
-    expect(Array.from(select.options).map(o => o.textContent)).toContain(`${published.title} (v${published.version})`);
+    // Their own copy of a demo pack is listed once, under their packs.
+    expect(Array.from(select.options).map(o => o.textContent).filter(t => t === `${published.title} (v${published.version})`)).toHaveLength(1);
     expect(select.value).toBe(`published:${published.packId}`);
     expect(fetchPublishedPack).toHaveBeenCalledWith(published.packId, published.version);
     expect(container.textContent).toContain(`Pack: ${published.title} · v${published.version}`);
