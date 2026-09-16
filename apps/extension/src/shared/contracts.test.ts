@@ -39,12 +39,33 @@ describe('AccessLens contracts',()=>{
       expect(LiveEventSchema.safeParse({...base, type:'region.changed', regionId:'mitochondrion'}).success).toBe(false);
     });
 
-    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
+    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
       'accepts base-only fields for %s',
       (type) => {
         expect(LiveEventSchema.safeParse({...base, type}).success).toBe(true);
       }
     );
+
+    // T-16: caption.appended used to sit in the list above, which meant a
+    // caption event could not carry a caption. It now requires one.
+    it('requires a caption on caption.appended', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended'}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({
+        ...base, type:'caption.appended', caption:{text:'the mitochondrion releases energy', isFinal:true},
+      }).success).toBe(true);
+    });
+
+    it('accepts an interim caption and an optional language', () => {
+      expect(LiveEventSchema.safeParse({
+        ...base, type:'caption.appended', caption:{text:'the mito', isFinal:false, lang:'en-US'},
+      }).success).toBe(true);
+    });
+
+    it('still refuses a caption event that names an asset', () => {
+      expect(LiveEventSchema.safeParse({
+        ...base, type:'caption.appended', caption:{text:'x', isFinal:true}, assetId:'cell-slide-03',
+      }).success).toBe(false);
+    });
 
     it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
       'rejects %s carrying an assetId',

@@ -5,6 +5,7 @@ import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { AudioView } from '../renderers/AudioView';
 import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
+import { AccessibilityBar } from '../accessibility/AccessibilityBar';
 
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
@@ -19,22 +20,43 @@ interface Props {
   onPreferencesChange(preferences: StudentPreferences): void;
 }
 
-const modes: Array<{ id: StudentPreferences['mode']; label: string }> = [
+const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
   { id: 'audio', label: 'Hear' },
   { id: 'ar', label: 'AR' },
 ];
 
+/** AR is offered only when the pack actually carries a scene to render. */
+function modesFor(pack: AccessPack): typeof allModes {
+  const hasArScene = pack.assets.some((asset) => asset.arScene !== undefined);
+  return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
+}
+
 export function StudentExperience({ client, event, pack, preferences, onPreferencesChange }: Props): React.ReactElement {
   const [sessionId, setSessionId] = useState('');
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
+  // Kept so a student can be caught up from where they actually stopped
+  // following, rather than from an arbitrary "last five minutes".
+  const [history, setHistory] = useState<LiveEvent[]>([]);
+  const [lastSeenSequence, setLastSeenSequence] = useState(0);
 
   useEffect(() => {
     if (!event) return;
     setLive((current) => applyLiveEvent(current, event, pack));
+    // Bounded: a long lecture should not grow this without limit, and a recap
+    // only ever needs the recent past.
+    setHistory((current) => [...current, event].slice(-200));
   }, [event, pack]);
+
+  useEffect(() => {
+    // "Seen" means the tab was visible when the event arrived. Coming back to
+    // a backgrounded tab is exactly the moment "what did I miss" is for.
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    const sequence = (event as { sequence?: number } | null)?.sequence;
+    if (typeof sequence === 'number') setLastSeenSequence(sequence);
+  }, [event]);
 
   useEffect(() => {
     // Real socket connectivity, when the transport can report it (Part 4's
@@ -48,6 +70,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       setLive((current) => (connected ? markLiveStateReconnected(current) : markLiveStateStale(current)));
     });
   }, [client]);
+
+  const currentAsset = pack.assets.find((asset) => asset.assetId === live.assetId);
+  const currentRegion = currentAsset?.regions.find((region) => region.regionId === live.regionId);
+  const currentRegionText = currentRegion?.shortDescription ?? '';
+  const captionsActive = history.some((item) => item.type === 'caption.appended');
 
   async function join(): Promise<void> {
     try {
@@ -73,7 +100,10 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
     window.setTimeout(() => document.querySelector<HTMLElement>(`#mode-tab-${modes[nextIndex].id}`)?.focus(), 0);
   }
 
-  const panelId = `student-panel-${preferences.mode}`;
+  const modes = modesFor(pack);
+  // A saved preference can name a mode this pack does not offer.
+  const activeMode = modes.some((mode) => mode.id === preferences.mode) ? preferences.mode : 'focus';
+  const panelId = `student-panel-${activeMode}`;
 
   return (
     <section
@@ -116,9 +146,9 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
             id={`mode-tab-${mode.id}`}
             type="button"
             role="tab"
-            aria-selected={preferences.mode === mode.id}
+            aria-selected={activeMode === mode.id}
             aria-controls={panelId}
-            tabIndex={preferences.mode === mode.id ? 0 : -1}
+            tabIndex={activeMode === mode.id ? 0 : -1}
             onClick={() => updatePreferences({ mode: mode.id })}
             onKeyDown={(keyEvent) => moveMode(index, keyEvent.key)}
           >
@@ -127,16 +157,26 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         ))}
       </div>
 
-      <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${preferences.mode}`} tabIndex={0}>
-        {preferences.mode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {preferences.mode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {preferences.mode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {preferences.mode === 'ar' ? (
+      <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
+        {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
             <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
           </Suspense>
         ) : null}
       </div>
+
+      <AccessibilityBar
+        events={history}
+        event={event}
+        pack={pack}
+        currentText={currentRegionText}
+        lastSeenSequence={lastSeenSequence}
+        captionsActive={captionsActive}
+        reducedMotion={preferences.reducedMotion}
+      />
 
       <fieldset className="display-settings">
         <legend>Display preferences</legend>

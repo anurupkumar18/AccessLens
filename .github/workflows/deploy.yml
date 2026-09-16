@@ -1,0 +1,133 @@
+name: Deploy
+
+# Five people and their agents push to this repository, so the deploy has to be
+# boring: it runs the same checks a PR does, it never runs two at once, and it
+# never deploys something that did not pass.
+on:
+  push:
+    branches: [accesslens-extension-ar-pivot, master]
+  workflow_dispatch:
+    inputs:
+      skip_checks:
+        description: 'Deploy without running checks (demo emergencies only)'
+        type: boolean
+        default: false
+
+# One deploy at a time, and let a newer commit supersede one that is still
+# queued. Without this, two agents pushing a minute apart race each other into
+# CloudFormation and the loser fails with an unhelpful conflict.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # required to request the GitHub OIDC token
+  contents: read
+
+jobs:
+  check:
+    if: ${{ !inputs.skip_checks }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix services/live-session
+      - run: make check
+
+  deploy:
+    needs: [check]
+    # `always()` plus an explicit result test, so a deliberate skip_checks run
+    # still deploys while a genuine check failure still blocks.
+    if: ${{ always() && (needs.check.result == 'success' || inputs.skip_checks) }}
+    runs-on: ubuntu-latest
+    environment: aws
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Check the deploy role is configured
+        run: |
+          if [ -z "${{ vars.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            echo "::error::AWS_DEPLOY_ROLE_ARN repository variable is not set."
+            echo "Deploy infra/lib/github-deploy-role-stack.ts and set its output."
+            echo "See docs/DEPLOYMENT.md."
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: accesslens-deploy-${{ github.run_id }}
+
+      - name: Build the Lambda bundles
+        run: |
+          npm ci
+          npm ci --prefix services/live-session && npm run build --prefix services/live-session
+          npm ci --prefix services/orb-explain  && npm run build --prefix services/orb-explain
+
+      - name: Deploy the stacks
+        run: |
+          npm ci --prefix infra
+          npx --prefix infra cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json
+        working-directory: .
+
+      - name: Rebuild the extension against the deployed endpoints
+        run: |
+          node -e '
+            const o = require("/tmp/outputs.json");
+            const find = (k) => Object.values(o).map(s => s[k]).find(Boolean) ?? "";
+            const lines = [
+              `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
+              `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
+              `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl")}`,
+            ];
+            require("fs").writeFileSync(".env.local", lines.join("\n") + "\n");
+            console.log(lines.join("\n"));
+          '
+          npm run build
+
+      - name: Package the extension for download
+        run: |
+          cd dist && zip -qr ../accesslens-extension.zip . && cd ..
+          echo "packed $(du -h accesslens-extension.zip | cut -f1)"
+
+      - name: Publish the extension and pack assets
+        run: |
+          BUCKET=$(node -e '
+            const o = require("/tmp/outputs.json");
+            console.log(Object.values(o).map(s => s.DistributionBucket).find(Boolean) ?? "");
+          ')
+          if [ -z "$BUCKET" ]; then
+            echo "::notice::No distribution bucket in outputs; skipping publish."
+            exit 0
+          fi
+          aws s3 cp accesslens-extension.zip "s3://$BUCKET/accesslens-extension.zip"
+          aws s3 sync packages/access-packs/bio-cell-demo "s3://$BUCKET/packs/bio-cell-demo" --delete
+          aws s3 cp docs/install.html "s3://$BUCKET/index.html" || true
+
+      - name: Summarise what is live
+        run: |
+          echo "### AccessLens deployed" >> $GITHUB_STEP_SUMMARY
+          node -e '
+            const o = require("/tmp/outputs.json");
+            for (const [stack, outs] of Object.entries(o))
+              for (const [k, v] of Object.entries(outs))
+                console.log(`- **${k}** (${stack}): ${v}`);
+          ' >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: accesslens-extension
+          path: accesslens-extension.zip
+          retention-days: 7

@@ -55,7 +55,6 @@
       "sessionId": "sess-demo-0001",
       "packId": "bio-cell-demo",
       "packVersion": 1,
-      "assetId": "cell-slide-03",
       "caption": {
         "text": "The mitochondrion is where most of the cell's usable energy is released.",
         "isFinal": true
@@ -69,7 +68,6 @@
       "sessionId": "sess-demo-0001",
       "packId": "bio-cell-demo",
       "packVersion": 1,
-      "assetId": "cell-slide-03",
       "caption": {
         "text": "Notice the folded inner membrane; the folds increase the surface area.",
         "isFinal": true

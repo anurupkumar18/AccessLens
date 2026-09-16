@@ -89,6 +89,24 @@ def check_part1() -> list[Check]:
             Check("1", "built extension in dist/", MISSING if problems else READY,
                   "; ".join(problems) or f"MV3, {len(data.get('permissions', []))} permissions")
         )
+    # A build made without .env.local compiles and passes every test, and is
+    # dead on arrival: Vite inlines these at build time, so an unconfigured
+    # bundle can never reach a service no matter what the environment holds at
+    # run time. `make check` rebuilds dist/, so this is one stray command away
+    # from being published.
+    bundles = list((ROOT / "dist").rglob("*.js"))
+    if bundles:
+        blob = "".join(b.read_text(errors="ignore") for b in bundles)
+        wired = [name for name, needle in (
+            ("relay", "execute-api"),
+            ("services", "lambda-url"),
+        ) if needle in blob]
+        checks.append(
+            Check("1", "dist/ wired to deployed services", READY if len(wired) == 2 else WARN,
+                  "relay and service endpoints inlined" if len(wired) == 2
+                  else f"only {wired or 'none'} inlined — rebuild with .env.local before publishing")
+        )
+
     contracts = sorted((ROOT / "packages" / "contracts").glob("*.schema.json"))
     checks.append(
         Check("1", "shared contracts", READY if contracts else MISSING,
@@ -178,6 +196,21 @@ def check_aws() -> list[Check]:
             Check("4", "CDK bootstrap", WARN,
                   "not bootstrapped — run `npx cdk bootstrap` once before the first deploy")
         )
+
+    try:
+        stacks = boto3.client("cloudformation").describe_stacks()["Stacks"]
+        names = {s["StackName"] for s in stacks}
+        for label, stack in (
+            ("live session stack", "AccessLensLiveSession"),
+            ("orb explain stack", "AccessLensOrbExplain"),
+            ("distribution stack", "AccessLensDistribution"),
+        ):
+            checks.append(
+                Check("4", label, READY if stack in names else WARN,
+                      "deployed" if stack in names else f"{stack} not deployed")
+            )
+    except (ClientError, BotoCoreError) as error:
+        checks.append(Check("4", "deployed stacks", WARN, type(error).__name__))
 
     try:
         apis = boto3.client("apigatewayv2").get_apis().get("Items", [])
