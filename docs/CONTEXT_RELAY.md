@@ -813,3 +813,26 @@ a local `.env.local` is enough to put the dev server on the deployed relay
 **Next agent needs to know:** the HNSW draft pack's slides 04 and 05 are 16 bits
 apart, under the 2x-margin (28) rule `validate_pack.py` enforces for the bio pack,
 so it would show Unmatched between those two on a real capture. Demo on the bio pack.
+
+### RL-034 — 2026-09-16 — Part 2 + Part 1 — Omar Rizwan
+
+**Landed:** window and whole-screen shares now sync. Reproduced first: on the
+reviewed pack the whole-frame fingerprint of a slide in a viewer window was 31
+bits from itself and a slide in half a screen 47-55, against a threshold of 26,
+so only tab shares ever matched. `sources/screen/locate.ts` searches window and
+screen frames for the slide rectangle when the browser reports those surfaces;
+tabs keep the old path. Measured on synthesized frames: reviewed pack 25/25,
+0 false matches in 117 non-slide frames (guards in the screen README). The host
+now caps sampling at 1280 px wide, excludes AccessLens's own tab from the
+chooser, offers "share this tab instead", and reports the surface, which the
+instructor banner names with a fix-it hint on Unmatched. Also a header switch
+for dyslexia-friendly text (bundled OpenDyslexic, sentence case, wider line
+spacing), stored in localStorage only — the font half of AL-010.
+**Threads touched:** T-25 and AL-001/AL-002 still OPEN: none of this has run
+against a real `getDisplayMedia()` window or screen; the unit tests use
+composed frames.
+**Next agent needs to know:** the synthetic test pack's slides are simple enough
+to be found inside `unknown-01` in a window share, so window-share tests use the
+reviewed pack. The HNSW draft misses 9/40 located cases (pale slides, 04/05
+near-duplicates). Run the AL-001 matrix with Window and Entire Screen before
+claiming this in the demo.
