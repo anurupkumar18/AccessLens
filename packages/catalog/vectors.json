@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "dimensions": 256,
   "model": "amazon.titan-embed-text-v2:0",
-  "skipHarness": true,
+  "harnessReport": "packages/catalog/harness-report.json",
   "vectors": [
     {
       "artifactId": "anatomy-hotspot",

@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { validateCatalog } from './validate';
 
@@ -18,7 +18,8 @@ export interface CatalogVectorsFile {
   schemaVersion: '1.0';
   dimensions: 256;
   model: typeof TITAN_MODEL;
-  skipHarness: boolean;
+  /** Present only for the explicit development-only --skip-harness path. */
+  skipHarness?: true;
   harnessReport?: string;
   vectors: EmbeddedCatalogVector[];
 }
@@ -105,7 +106,8 @@ export async function buildVectors(options: {
   }
   const output: CatalogVectorsFile = {
     schemaVersion: '1.0', dimensions: CATALOG_EMBEDDING_DIMENSIONS, model: TITAN_MODEL,
-    skipHarness: options.skipHarness === true, ...(options.harnessReport ? { harnessReport: options.harnessReport } : {}), vectors,
+    ...(options.skipHarness ? { skipHarness: true as const } : {}),
+    ...(options.harnessReport ? { harnessReport: relative(process.cwd(), options.harnessReport) } : {}), vectors,
   };
   await writeFile(outputPath, JSON.stringify(output, null, 2) + '\n');
   return output;
@@ -113,7 +115,7 @@ export async function buildVectors(options: {
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(process.cwd(), 'scripts/catalog/embed.ts')) {
   buildVectors(parseArgs(process.argv.slice(2))).then(output => {
-    console.log(`Wrote ${output.vectors.length} vectors to ${resolve(process.argv.find((arg, index) => index > 1 && process.argv[index - 1] === '--out') ?? 'packages/catalog/vectors.json')}; skipHarness=${output.skipHarness}`);
+    console.log(`Wrote ${output.vectors.length} vectors to ${resolve(process.argv.find((arg, index) => index > 1 && process.argv[index - 1] === '--out') ?? 'packages/catalog/vectors.json')}; skipHarness=${output.skipHarness === true}`);
   }).catch(error => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

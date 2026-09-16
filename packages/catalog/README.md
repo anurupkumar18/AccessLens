@@ -1,6 +1,6 @@
 # AccessLens visualization catalog
 
-This catalog contains 30 original, dependency-free CC0-1.0 interactive artifacts in the S3 layout `artifacts/{artifactId}/{artifactVersion}/`. They cover 27 subjects, including graph search, anatomy, timelines, mathematics, chemistry, physics, economics, sorting, maps, statistics, and circuits. Each artifact has a manifest, a keyboard route, an equivalent accessibility description, an `aria-live` state readout, and `accesslensInit`/`accesslensHighlight` hooks.
+This catalog contains 150 original, dependency-free CC0-1.0 interactive artifacts in the S3 layout `artifacts/{artifactId}/{artifactVersion}/`. They cover 69 subjects, including computer science, biology, chemistry, physics, economics, mathematics, statistics, geography, history, and earth science. Each artifact has a manifest, a keyboard route, an equivalent accessibility description, an `aria-live` state readout, and `accesslensInit`/`accesslensHighlight` hooks.
 
 The seed corpus is intentionally authored in this repository rather than wrapped from an external site. This avoids guessing at a license and is the recorded sourcing deviation for V7. `scripts/catalog/seed.py` is the reproducible generator for these small originals.
 
@@ -9,10 +9,10 @@ The seed corpus is intentionally authored in this repository rather than wrapped
 ```sh
 npx tsx scripts/catalog/validate.ts
 npx tsx scripts/catalog/harness.ts
-npx tsx scripts/catalog/embed.ts --harness-report /path/to/report.json
+npx tsx scripts/catalog/embed.ts --harness-report packages/catalog/harness-report.json
 ```
 
-`embed.ts` refuses to write vectors unless the viewer harness report covers every artifact and every report is passing. While the viewer harness is unavailable in a checkout, an explicit, visible development-only alternative is:
+`embed.ts` refuses to write vectors unless the viewer harness report covers every artifact and every report is passing. A passing build omits `skipHarness` from `vectors.json`. While the viewer harness is unavailable in a checkout, an explicit, visible development-only alternative is:
 
 ```sh
 npx tsx scripts/catalog/embed.ts --skip-harness

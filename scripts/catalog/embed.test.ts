@@ -29,6 +29,21 @@ describe('catalog embeddings', () => {
     }
   });
 
+  it('omits skipHarness from vectors built from a passing report', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'accesslens-embed-'));
+    try {
+      const report = join(directory, 'report.json');
+      const reports = validateCatalog().artifacts.map(artifact => ({ artifactId: artifact.artifactId, artifactVersion: artifact.artifactVersion, passed: true }));
+      writeFileSync(report, JSON.stringify({ schemaVersion: '1.0', passed: true, reports }));
+      const outputPath = join(directory, 'vectors.json');
+      const output = await buildVectors({ catalogRoot: 'packages/catalog', outputPath, harnessReport: report, embed: async () => new Array(256).fill(0) });
+      expect(output.skipHarness).toBeUndefined();
+      expect(JSON.parse(readFileSync(outputPath, 'utf8'))).not.toHaveProperty('skipHarness');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an incomplete harness report', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'accesslens-embed-'));
     try {
