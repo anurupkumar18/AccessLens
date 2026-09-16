@@ -27,4 +27,6 @@ jobs:
       # `npm ci` above does not cover it -- without this it fails with
       # "Cannot find module '@aws-sdk/...'" instead of running any tests.
       - run: npm ci --prefix services/live-session
+      # services/ai-gateway likewise; the root test run also imports its tests.
+      - run: npm ci --prefix services/ai-gateway
       - run: make check
