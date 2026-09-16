@@ -1054,3 +1054,18 @@ end-to-end here because it needs a real `getDisplayMedia()` grant, the same
 gap AL-001/AL-002 already carry. Fold caption-track screen-reader/device QA
 into the existing `docs/DEMO_PROOF_SPRINT.md` matrix rather than opening a new
 thread for it.
+
+### RL-048 — 2026-09-16 — cross-cutting — Codex
+
+**Landed:** claimed and verified AL-006 (formative reviewer kit), which had
+sat unclaimed at READY. `docs/DEMO_PROOF_SPRINT.md` §AL-006 already had the
+full kit -- consent script, the five acceptance-criteria questions, a blank
+consented-feedback table, and a claim audit matching charter A11's
+overclaiming list -- so nothing was missing; this pass verified it against
+the ticket and the charter and moved it to IN_REVIEW with a checkpoint and
+handoff, rather than leaving it invisible on the board.
+**Threads touched:** T-09 unchanged -- still needs a real, consenting mentor,
+which is a human step no session here can do.
+**Next agent needs to know:** if someone runs this kit, fill in
+`docs/DEMO_PROOF_SPRINT.md`'s reviewer table directly; AL-007 is the separate
+decision about whether the feedback changes scope or claims.

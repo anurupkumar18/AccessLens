@@ -33,7 +33,7 @@ agent has silently claimed it.
 | Bedrock gateway and reviewed authoring | Codex | **Ready for review** | AL-042 adds a strict, no-network disabled gateway seam; it is not an enabled model connection. | Await approval for model/review/source-content policy before implementing an adapter or authoring flow. |
 | Camera / gesture source adapter | Codex (consent foundation); Kunj Rathod / Unassigned (recognition) | **Ready for review** | AL-046 adds only the instructor’s local explicit-permission lifecycle; no recognition or camera event exists. | Obtain second privacy/accessibility review and physical consent/stop testing before any physical-object semantics. |
 | Anonymous session-context recording | Unassigned | **Blocked externally** | No approved retention/research policy; default remains no recording. | Decide consent, retention, deletion, and institutional review before implementation. |
-| Mentor and accessibility feedback | Kunj Rathod / team | **Blocked externally** | Consent script and evidence table exist. | Run a voluntary formative session; record only approved feedback. |
+| Mentor and accessibility feedback | Kunj Rathod / team | **Blocked externally** | AL-006 kit (consent script, five acceptance questions, evidence table, claim audit) verified against the charter and ready to run. | Run a voluntary formative session with a real mentor; record only approved feedback. |
 | Rehearsal, fallback, and release language | Team | **Blocked externally** | Runbook and replay evidence packet exist; no two clean real-device rehearsals recorded. | Rehearse after the lifecycle deployment and device bench. |
 
 ## Build order: features first, integration later
