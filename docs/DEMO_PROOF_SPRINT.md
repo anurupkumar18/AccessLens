@@ -1,0 +1,147 @@
+# AccessLens demo-proof sprint
+
+This is the operator record for A14–A16 and tickets AL-001, AL-004, AL-005,
+and AL-006. It turns the current evidence gaps into observable runs; blank cells
+are intentionally not evidence. Do not replace them with a claim.
+
+## Release record
+
+| Field | Recorded value |
+| --- | --- |
+| Release candidate | `cd52f6e` — `merge: consolidate AccessLens integration` |
+| Local automated gate | `make check` passed on 2026-09-16: 61 Access Pack, 24 relay, 5 delivery-board, 274 extension, and 53 live-session tests |
+| Live relay lifecycle release | **BLOCKED** — local machine has no AWS CLI, profile, or environment credentials; no deployment was attempted |
+| Second review of `capture.stopped` | **OPEN** — required before deployment evidence can be claimed |
+| Real browser/device evidence | **OPEN** — operator-only; browser permission cannot be granted by an unattended tool |
+| Existing deployed relay probe | `integration-test.mjs` passed its 19-event path and refusal checks; the 30-event bench measured 139.3/186.2 ms p50/p95 same-process receive latency and 2.4/11.7 ms skew, but the endpoint rejected `capture.stopped` as `event-type-not-allowlisted` |
+
+## AL-003 — contract review and deployment gate
+
+The reviewer must trace `capture.stopped` across the extension Zod and JSON
+schemas, Python reference validator, instructor controller, student state, and
+relay tests. Confirm all four statements before deployment:
+
+- [ ] It is base-only and instructor-only; it carries no raw media, asset,
+  region, preference, or identity field.
+- [ ] Stop and browser source termination release local capture but retain the
+  temporary session and last trusted student state.
+- [ ] A later `session.started` can resume the same session with a monotonic
+  sequence; only `session.ended` closes delivery.
+- [ ] The reviewed service has been rebuilt before CDK deployment.
+
+After the independent review, configure the temporary hackathon profile according
+to `docs/AWS_ACCESS_VERIFICATION.md` without committing or sharing credentials,
+then build, deploy, and run:
+
+```sh
+cd services/live-session && npm run build
+cd ../../infra && npx cdk deploy --require-approval never
+cd ../services/live-session
+node scripts/integration-test.mjs <deployed-websocket-url>
+```
+
+Record the deployed URL, commit, reviewer, integration result, and whether a late
+joiner receives `capture.stopped`. If any step fails, leave AL-003 in review and
+use semantic replay rather than describing this lifecycle as deployed behavior.
+
+## AL-001 — real-device capture matrix
+
+Build the extension with the deployed URL in a local `.env.local`, load it
+unpacked into clean browser profiles, and run the following cases on the supported
+devices. Use a device label, not a person's name. No capture recording, student
+identity, or local preference value belongs in this document.
+
+| Case | Device/browser/source | Expected result | Observed result | Evidence / blocker |
+| --- | --- | --- | --- | --- |
+| Permission denied |  | Instructor receives truthful denial state; no event session starts |  |  |
+| Tab capture |  | Five planned transitions match; both students update in order |  |  |
+| Window capture |  | Match, correction, pause, stop, and restart behave as reviewed |  |  |
+| Display capture |  | Match and focus switch remain stable under the supported display setup |  |  |
+| Source closed |  | Capture stops; students preserve the last trusted state |  |  |
+| Unmatched + correction |  | Unknown slide is unmatched; no description is invented; correction is visible |  |  |
+| Terminal end |  | Students receive ended state and further delivery stops |  |  |
+
+Two complete core runs must pass before AL-001 is complete. Categorize any
+reproduced failure and open AL-002; do not patch capture behavior during a
+rehearsal.
+
+## AL-004 — live quality bench
+
+Run the automated relay bench against the **deployed release URL**:
+
+```sh
+cd services/live-session
+node scripts/quality-bench.mjs <deployed-websocket-url>
+```
+
+It creates a disposable session, sends 30 reviewed `region.changed` events to two
+anonymous clients, reports same-process p50/p95 receive latency and inter-student
+skew, verifies ordered 30/30 delivery, and verifies that a rejoining student gets
+the latest `capture.stopped` lifecycle state. It is relay-wiring evidence only.
+Repeat the same sequence on two physical student devices with a single
+time-synchronized recording or other redacted timing record before describing live
+multi-device latency or reliability.
+
+| Run | Release / endpoint | 30/30 A | 30/30 B | p50 / p95 latency | p50 / p95 skew | Reconnect | False-live state | Result |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Automated relay bench | Existing endpoint; not a verified `cd52f6e` deployment | yes | yes | 139.3 / 186.2 ms | 2.4 / 11.7 ms | Student rejoin accepted; stopped-state catch-up failed | Not measured | **BLOCKED**: `capture.stopped` rejected as `event-type-not-allowlisted` |
+| Two-device bench |  |  |  |  |  |  |  |  |
+
+## AL-005 — rehearsals and fallback
+
+Before each rehearsal, run `make pack-check` on the demo machine. Record two
+clean-install runs below. A replay may drive real student renderers, but the
+presenter must say that instructor capture is simulated whenever it is used.
+
+| Run | Date/time | Clean install | Under 3 min | Core live path | Fallback verified | Known failure / claim limit |
+| --- | --- | --- | --- | --- | --- | --- |
+| Rehearsal 1 |  |  |  |  |  |  |
+| Rehearsal 2 |  |  |  |  |  |  |
+
+The recording must visibly cover permission denial, unmatched correction,
+relay/network failure, and semantic replay recovery. Store the recording location
+only after the release owner approves its claim language; do not call a replay
+live capture.
+
+## AL-006 — formative reviewer kit
+
+Before starting, state: “This is a voluntary formative prototype review. We will
+record only your feedback about the prototype, not a diagnosis, profile, grades,
+or other personal data. You may skip questions or stop at any time. May we record
+your role and feedback in this project evidence?” Obtain an explicit yes before
+recording any response.
+
+Show the three-minute run, then ask:
+
+1. Did the instructor-selected visual reference become clearer in Focus, the
+   structured route, requested audio, and the spatial route?
+2. Did the non-immersive keyboard/touch route preserve the same label, role, and
+   relationship as the AR view?
+3. Was the unmatched/correction state trustworthy rather than confusing?
+4. Was it clear that any AI-authored pack material is a draft requiring review,
+   not a live unreviewed answer?
+5. What is one concrete improvement you would make before a demonstration?
+
+| Reviewer role (only with consent) | Consent | Observation / quote summary | Material improvement | Scope or claim decision needed |
+| --- | --- | --- | --- | --- |
+|  |  |  |  |  |
+
+Claim audit: never state measured learning impact, accessibility certification,
+legal compliance, diagnosis-based personalization, expert review, or that AR
+alone serves a fully blind student. A reviewer session is formative evidence, not
+a study or audit. AL-007 remains a human decision about whether feedback changes
+scope or claims.
+
+## Final release evidence
+
+| Field | Final value |
+| --- | --- |
+| Release SHA |  |
+| Deployed relay endpoint and verification |  |
+| `capture.stopped` second-review / deployment state |  |
+| Capture-matrix result |  |
+| Quality-bench result |  |
+| Rehearsal dates and fallback location |  |
+| Reviewer evidence and limits |  |
+| Approved demo language |  |
+| Unresolved blockers |  |

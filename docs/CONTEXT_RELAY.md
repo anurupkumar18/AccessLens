@@ -813,3 +813,23 @@ preference falls back to Focus otherwise. `scripts/build-pack.ts` emits
 rather than the pack's `modelUri`. Gating on `arScene` is enough while only
 one pack has a scene; a second AR pack needs the renderer to read the scene
 from the pack.
+
+### RL-034 — 2026-09-16 — cross-cutting — Codex
+
+**Landed:** the A14–A16 operator evidence packet in
+`docs/DEMO_PROOF_SPRINT.md`, an explicit link from the demo runbook, and a
+repeatable `services/live-session` 30-event quality bench. The packet provides
+blank, privacy-safe records for the real-device capture matrix, two-student
+relay latency/skew and reconnect bench, two rehearsals and a truthful replay
+fallback, plus a consented formative-review script and claim audit. It does not
+assert that any human-only run or reviewer session occurred.
+**Threads touched:** T-09 and T-25 remain OPEN/IN PROGRESS. T-21 remains IN
+REVIEW: local lifecycle checks pass, but the current machine has no AWS CLI or
+configured credentials, so no deployment was attempted and independent
+contract review is still required. The existing endpoint did pass 30/30 ordered
+events to each anonymous bench client (139.3/186.2 ms same-process p50/p95
+receive latency; 2.4/11.7 ms skew), but rejected `capture.stopped` as
+`event-type-not-allowlisted`, proving it is stale for the lifecycle change.
+**Next agent needs to know:** an authorized operator must review AL-003, build
+and deploy the service, run `integration-test.mjs` and `quality-bench.mjs` on
+that deployed endpoint, then complete the real-device and human-review tables.
