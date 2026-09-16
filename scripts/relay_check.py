@@ -27,6 +27,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELAY = ROOT / "docs" / "CONTEXT_RELAY.md"
 
+EXPECTED_PARTS = 6
+
 REQUIRED_SECTIONS = (
     "## 1. If you are an agent starting a session, read this first",
     "## 2. Where each part stands",
@@ -105,8 +107,10 @@ def check_sections(text: str) -> list[str]:
 def check_parts(text: str) -> list[str]:
     errors = []
     rows = _rows(text, REQUIRED_SECTIONS[1])
-    if len(rows) != 5:
-        errors.append(f"section 2 lists {len(rows)} parts; the plan defines 5")
+    # Part 6 (authoring pipeline and visualization system) was added alongside
+    # the original five in docs/VISUALIZATION_SYSTEM.md §15; see relay T-29.
+    if len(rows) != EXPECTED_PARTS:
+        errors.append(f"section 2 lists {len(rows)} parts; the plan defines {EXPECTED_PARTS}")
     for row in rows:
         if len(row) != 5:
             errors.append(

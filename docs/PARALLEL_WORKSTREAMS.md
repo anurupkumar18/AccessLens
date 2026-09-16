@@ -19,6 +19,7 @@ listed as deferred in the implementation plan are intentionally outside the
 | 3. Student experience and AR | **Name: ____________________** | Synchronized accessible modes and required AR view |
 | 4. AWS live service | **Name: ____________________** | Secure temporary sessions and ordered WebSocket relay |
 | 5. Content, camera, and demo QA | **Name: Kunj Rathod** | Reviewed biology pack, advanced camera adapter, and integrated demo |
+| 6. Authoring pipeline and visualization | **Name: Jacob ** | Single-upload authoring API, course-profile retrieval, and the visualization surface |
 
 ## Before splitting up: 45-minute contract freeze
 

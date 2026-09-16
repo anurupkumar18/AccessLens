@@ -14,3 +14,4 @@ output/
 .playwright-cli/
 .claude/
 test-results/
+.worktrees/

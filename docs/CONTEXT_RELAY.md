@@ -62,6 +62,7 @@ during the build.
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
 | 4. AWS live service | UNOWNED | `docs/aws-access-verification` (unmerged) | Not started as a service. Recon only: the hackathon AWS account allows exactly one Bedrock model (`us.anthropic.claude-sonnet-4-6`), Polly/Translate respond, and the write path for Lambda/DynamoDB/API Gateway/S3 is unverified. No `infra/` or `services/live-session/`. | `git log origin/docs/aws-access-verification` |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
+| 6. Authoring pipeline and visualization | Jacob | `workstream/6-authoring` | Claimed. Building the single-upload authoring pipeline from `docs/VISUALIZATION_SYSTEM.md`: API-first authoring plane (`infra/`, `services/`, `apps/viewer/`), course-profile retrieval, and the pack/visualization contracts. In progress. | `docs/VISUALIZATION_SYSTEM.md`, `docs/prompts/viz-system-build.md` |
 
 **The single largest risk moved again.** Parts 1, 2, 3, and 5 are all on the
 integration branch now with `make check` green (181 extension tests, 61 pack
@@ -109,6 +110,11 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. Proposed: instructor key on `create`, relay enforcement in Part 4, and a shell gate. Not built — waiting on a go from the owner. | Part 2 + Part 4 | Demo integrity | OPEN | `apps/extension/src/shell/App.tsx` role switch; `docs/PART2_HANDOFF.md` open items |
 | T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts`. Part 2's controller also starts at 1 (`captureController.test.ts`), so 1 is now the de facto answer; Part 1 still has to pin it in the schema. |
+| T-25 | Part 6 needs two additive fields on the Access Pack asset (`visualization`, `references[]`) and one on the region (`audioUri`), plus a new `ArtifactManifest` contract, in `apps/extension/src/shared/contracts.ts` and `packages/contracts/`. Part 1 owns those files. Additive and optional only; `arScene` untouched; `LiveEvent` unchanged. | Part 1 + Part 6 | Part 6 V0/R0 and everything downstream | OPEN | `docs/VISUALIZATION_SYSTEM.md` §5, §9.5, §4 |
+| T-26 | Part 6 needs `apps/extension/src/shared/packMedia.ts` to resolve `mediaUri` and `audioUri` through a published-pack loader when a pack was published by the authoring pipeline, keeping the bundled path for checked-in packs. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V6 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12 |
+| T-27 | Part 6 needs `apps/extension/src/student/StudentExperience.tsx` to gain a Visualize tab and a "From your course materials" references list in Read mode. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V9, R4 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12, §9.5 |
+| T-28 | Part 6 needs an instructor authoring entry point in `apps/extension/src/shell/App.tsx` and `RoleNav.tsx`. Part 1 owns those files. | Part 1 + Part 6 | Part 6 V5 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §11 |
+| T-29 | Part 6 creates `infra/` because Part 4 (AWS live relay) is unowned. The CDK stack `AccessLensAuthoring` is the authoring plane only; the live relay is not built here. If Part 4 is claimed, the stack is shared and the split is negotiated here. | Part 6 | Part 4 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §15 |
 
 ---
 
@@ -585,3 +591,26 @@ preference falls back to Focus otherwise. `scripts/build-pack.ts` emits
 rather than the pack's `modelUri`. Gating on `arScene` is enough while only
 one pack has a scene; a second AR pack needs the renderer to read the scene
 from the pack.
+### RL-025 — 2026-09-15 — Part 6 — Jacob
+
+**Landed:** `workstream/6-authoring` branched from `workstream/2-pack-driven-rendering`.
+Claims Part 6, the authoring pipeline and visualization system specified in
+`docs/VISUALIZATION_SYSTEM.md`: one instructor upload produces one draft Access
+Pack (slide PNGs, fingerprints, regions, descriptions, Polly audio, an
+interactive visualization where one fits, and citations into the professor's
+own course library), the instructor reviews and publishes, and the student
+modes render from the published pack. The pipeline is an HTTP API first;
+the extension is its first client. Adds `infra/` (CDK stack
+`AccessLensAuthoring`), `services/`, `apps/viewer/`, `scripts/catalog/`, and
+`docs/prompts/viz/`. AR is out of scope for this pipeline and `arScene` is
+never written by it.
+**Threads touched:** T-25, T-26, T-27, T-28, T-29 opened — the four cross-part
+edits Part 6 needs (Part 1 contracts, Part 3 `packMedia.ts` and
+`StudentExperience.tsx`, Part 1 shell entry point) and Part 6's creation of
+`infra/` in Part 4's absence. Nothing closed.
+**Next agent needs to know:** the pack contract changes are strictly additive
+and optional (`visualization` and `references[]` per asset, `audioUri` per
+region, plus a new standalone `ArtifactManifest` contract). `LiveEventSchema`
+gains no types; `asset.changed` and `region.changed` already carry everything
+the Visualize mode needs. Part 5's `check_contract_conformance.py` is kept
+passing in the same commit as every schema change.
