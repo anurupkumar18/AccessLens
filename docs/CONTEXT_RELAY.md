@@ -1265,3 +1265,18 @@ built captions, the dyslexic mode, the full UI restyle) is a governance
 decision for the team, not further extraction work — see RL-053.
 Real-device reconnect testing against a deployed relay is still blocked on
 AWS credentials this session doesn't have.
+
+### RL-056 — 2026-09-16 — cross-cutting — Codex
+
+**Landed:** `docs/INTEGRATION_SWOT_20260916.md` — the full cross-branch
+integration writeup: a per-branch disposition table, the RAG/Bedrock
+governance flag (§2) and the "Dyslexic" naming flag (§3) written up in
+full rather than just noted in a relay entry, a SWOT of the project's
+actual current state, and a prioritized next-actions list split by what's
+genuinely unblocked versus what needs a human, hardware, or an institutional
+decision. A snapshot, like `docs/TEAM_ALIGNMENT_CHECK.md` — informative, not
+a source of truth over this file.
+**Threads touched:** none new; synthesizes RL-052 through RL-055.
+**Next agent needs to know:** read `docs/INTEGRATION_SWOT_20260916.md` §6 for
+the actual priority order before picking up new work. The three P0 items
+are all one team decision or one available person away, not more code.
