@@ -43,22 +43,22 @@ export function sessionFromIdToken(idToken: string): GoogleSession | null {
   }
 }
 
-export function readSession(now: number = Date.now()): GoogleSession | null {
+export function readSession(now: number = Date.now(), storageKey = SESSION_KEY): GoogleSession | null {
   try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     const session = raw ? sessionFromIdToken(raw) : null;
     if (session && session.expiresAt > now) return session;
-    if (raw) window.localStorage.removeItem(SESSION_KEY);
+    if (raw) window.localStorage.removeItem(storageKey);
     return null;
   } catch {
     return null;
   }
 }
 
-export function writeSession(session: GoogleSession | null): void {
+export function writeSession(session: GoogleSession | null, storageKey = SESSION_KEY): void {
   try {
-    if (session) window.localStorage.setItem(SESSION_KEY, session.idToken);
-    else window.localStorage.removeItem(SESSION_KEY);
+    if (session) window.localStorage.setItem(storageKey, session.idToken);
+    else window.localStorage.removeItem(storageKey);
   } catch {
     /* remembered for this page only */
   }
@@ -105,7 +105,7 @@ export function extensionIdentity(): ChromeIdentity | null {
 }
 
 /** Sign in through the browser's extension identity API. */
-export async function signInWithExtension(clientId: string, identity: ChromeIdentity = extensionIdentity()!): Promise<GoogleSession> {
+export async function signInWithExtension(clientId: string, identity: ChromeIdentity = extensionIdentity()!, storageKey = SESSION_KEY): Promise<GoogleSession> {
   const nonce = randomToken();
   const state = randomToken();
   const redirect = await identity.launchWebAuthFlow({
@@ -115,7 +115,7 @@ export async function signInWithExtension(clientId: string, identity: ChromeIden
   const idToken = redirect ? idTokenFromRedirect(redirect, state) : null;
   const session = idToken ? sessionFromIdToken(idToken) : null;
   if (!session) throw new Error('Google did not return a sign-in for this account.');
-  writeSession(session);
+  writeSession(session, storageKey);
   return session;
 }
 
@@ -150,14 +150,14 @@ function loadGoogleIdentity(): Promise<GoogleAccounts> {
 }
 
 /** Renders Google's own sign-in button into `parent`; `onSession` fires with the stored session. */
-export async function renderGoogleButton(parent: HTMLElement, clientId: string, onSession: (session: GoogleSession) => void): Promise<void> {
+export async function renderGoogleButton(parent: HTMLElement, clientId: string, onSession: (session: GoogleSession) => void, storageKey = SESSION_KEY): Promise<void> {
   const google = await loadGoogleIdentity();
   google.accounts.id.initialize({
     client_id: clientId,
     ux_mode: 'popup',
     callback: response => {
       const session = sessionFromIdToken(response.credential);
-      if (session) { writeSession(session); onSession(session); }
+      if (session) { writeSession(session, storageKey); onSession(session); }
     },
   });
   google.accounts.id.renderButton(parent, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with' });

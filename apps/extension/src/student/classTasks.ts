@@ -49,3 +49,7 @@ export function savePrivateClassTask(
   storage.setItem(STORAGE_KEY, JSON.stringify([...readTasks(storage), task]));
   return task;
 }
+
+export function removePrivateClassTask(taskId: string, storage: Storage = window.localStorage): void {
+  storage.setItem(STORAGE_KEY, JSON.stringify(readTasks(storage).filter(task => task.taskId !== taskId)));
+}

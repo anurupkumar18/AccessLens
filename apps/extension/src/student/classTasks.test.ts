@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { listPrivateClassTasks, savePrivateClassTask } from './classTasks';
+import { listPrivateClassTasks, removePrivateClassTask, savePrivateClassTask } from './classTasks';
 
 afterEach(() => window.localStorage.clear());
 
@@ -19,5 +19,12 @@ describe('private class tasks', () => {
   it('ignores malformed saved values', () => {
     window.localStorage.setItem('accesslens.private-class-tasks.v1', '{not json');
     expect(listPrivateClassTasks()).toEqual([]);
+  });
+
+  it('removes only the selected private task', () => {
+    const first = savePrivateClassTask({ question: 'Q1', answer: 'A1', sources: [] });
+    const second = savePrivateClassTask({ question: 'Q2', answer: 'A2', sources: [] });
+    removePrivateClassTask(first.taskId);
+    expect(listPrivateClassTasks()).toEqual([second]);
   });
 });

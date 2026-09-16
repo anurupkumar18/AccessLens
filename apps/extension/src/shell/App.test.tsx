@@ -7,6 +7,7 @@ import publishedFixture from '../../../viewer/fixtures/published-pack.json';
 import { resetRemotePackBasesForTests } from '../shared/packMedia';
 import { App, packChoices } from './App';
 import type { AuthoringClient } from '../shared/authoringClient';
+import type { ClassroomClient } from '../shared/classroomClient';
 import { InMemorySessionClient } from '../shared/contracts';
 import { loadPreferences, resetPreferencesForTests } from '../shared/preferences';
 import { FakeCaptureHost, FakeScheduler, testPack } from '../sources/screen/fixtures';
@@ -174,6 +175,17 @@ describe('App shell', () => {
     const liveButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Live lesson')!;
     await act(async () => liveButton.click());
     expect(container.textContent).toContain('Live lesson');
+    root.unmount();
+  });
+
+  it('offers a separate class-library student surface without altering live lesson state', async () => {
+    container = document.createElement('div'); document.body.appendChild(container);
+    const classroomClient = { redeemInvite: vi.fn(), ask: vi.fn() } as unknown as ClassroomClient;
+    const root = createRoot(container);
+    await act(async () => root.render(<App client={new InMemorySessionClient()} pack={syntheticPack} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} classroomClient={classroomClient} />));
+    act(() => Array.from(container!.querySelectorAll('button')).find(button => button.textContent === 'Student')!.click());
+    act(() => Array.from(container!.querySelectorAll('button')).find(button => button.textContent === 'Class library')!.click());
+    expect(container!.textContent).toContain('Join a class library');
     root.unmount();
   });
 

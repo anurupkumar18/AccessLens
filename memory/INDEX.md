@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0074-student-class-library-experience.md` (Part 6: separate student class-library UI, cited questions, local-only tasks; server activation remains off)
 - `episodic/0073-approval-gated-class-library-assistant.md` (Part 6: approval-gated PDF class library, cited facts/Q&A, local-only tasks; real-course activation remains off)
 - `episodic/0072-websocket-reconnect-and-close-fix.md` (cross-branch integration: WebSocket reconnect catch-up, extended retry, and close() race fix, scoped-extracted from ui/blacksmith-revamp's 94f0047)
 - `episodic/0071-extension-csp-font-and-glyph-fixes.md` (Part 1/hardening: reimplemented three isolated fixes found while evaluating ui/blacksmith-revamp -- Zod CSP violation, body font inheritance, decorative-glyph accessible names)
