@@ -285,7 +285,7 @@ describe('StudentExperience: live video pane', () => {
     expect(pane()).not.toBeNull();
     expect((pane()!.querySelector('video') as unknown as { srcObject: unknown }).srcObject).toBe(media);
     expect(subscriber.calls).toEqual(['subscribe:subscribe-token-1']);
-    expect(container!.textContent).toContain('Following mitochondrion on cell-slide-03.');
+    expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
   });
 
   it('capture.stopped ends the video too', async () => {
