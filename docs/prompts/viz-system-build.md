@@ -1,7 +1,7 @@
 # Part 6 build prompt: authoring pipeline and visualization system
 
 Run this from a Claude Code session opened at the repository root, on the
-`workstream/2-instructor-capture` branch, by typing:
+`workstream/2-pack-driven-rendering` branch, by typing:
 
 ```text
 /budget-auto-swarm Read docs/prompts/viz-system-build.md and execute it to completion.
@@ -126,7 +126,7 @@ Facts about the repository and environment you can rely on:
 - This is a five-person hackathon repository. The integration branch is
   `accesslens-extension-ar-pivot`; `master` stops at a superseded product and
   nothing merges to it during the build. Branch from the head of
-  `workstream/2-instructor-capture`, which already contains the integration
+  `workstream/2-pack-driven-rendering`, which already contains the integration
   branch plus later Part 2 commits, and target the integration branch with
   your pull request.
 - Parts 1, 2, 3, and 5 have landed. Part 3's student experience exists at
