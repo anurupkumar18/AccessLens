@@ -746,3 +746,5 @@ input[type='range'] { accent-color: var(--ink); }
 .authoring-short { grid-column: 2; }
 .authoring-plain { grid-column: 2; color: var(--muted); font-size: .92em; }
 .authoring-review > button, .authoring-published button { margin-right: .5rem; }
+.authoring-account { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: 0 0 1rem; }
+.authoring-account button { margin: 0; }

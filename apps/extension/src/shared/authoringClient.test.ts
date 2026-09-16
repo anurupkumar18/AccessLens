@@ -25,7 +25,7 @@ function fakeApi() {
 }
 
 describe('authoring client', () => {
-  it('uploads through the presigned URL, starts the job, and walks review to publish with the bearer on every API call', async () => {
+  it('uploads through the presigned URL, starts the job, and walks review to publish with the Google ID token on every API call', async () => {
     const api = fakeApi();
     const client = createAuthoringClient('https://api.test/', 'tok', api.fetchImpl);
     const jobId = await client.submitDeck({ name: 'Deck.PPTX', type: '', body: new Blob(['x']) }, { packId: 'hnsw-explainer', title: 'HNSW' });

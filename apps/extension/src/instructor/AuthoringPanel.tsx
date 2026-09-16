@@ -1,13 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { AccessPack } from '../shared/contracts';
 import {
-  authoringApiUrl, createAuthoringClient, packIdFromTitle, readAuthoringToken, writeAuthoringToken,
+  AuthoringApiError, authoringApiUrl, createAuthoringClient, packIdFromTitle,
   type AuthoringClient, type JobState, type Published,
 } from '../shared/authoringClient';
+import {
+  extensionIdentity, googleClientId, readSession, renderGoogleButton, signInWithExtension, writeSession, type GoogleSession,
+} from '../shared/googleSignIn';
 
 interface Props {
-  /** Injected in tests; otherwise built from VITE_ACCESSLENS_API_URL and the saved token. */
+  /** Injected in tests; otherwise built from VITE_ACCESSLENS_API_URL and the Google session. */
   client?: AuthoringClient;
+  /** The authoring API base; defaults to VITE_ACCESSLENS_API_URL. */
+  apiUrl?: string | null;
+  /** The Google OAuth client id; defaults to VITE_GOOGLE_CLIENT_ID. */
+  clientId?: string | null;
+  /** How to obtain a Google session; defaults to the extension identity API or Google's button. */
+  signIn?: () => Promise<GoogleSession>;
   /** Poll interval while a job runs. */
   pollMs?: number;
   /** Where a published pack can be opened in the student view. */
@@ -37,14 +46,54 @@ const STAGE_TEXT: Record<string, string> = {
  * Upload a deck, watch the authoring pipeline, review every description and
  * publish. Nothing reaches students until Publish is pressed (charter A3):
  * the draft is job-scoped and the API refuses to publish unreviewed assets.
+ * Instructors sign in with Google first (D12); the API decides who is an
+ * instructor, this panel only carries the token.
  */
-export function AuthoringPanel({ client: injected, pollMs = 5000, studentViewUrl = url => `?pack=${encodeURIComponent(url)}` }: Props): React.ReactElement {
-  const [token, setToken] = useState(() => readAuthoringToken());
+export function AuthoringPanel({
+  client: injected, apiUrl = authoringApiUrl, clientId = googleClientId, signIn, pollMs = 5000,
+  studentViewUrl = url => `?pack=${encodeURIComponent(url)}`,
+}: Props): React.ReactElement {
+  const [session, setSession] = useState<GoogleSession | null>(() => readSession());
+  const [signInError, setSignInError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const fileInput = useRef<HTMLInputElement>(null);
-  const client = injected ?? (authoringApiUrl && token ? createAuthoringClient(authoringApiUrl, token) : null);
+  const googleButton = useRef<HTMLDivElement>(null);
+  const useExtensionFlow = signIn !== undefined || extensionIdentity() !== null;
+  const client = injected ?? (apiUrl && session ? createAuthoringClient(apiUrl, session.idToken) : null);
+
+  function signOut(): void {
+    writeSession(null); setSession(null); setPhase({ kind: 'idle' });
+  }
+
+  /** An expired or revoked Google session reads as 401; drop it so the sign-in button returns. */
+  function failure(error: unknown): string {
+    if (error instanceof AuthoringApiError && error.status === 401) {
+      writeSession(null); setSession(null);
+      return 'Your Google sign-in expired. Sign in again to continue.';
+    }
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  async function startSignIn(): Promise<void> {
+    if (!clientId) return;
+    setSignInError(null);
+    try {
+      setSession(await (signIn ?? (() => signInWithExtension(clientId)))());
+    } catch (error) {
+      setSignInError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  // Web page (local hosting): Google renders its own button.
+  useEffect(() => {
+    const parent = googleButton.current;
+    if (useExtensionFlow || !clientId || session || injected || !parent) return;
+    void renderGoogleButton(parent, clientId, next => setSession(next)).catch(error => {
+      setSignInError(error instanceof Error ? error.message : String(error));
+    });
+  }, [useExtensionFlow, clientId, session, injected]);
 
   useEffect(() => {
     if (phase.kind !== 'running' || !client) return;
@@ -62,7 +111,7 @@ export function AuthoringPanel({ client: injected, pollMs = 5000, studentViewUrl
           setPhase({ kind: 'running', jobId: phase.jobId, job });
         }
       } catch (error) {
-        if (!stopped) setPhase({ kind: 'failed', jobId: phase.jobId, message: error instanceof Error ? error.message : String(error) });
+        if (!stopped) setPhase({ kind: 'failed', jobId: phase.jobId, message: failure(error) });
       }
     };
     const handle = setInterval(() => { void tick(); }, pollMs);
@@ -79,7 +128,7 @@ export function AuthoringPanel({ client: injected, pollMs = 5000, studentViewUrl
       const jobId = await client.submitDeck({ name: file.name, type: file.type, body: file }, { packId: packIdFromTitle(title), title: title.trim() });
       setPhase({ kind: 'running', jobId, job: null });
     } catch (error) {
-      setPhase({ kind: 'failed', message: error instanceof Error ? error.message : String(error) });
+      setPhase({ kind: 'failed', message: failure(error) });
     }
   }
 
@@ -95,7 +144,7 @@ export function AuthoringPanel({ client: injected, pollMs = 5000, studentViewUrl
       const result = await client.publish(jobId);
       setPhase({ kind: 'published', result });
     } catch (error) {
-      setPhase({ kind: 'failed', jobId, message: error instanceof Error ? error.message : String(error) });
+      setPhase({ kind: 'failed', jobId, message: failure(error) });
     }
   }
 
@@ -111,8 +160,21 @@ export function AuthoringPanel({ client: injected, pollMs = 5000, studentViewUrl
     if (fileInput.current) fileInput.current.value = '';
   }
 
-  if (!authoringApiUrl && !injected) {
-    return <section className="authoring" aria-labelledby="authoring-heading"><h2 id="authoring-heading">Upload slides</h2><p>This build has no authoring API configured.</p></section>;
+  if (!injected && (!apiUrl || !clientId)) {
+    return <section className="authoring" aria-labelledby="authoring-heading"><h2 id="authoring-heading">Upload slides</h2><p>This build has no authoring API or Google sign-in configured.</p></section>;
+  }
+
+  if (!client) {
+    return (
+      <section className="authoring" aria-labelledby="authoring-heading">
+        <h2 id="authoring-heading">Upload slides</h2>
+        <p className="supporting-text">Sign in with the Google account your course lists as an instructor to upload and review decks.</p>
+        {useExtensionFlow
+          ? <button type="button" onClick={() => { void startSignIn(); }}>Sign in with Google</button>
+          : <div ref={googleButton} aria-label="Sign in with Google" />}
+        {signInError && <p role="alert">{signInError}</p>}
+      </section>
+    );
   }
 
   return (
@@ -120,10 +182,12 @@ export function AuthoringPanel({ client: injected, pollMs = 5000, studentViewUrl
       <h2 id="authoring-heading">Upload slides</h2>
       <p className="supporting-text">A deck becomes a lesson pack: slide images, descriptions and audio, which you review before anyone sees them.</p>
 
-      <label htmlFor="authoring-token">Authoring token
-        <input id="authoring-token" type="password" autoComplete="off" value={token}
-          onChange={e => { setToken(e.target.value); writeAuthoringToken(e.target.value); }} />
-      </label>
+      {session && (
+        <p className="authoring-account">
+          <span>Signed in as <strong>{session.email}</strong></span>
+          <button type="button" className="secondary" onClick={signOut}>Sign out</button>
+        </p>
+      )}
 
       {(phase.kind === 'idle' || phase.kind === 'uploading' || (phase.kind === 'failed' && !phase.jobId)) && (
         <form onSubmit={e => { void submit(e); }} aria-label="Upload a deck">
@@ -136,7 +200,6 @@ export function AuthoringPanel({ client: injected, pollMs = 5000, studentViewUrl
           <button type="submit" disabled={!client || !file || !title.trim() || phase.kind === 'uploading'}>
             {phase.kind === 'uploading' ? 'Uploading…' : 'Upload and describe'}
           </button>
-          {!token && <p role="note" className="supporting-text">Paste the token from the deploy output (or SSM /accesslens/authoring/api-token) to enable uploads.</p>}
         </form>
       )}
 

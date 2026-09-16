@@ -13,11 +13,14 @@ set -a
 source .env.local
 set +a
 : "${VITE_ACCESSLENS_API_URL:?VITE_ACCESSLENS_API_URL is missing from .env.local}"
-TOKEN="${ACCESSLENS_API_TOKEN:-${BEARER_TOKEN:-}}"
-if [[ -z "$TOKEN" && -f .cdk-outputs.json ]]; then
-  TOKEN="$(node --input-type=module -e "import { readFileSync } from 'node:fs'; const o=JSON.parse(readFileSync('.cdk-outputs.json')); const v=o[Object.keys(o)[0]]; process.stdout.write(v.BearerToken || '')")"
+# The API takes a Google ID token (D12). Scripts get one from the Google Cloud
+# SDK: `gcloud auth login` as an allowlisted instructor, then
+# `gcloud auth print-identity-token`. ACCESSLENS_ID_TOKEN overrides that.
+TOKEN="${ACCESSLENS_ID_TOKEN:-}"
+if [[ -z "$TOKEN" ]] && command -v gcloud >/dev/null 2>&1; then
+  TOKEN="$(gcloud auth print-identity-token 2>/dev/null || true)"
 fi
-: "${TOKEN:?Bearer token is missing; run make deploy and keep the printed token in ACCESSLENS_API_TOKEN or .cdk-outputs.json}"
+: "${TOKEN:?No Google ID token. Run 'gcloud auth login' as an instructor on ACCESSLENS_INSTRUCTORS, or set ACCESSLENS_ID_TOKEN}"
 
 printf '%s\n' '--- health ---'
 curl --fail-with-body --silent --show-error --max-time 15 \

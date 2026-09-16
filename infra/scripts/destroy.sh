@@ -26,4 +26,4 @@ fi
 (cd services/live-session && npm ci --no-audit --no-fund && npm run build)
 npx --yes cdk destroy --app "npx tsx infra/bin/accesslens.ts" AccessLensAuthoring --force
 rm -f .cdk-outputs.json
-printf '%s\n' 'AccessLensAuthoring destroyed; temporary buckets and the bearer parameter are removed.'
+printf '%s\n' 'AccessLensAuthoring destroyed; temporary buckets, tables and the API are removed.'

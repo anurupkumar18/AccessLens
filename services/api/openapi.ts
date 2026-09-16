@@ -8,7 +8,7 @@ export interface OpenApiDocument {
   security: { bearerAuth: [] }[];
   paths: Record<string, Record<string, unknown>>;
   components: {
-    securitySchemes: { bearerAuth: { type: 'http'; scheme: 'bearer'; bearerFormat: 'opaque deployment token' } };
+    securitySchemes: { bearerAuth: { type: 'http'; scheme: 'bearer'; bearerFormat: 'Google ID token (JWT)' } };
     schemas: Record<string, unknown>;
   };
 }
@@ -41,7 +41,8 @@ export function renderOpenApi(routes: readonly RouteSpec[] = ROUTES): OpenApiDoc
           },
         },
         '400': { description: 'Invalid request', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
-        '401': { description: 'Missing or invalid bearer token' },
+        '401': { description: 'Missing, expired or invalid Google ID token' },
+        '403': { description: 'Signed in, but not on this deployment\'s instructor allowlist', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
         '500': { description: 'Pipeline failure', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
         '501': { description: 'Milestone not implemented', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
       },
@@ -86,7 +87,7 @@ export function renderOpenApi(routes: readonly RouteSpec[] = ROUTES): OpenApiDoc
     paths,
     components: {
       securitySchemes: {
-        bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'opaque deployment token' },
+        bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'Google ID token (JWT)' },
       },
       schemas,
     },

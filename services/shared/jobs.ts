@@ -183,6 +183,8 @@ export const JobRecordSchema = z.object({
   profileId: z.string().min(1).optional(),
   status: JobStatusSchema,
   uploadId: z.string().min(1),
+  /** Google subject id of the instructor who created the job; every job route is scoped to it (D12). */
+  ownerSub: z.string().min(1).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   expiresAt: z.number().int().positive(),

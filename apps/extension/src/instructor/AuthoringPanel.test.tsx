@@ -4,7 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { AccessPackSchema } from '../shared/contracts';
-import type { AuthoringClient, JobState } from '../shared/authoringClient';
+import { AuthoringApiError, type AuthoringClient, type JobState } from '../shared/authoringClient';
+import type { GoogleSession } from '../shared/googleSignIn';
 import { AuthoringPanel } from './AuthoringPanel';
 import publishedPack from '../../../viewer/fixtures/published-pack.json';
 
@@ -29,10 +30,14 @@ function fakeClient(statuses: JobState['status'][]) {
 }
 
 function render(client: AuthoringClient) {
+  mount(<AuthoringPanel client={client} pollMs={10} />);
+}
+function mount(element: React.ReactElement) {
   container = document.createElement('div'); document.body.appendChild(container);
   root = createRoot(container);
-  act(() => root!.render(<AuthoringPanel client={client} pollMs={10} />));
+  act(() => root!.render(element));
 }
+const clickButton = (text: string) => act(() => { Array.from(container!.querySelectorAll('button')).find(b => b.textContent === text)!.click(); });
 const flush = async () => { await act(async () => { await new Promise(r => setTimeout(r, 30)); }); };
 const q = <T extends Element>(sel: string) => container!.querySelector(sel) as T;
 
@@ -63,7 +68,7 @@ describe('AuthoringPanel', () => {
     expect(client.publish).not.toHaveBeenCalled();
     // Leave the first region out, then publish.
     act(() => { q<HTMLInputElement>('.authoring-slides input[type=checkbox]').click(); });
-    act(() => { Array.from(container!.querySelectorAll('button')).find(b => b.textContent === 'Approve and publish')!.click(); });
+    clickButton('Approve and publish');
     await flush();
     expect(reviews[0]).toEqual(expect.arrayContaining([{ assetId: pack.assets[0].assetId, rejectRegions: [pack.assets[0].regions[0].regionId] }]));
     expect(client.publish).toHaveBeenCalledWith('job-1');
@@ -78,5 +83,37 @@ describe('AuthoringPanel', () => {
     await flush(); await flush();
     expect(q('[role=alert]').textContent).toContain('could not finish');
     expect(client.getDraft).not.toHaveBeenCalled();
+  });
+
+  it('offers nothing but Google sign-in until an instructor signs in, then shows who is signed in', async () => {
+    window.localStorage.clear();
+    const session: GoogleSession = { idToken: 'id.tok.en', email: 'prof@uni.edu', expiresAt: Date.now() + 3600_000 };
+    const signIn = vi.fn(async () => session);
+    mount(<AuthoringPanel apiUrl="https://api.test" clientId="cid" signIn={signIn} pollMs={10} />);
+    expect(container!.querySelector('form')).toBeNull();
+    expect(container!.querySelector('#authoring-token')).toBeNull();
+    clickButton('Sign in with Google');
+    await flush();
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expect(container!.textContent).toContain('Signed in as prof@uni.edu');
+    expect(container!.querySelector('form')).not.toBeNull();
+    clickButton('Sign out');
+    expect(container!.querySelector('form')).toBeNull();
+    expect(container!.textContent).toContain('Sign in with Google');
+  });
+
+  it('drops an expired session when the API answers 401 and asks for a new sign-in', async () => {
+    const { client } = fakeClient(['ingesting']);
+    (client.submitDeck as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new AuthoringApiError(401, 'unauthorized', 'expired'));
+    render(client);
+    await fillAndSubmit();
+    expect(q('[role=alert]').textContent).toContain('sign-in expired');
+    expect(window.localStorage.getItem('accesslens.authoring.session')).toBeNull();
+  });
+
+  it('says so when the build has no API or Google client configured', () => {
+    mount(<AuthoringPanel apiUrl={null} clientId={null} />);
+    expect(container!.textContent).toContain('no authoring API or Google sign-in configured');
+    expect(container!.querySelector('button')).toBeNull();
   });
 });

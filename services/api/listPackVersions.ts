@@ -1,4 +1,4 @@
 import { listPackVersions } from './operations';
-import { withErrors } from './http';
+import { withInstructor } from './identity';
 
-export const handler = withErrors(listPackVersions);
+export const handler = withInstructor(listPackVersions);

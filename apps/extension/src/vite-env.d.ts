@@ -7,6 +7,12 @@ interface ImportMetaEnv {
   readonly VITE_ACCESSLENS_AI_URL?: string;
   /** Base URL for versioned, reviewed Access Pack assets (.env.example). */
   readonly VITE_ACCESSLENS_ASSET_BASE_URL?: string;
+  /** HTTP API for instructor authoring (.env.example). */
+  readonly VITE_ACCESSLENS_API_URL?: string;
+  /** Google OAuth web client id instructors sign in with (.env.example, D12). */
+  readonly VITE_GOOGLE_CLIENT_ID?: string;
+  /** Local hosting only: pack to show at the bare origin (.env.example). */
+  readonly VITE_ACCESSLENS_PACK_URL?: string;
 }
 
 interface ImportMeta {

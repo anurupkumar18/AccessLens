@@ -117,6 +117,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-30 | The agent-first delivery system is additive: ticket files, claims, immutable updates, generated context, and validation must not become a second mutable product or risk register. Its initial portfolio intentionally keeps current-MVP proof P0 and durable identity/content work deferred behind human decisions. | Part 1 | Agent handoffs and release evidence | OPEN | `docs/AGENT_OPERATING_CONTEXT.md`; `docs/work/`; `make work-board-check`; AL-090 is in review |
 | T-39 | **Remote audio needs a second human reviewer.** Instructor live captions stream microphone audio to Amazon Transcribe (charter A2 exception, off by default, consent text at the control). The charter's human review gate requires a second reviewer for remote media before merge. | Omar Rizwan | Merging `ui/blacksmith-revamp` | OPEN | `docs/work/decisions/2026-09-16-transcribe-live-captions.md`; `services/ai-gateway/README.md` |
 | T-40 | **AI routes are built but not deployed.** `services/ai-gateway` (Bedrock Ask, Polly speech, Transcribe caption URLs) is in the CDK stack and passes its tests with fakes, but the hackathon credentials had expired, so nothing has been called against real AWS and `VITE_ACCESSLENS_AI_URL` is unset. | Omar Rizwan | Captions, Ask, Polly in the demo | CLOSED | Deployed 2026-09-16 (`AccessLensLiveSession.AiApiUrl`); `smoke-test.ts` all checks passed against the deployed routes (Ask answered with citation in 3.3 s, off-topic and injection declined, Polly mp3, Transcribe returned the spoken words); relay `integration-test.mjs` passed; deployed relay accepts text captions and rejects `caption-invalid` |
+| T-41 | **Google sign-in is built, not deployed.** D12 replaced the shared bearer token with Google ID tokens (API Gateway JWT authorizer + instructor allowlist) on `integ/ui-api`; synth proves the wiring, `make check` is green, but the live `AccessLensAuthoring` API still runs the bearer build because the deploy needs an OAuth web client id that only the Google Cloud account owner can create. | Jacob | Any instructor using the upload panel; `make smoke` | OPEN | Create the client (origins `http://localhost:5173` + viewer URL; redirect `https://<extension-id>.chromiumapp.org/`), set `GOOGLE_CLIENT_ID` and `ACCESSLENS_INSTRUCTORS`, `make deploy`, then a real signed-in job end to end |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. Shared-contract second review and deployed-relay update remain before closure. |
@@ -1017,3 +1018,39 @@ only inside the installed extension; test voice features from the unpacked
 build, not just the dev server. Build a demo copy with endpoints via
 `npx vite build --outDir .cache/demo-extension` (gitignored) and keep the
 committed `dist/` free of endpoints. Hackathon credentials last a few hours.
+
+### RL-042 — 2026-09-16 — Part 6 + Part 1 — Jacob
+
+**Landed:** the shared authoring bearer token is gone (D12). The HTTP API's
+authorizer is now API Gateway's JWT authorizer against Google
+(`https://accounts.google.com`; audiences: the deployment's OAuth web client
+id from `GOOGLE_CLIENT_ID` plus the Google Cloud SDK's public client so
+`gcloud auth print-identity-token` works for scripts). Every route but health
+then applies `ACCESSLENS_INSTRUCTORS` (emails and `@domains`, deployed as
+`INSTRUCTOR_ALLOWLIST`) in `services/api/identity.ts`: 403
+`not_an_instructor` otherwise, nobody when empty. Jobs carry `ownerSub`; the
+job routes answer 404 for another instructor's job. Deleted: the bearer
+Lambda authorizer, the SSM token custom resource, the `BearerToken` /
+`TokenParameterName` outputs, and the dead copies of the draft/review/publish
+handlers in `operations.ts`. The instructor panel signs in with Google
+(`apps/extension/src/shared/googleSignIn.ts`: `chrome.identity` implicit
+flow inside the extension, Google Identity Services button on a web page),
+keeps the ID token in localStorage until expiry, and drops it on a 401.
+`make deploy` refuses to run without `GOOGLE_CLIENT_ID` and
+`ACCESSLENS_INSTRUCTORS`; `make smoke` and `docs/DEPLOY.md` use
+`gcloud auth print-identity-token`. The OpenAPI contract's security scheme
+now says Google ID token and documents 403.
+
+**Not deployed yet:** the stack change is proven by synth only (JWT
+authorizer on 17/17 routes, allowlist env on the 17 route Lambdas). Deploying
+needs the OAuth client id from Google Cloud console, which only the account
+owner can create; until then the live API still runs the bearer build.
+
+**Next agent needs to know:** the OAuth client needs `http://localhost:5173`
+and the CloudFront viewer URL as authorized JavaScript origins, and
+`https://<extension-id>.chromiumapp.org/` as a redirect URI for the installed
+extension. Old job records have no `ownerSub`, so nobody can read them
+through the API after the deploy; they expire on their own TTL.
+
+**Threads touched:** T-41 opened (Google sign-in built, not deployed: needs
+the OAuth client id). T-39 still open.

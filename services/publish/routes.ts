@@ -25,9 +25,11 @@ import {
   type StagedAsset,
 } from './index';
 
-const JobIdInputSchema = z.object({ jobId: z.string().min(1) }).strict();
+/** `ownerSub`, when given, is the caller's Google subject: a job owned by anyone else reads as not found. */
+const JobIdInputSchema = z.object({ jobId: z.string().min(1), ownerSub: z.string().min(1).optional() }).strict();
 const ReviewRouteInputSchema = z.object({
   jobId: z.string().min(1),
+  ownerSub: z.string().min(1).optional(),
   decisions: ReviewRequestSchema.shape.decisions,
 }).strict();
 
@@ -118,17 +120,23 @@ export class PublishRouteError extends Error {
   }
 }
 
-async function loadJob(input: { jobId: string }, deps: PublishRouteDeps): Promise<JobRecord> {
+async function loadJob(input: { jobId: string; ownerSub?: string }, deps: PublishRouteDeps): Promise<JobRecord> {
   const response = await deps.dynamodb.send(new GetCommand({
     TableName: deps.jobsTableName,
     Key: { jobId: input.jobId },
   })) as { Item?: unknown };
   if (!response.Item) throw new PublishRouteError(`job ${input.jobId} was not found`, 404, 'job_not_found');
+  let job: JobRecord;
   try {
-    return JobRecordSchema.parse(response.Item);
+    job = JobRecordSchema.parse(response.Item);
   } catch (error) {
     throw new PublishRouteError(`job ${input.jobId} has an invalid record`, 500, 'invalid_job_record');
   }
+  // Another instructor's job is indistinguishable from a missing one.
+  if (input.ownerSub !== undefined && job.ownerSub !== input.ownerSub) {
+    throw new PublishRouteError(`job ${input.jobId} was not found`, 404, 'job_not_found');
+  }
+  return job;
 }
 
 async function readJson(store: ObjectStore, key: string): Promise<unknown> {

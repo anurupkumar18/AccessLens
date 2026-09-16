@@ -383,3 +383,47 @@ gained host permissions for the API and S3 hosts.
 admin route are each a day of work and the demo does not need them; the
 charter forbids server-side *student* profiles (A4), not instructor
 accounts, so the door stays open. The shared token is the hackathon shape.
+*Superseded the same day by D12: the shared token is gone.*
+
+## D12 — instructors sign in with Google; the shared bearer token is removed — DECIDED (user, 2026-09-16: "we shouldn't have authoring token. Can we make people sign in with google accounts")
+
+**What changed.** The API takes a Google ID token on every route:
+`Authorization: Bearer <id token>`. API Gateway's JWT authorizer verifies
+it against `https://accounts.google.com` with two accepted audiences, this
+deployment's OAuth web client id (`GOOGLE_CLIENT_ID`, deployed as CDK
+context) and the Google Cloud SDK's public client id, so scripts can use
+`gcloud auth print-identity-token`. Verification alone admits nobody: each
+Lambda then checks the claims against `ACCESSLENS_INSTRUCTORS`, a
+comma-separated list of instructor emails and `@domains` deployed as the
+`INSTRUCTOR_ALLOWLIST` environment variable (`services/api/identity.ts`).
+Unverified email or not on the list is 403 `not_an_instructor`; an empty
+list admits nobody. Jobs record the creator's Google subject (`ownerSub`)
+and the job routes answer 404 for anyone else's job. Health keeps the JWT
+check but not the allowlist. The bearer authorizer, the SSM parameter and
+its custom resource, `BearerToken` and `TokenParameterName` outputs are
+deleted, not kept behind a flag.
+
+**Clients.** The instructor panel signs in with Google: inside the
+extension through `chrome.identity.launchWebAuthFlow` (ID token only, no
+access token, nonce and state checked), on a plain web page through
+Google Identity Services' button. The token stays in this browser's
+localStorage until it expires; a 401 from the API drops it and shows the
+button again. `VITE_GOOGLE_CLIENT_ID` configures the build; without it the
+upload panel says so and offers nothing.
+
+**Why this shape.** No user database and no server-side profile of anyone
+(charter A4 forbids student profiles; this stores one subject id per
+job, for instructors only). Google verifies who; the deployment decides
+which of them may author. Swapping the allowlist for a course roster later
+is a change inside `identity.ts`, nothing else moves.
+
+**Operator setup.** One OAuth 2.0 client id (type Web application) in Google
+Cloud console, authorized JavaScript origins `http://localhost:5173` and the
+CloudFront viewer URL; for the installed extension add
+`https://<extension-id>.chromiumapp.org/` as an authorized redirect URI.
+`make deploy` refuses to run without `GOOGLE_CLIENT_ID` and
+`ACCESSLENS_INSTRUCTORS` (environment or `.env.local`).
+
+**Spec deviation, recorded.** `docs/prompts/viz-system-build.md` describes
+the deploy-time bearer token in SSM; this decision replaces that paragraph
+by user instruction. The prompt file is not edited.

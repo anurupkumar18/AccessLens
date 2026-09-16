@@ -18,10 +18,21 @@ import { HarnessExtension } from './harness-extension';
 import { IngestExtension } from './ingest-extension';
 import { PipelineExtensionPoints } from './pipeline-extension';
 import { StateMachinesExtension } from './state-machines-extension';
-import { TokenParameter } from './token-parameter';
 import { VectorsExtension } from './vectors-extension';
 
 const ROOT = process.cwd();
+
+/**
+ * Instructors sign in with Google (D12). API Gateway verifies each ID token
+ * against Google's issuer; the audience is this deployment's own OAuth web
+ * client plus the Google Cloud SDK's public client, so `gcloud auth
+ * print-identity-token` works for scripts. Neither audience admits anyone by
+ * itself: every route then checks the instructor allowlist in the Lambda.
+ */
+const GOOGLE_ISSUER = 'https://accounts.google.com';
+const GCLOUD_CLIENT_ID = '32555940559.apps.googleusercontent.com';
+/** Synth-only placeholder so `cdk destroy` and tests work without context; deploy.sh refuses to deploy with it. */
+const UNCONFIGURED_CLIENT_ID = 'unconfigured.apps.googleusercontent.com';
 const API_HANDLER_BY_OPERATION: Record<string, string> = {
   getHealth: 'getHealth.ts',
   createUpload: 'createUpload.ts',
@@ -78,7 +89,6 @@ export class AccessLensAuthoringStack extends Stack {
       sortKey: { name: 'docId', type: dynamodb.AttributeType.STRING },
     });
 
-    const token = new TokenParameter(this, 'ApiToken');
     const viewerOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.viewer);
     const packsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.packs);
     const artifactsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.artifacts);
@@ -120,16 +130,11 @@ export class AccessLensAuthoringStack extends Stack {
     });
     viewerDeployment.node.defaultChild && (viewerDeployment.node.defaultChild as { applyRemovalPolicy?: (policy: RemovalPolicy) => void }).applyRemovalPolicy?.(RemovalPolicy.DESTROY);
 
-    const authorizerFunction = this.nodeFunction('BearerAuthorizer', 'authorizer.ts', {
-      TOKEN_PARAMETER_NAME: token.parameterName,
-    });
-    authorizerFunction.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['ssm:GetParameter'],
-      resources: [token.parameterArn],
-    }));
-    const authorizer = new apigatewayAuthorizers.HttpLambdaAuthorizer('BearerAuthorizer', authorizerFunction, {
-      responseTypes: [apigatewayAuthorizers.HttpLambdaResponseType.SIMPLE],
-      resultsCacheTtl: Duration.seconds(30),
+    const googleClientId = (this.node.tryGetContext('googleClientId') as string | undefined) || UNCONFIGURED_CLIENT_ID;
+    const instructorAllowlist = (this.node.tryGetContext('instructorAllowlist') as string | undefined) ?? '';
+    const authorizer = new apigatewayAuthorizers.HttpJwtAuthorizer('GoogleSignIn', GOOGLE_ISSUER, {
+      jwtAudience: [googleClientId, GCLOUD_CLIENT_ID],
+      identitySource: ['$request.header.Authorization'],
     });
 
     this.api = new apigateway.HttpApi(this, 'HttpApi', {
@@ -157,7 +162,10 @@ export class AccessLensAuthoringStack extends Stack {
     for (const route of ROUTES) {
       const handlerFile = API_HANDLER_BY_OPERATION[route.operationId];
       if (!handlerFile) throw new Error(`No Lambda handler mapped for ${route.operationId}`);
-      const handler = this.nodeFunction(route.operationId, handlerFile, this.environmentFor(route));
+      const handler = this.nodeFunction(route.operationId, handlerFile, {
+        ...this.environmentFor(route),
+        INSTRUCTOR_ALLOWLIST: instructorAllowlist,
+      });
       this.applyLeastPrivilege(route, handler);
       const integration = new integrations.HttpLambdaIntegration(`${route.operationId}Integration`, handler);
       this.api.addRoutes({
@@ -178,8 +186,8 @@ export class AccessLensAuthoringStack extends Stack {
     this.output('ApiUrl', this.api.url ?? '');
     this.output('ViewerUrl', `https://${this.distribution.domainName}`);
     this.output('AssetBaseUrl', `https://${this.distribution.domainName}`);
-    this.output('TokenParameterName', token.parameterName);
-    this.output('BearerToken', token.token);
+    this.output('GoogleClientId', googleClientId);
+    this.output('InstructorAllowlist', instructorAllowlist);
     this.output('DecksBucketName', this.decks.bucketName);
     this.output('CatalogBucketName', this.catalog.bucketName);
     this.output('PacksBucketName', this.packs.bucketName);

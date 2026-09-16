@@ -14,8 +14,8 @@ AWS account and must be removed with `make destroy` when you finish.
 - An **IAM role** is a set of AWS permissions that a Lambda temporarily uses.
 - A **distribution** is a CloudFront HTTPS cache that serves static files near
   the browser.
-- **Parameter Store** is AWS Systems Manager's encrypted key/value store; this
-  deployment keeps the bearer token there rather than in source code.
+- A **Google ID token** is the short-lived proof of a Google sign-in; the API
+  accepts one from any instructor on the deployed allowlist (D12).
 
 ## 1. Open a terminal and choose the repository
 
@@ -43,14 +43,25 @@ Success ends with `Environment aws://087328706621/us-east-1 bootstrapped`.
 
 ## 2. Deploy the temporary stack
 
+The API signs instructors in with Google, so the deploy needs two values,
+in the environment or in `.env.local`:
+
 ```sh
+export GOOGLE_CLIENT_ID='<web-client-id>.apps.googleusercontent.com'
+export ACCESSLENS_INSTRUCTORS='you@example.edu,@cs.example.edu'
 make deploy
 ```
 
+`GOOGLE_CLIENT_ID` is an OAuth 2.0 client of type Web application from the
+Google Cloud console (APIs & Services, Credentials), with authorized
+JavaScript origins `http://localhost:5173` and the viewer URL below.
+`ACCESSLENS_INSTRUCTORS` lists who may author: exact emails and/or whole
+`@domains`, comma-separated. Anyone else who signs in gets HTTP 403.
+
 This creates the `AccessLensAuthoring` stack, six private buckets, three
-on-demand DynamoDB tables, the CloudFront distribution, the HTTP API, and the
-bearer-token parameter. It also writes the untracked `.env.local` and
-`.cdk-outputs.json` files.
+on-demand DynamoDB tables, the CloudFront distribution and the HTTP API with
+its Google JWT authorizer. It also writes the untracked `.env.local` and
+`.cdk-outputs.json` files, keeping both values above in `.env.local`.
 
 Success ends with lines in this form (the values are different on each deploy):
 
@@ -58,12 +69,9 @@ Success ends with lines in this form (the values are different on each deploy):
 API URL: https://<api-id>.execute-api.us-east-1.amazonaws.com/
 Viewer URL: https://<distribution-id>.cloudfront.net
 Asset base URL: https://<distribution-id>.cloudfront.net
-Bearer token: <base64url-token>
-Token parameter: /accesslens/authoring/api-token
+Google client id: <web-client-id>.apps.googleusercontent.com
+Instructors: you@example.edu,@cs.example.edu
 ```
-
-Copy the `Bearer token` value if you want to make manual requests. `make smoke`
-can read it automatically from `.cdk-outputs.json`.
 
 ## 3. Confirm the viewer is served by CloudFront
 
@@ -80,18 +88,23 @@ reaches it through the distribution, not through a public S3 URL.
 
 ## 4. Confirm the protected API
 
-Set the printed values in shell variables:
+Manual requests need a Google ID token for an account on
+`ACCESSLENS_INSTRUCTORS`. The Google Cloud SDK issues one:
 
 ```sh
+gcloud auth login   # once, as the instructor account
 export API_URL='https://<api-id>.execute-api.us-east-1.amazonaws.com'
-export ACCESSLENS_API_TOKEN='<base64url-token>'
+export ACCESSLENS_ID_TOKEN="$(gcloud auth print-identity-token)"
 ```
+
+The token is valid for about an hour; rerun the last line when a request
+starts answering 401.
 
 With the token:
 
 ```sh
 curl --fail-with-body --silent --show-error -i \
-  -H "Authorization: Bearer $ACCESSLENS_API_TOKEN" \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" \
   "$API_URL/v1/health"
 ```
 
@@ -101,14 +114,15 @@ Success is HTTP 200 and JSON like:
 {"ok":true,"version":"v2","region":"us-east-1"}
 ```
 
-Without the token:
+Without a token:
 
 ```sh
 curl --silent --show-error -i "$API_URL/v1/health"
 ```
 
 Success is HTTP 401. API Gateway rejects the request before the health Lambda
-runs.
+runs. A valid Google sign-in for an account that is not on the instructor
+list answers HTTP 403 with `"code":"not_an_instructor"` on any route below.
 
 ## 5. Upload a deck and queue a job
 
@@ -116,7 +130,7 @@ Create an upload URL:
 
 ```sh
 UPLOAD_JSON="$(curl --fail-with-body --silent --show-error \
-  -H "Authorization: Bearer $ACCESSLENS_API_TOKEN" \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" \
   -H 'content-type: application/json' \
   -d '{"filename":"HNSW_visualizations_slideshow.pdf","contentType":"application/pdf"}' \
   "$API_URL/v1/uploads")"
@@ -144,7 +158,7 @@ Queue the V2 job:
 
 ```sh
 JOB_JSON="$(curl --fail-with-body --silent --show-error \
-  -H "Authorization: Bearer $ACCESSLENS_API_TOKEN" \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" \
   -H 'content-type: application/json' \
   -d "{\"uploadId\":\"$UPLOAD_ID\",\"packId\":\"hnsw-explainer\",\"title\":\"HNSW explainer\"}" \
   "$API_URL/v1/jobs")"
@@ -160,7 +174,7 @@ Poll it:
 
 ```sh
 curl --fail-with-body --silent --show-error \
-  -H "Authorization: Bearer $ACCESSLENS_API_TOKEN" \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" \
   "$API_URL/v1/jobs/$JOB_ID"
 ```
 
@@ -203,7 +217,7 @@ Once the job is at `review`, the draft the instructor would see:
 
 ```sh
 curl --fail-with-body --silent --show-error \
-  -H "Authorization: Bearer $ACCESSLENS_API_TOKEN" \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" \
   "$API_URL/v1/jobs/$JOB_ID/draft"
 ```
 
@@ -218,9 +232,11 @@ The bounded all-in-one version of these checks is:
 make smoke
 ```
 
-It performs health, upload, PUT, job creation, and bounded polls until the
-job leaves `queued`. It ends with `Smoke complete.` and the status it last
-saw; `ingesting` or later means the pipeline is running.
+It takes the ID token from `ACCESSLENS_ID_TOKEN` or, failing that, from
+`gcloud auth print-identity-token`, then performs health, upload, PUT, job
+creation, and bounded polls until the job leaves `queued`. It ends with
+`Smoke complete.` and the status it last saw; `ingesting` or later means the
+pipeline is running.
 
 ## 6. Remove everything
 
@@ -233,14 +249,13 @@ make destroy
 Success ends with:
 
 ```text
-AccessLensAuthoring destroyed; temporary buckets and the bearer parameter are removed.
+AccessLensAuthoring destroyed; temporary buckets, tables and the API are removed.
 ```
 
 The command empties only the buckets named by this deployment's own CDK output,
 then destroys the `AccessLensAuthoring` stack. It does not touch workshop
-infrastructure or another stack. The CloudFormation delete removes the
-Parameter Store token, API, tables, buckets, distribution, Lambdas, and IAM
-roles.
+infrastructure or another stack. The CloudFormation delete removes the API
+and its authorizer, tables, buckets, distribution, Lambdas, and IAM roles.
 
 To prove that teardown was complete, deploy a second time:
 
@@ -248,6 +263,6 @@ To prove that teardown was complete, deploy a second time:
 make deploy
 ```
 
-Success is a fresh set of `API URL`, `Viewer URL`, `Asset base URL`, `Bearer
-token`, and `Token parameter` lines. Run `make destroy` once more after that
+Success is a fresh set of `API URL`, `Viewer URL`, `Asset base URL`,
+`Google client id` and `Instructors` lines. Run `make destroy` once more after that
 verification; this AWS account and all resources in it are temporary.

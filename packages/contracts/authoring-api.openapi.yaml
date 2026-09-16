@@ -32,7 +32,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -66,7 +72,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -106,7 +118,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -146,7 +164,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -187,7 +211,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -228,7 +258,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -275,7 +311,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -316,7 +358,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -357,7 +405,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -404,7 +458,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -451,7 +511,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -491,7 +557,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -531,7 +603,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -572,7 +650,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -619,7 +703,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -665,7 +755,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -712,7 +808,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '401':
-          description: 'Missing or invalid bearer token'
+          description: 'Missing, expired or invalid Google ID token'
+        '403':
+          description: 'Signed in, but not on this deployment''s instructor allowlist'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '500':
           description: 'Pipeline failure'
           content:
@@ -743,7 +845,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: 'opaque deployment token'
+      bearerFormat: 'Google ID token (JWT)'
   schemas:
     getHealthResponse:
       type: object

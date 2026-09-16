@@ -1,4 +1,4 @@
 import { createUpload } from './operations';
-import { withErrors } from './http';
+import { withInstructor } from './identity';
 
-export const handler = withErrors(createUpload);
+export const handler = withInstructor(createUpload);

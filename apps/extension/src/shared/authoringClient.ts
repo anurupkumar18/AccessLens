@@ -1,11 +1,10 @@
 import { AccessPackSchema, type AccessPack } from './contracts';
-import { readChoice, writeChoice } from '../shell/localChoice';
 
 /**
  * The instructor's client for the authoring API (Part 6): upload a deck,
  * start a job, watch it reach review, read the draft, record decisions and
- * publish. The bearer token is the one the stack issued at deploy; it lives
- * in this browser's localStorage only and is never sent anywhere but the API.
+ * publish. Every API call carries the instructor's Google ID token (D12,
+ * see googleSignIn.ts); the presigned deck upload carries nothing.
  */
 export type JobStatus = 'queued' | 'ingesting' | 'describing' | 'visualizing' | 'review' | 'needs_input' | 'publishing' | 'published' | 'failed';
 export interface JobState { jobId: string; status: JobStatus; packId: string; slides: Array<{ assetId: string; stage: string; status: string }>; error?: string }
@@ -44,12 +43,12 @@ export function packIdFromTitle(title: string): string {
   return id || 'lesson';
 }
 
-export function createAuthoringClient(baseUrl: string, token: string, fetchImpl: typeof fetch = (...args) => fetch(...args)): AuthoringClient {
+export function createAuthoringClient(baseUrl: string, idToken: string, fetchImpl: typeof fetch = (...args) => fetch(...args)): AuthoringClient {
   const root = baseUrl.replace(/\/+$/u, '');
   async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
     const response = await fetchImpl(`${root}${path}`, {
       method,
-      headers: { authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+      headers: { authorization: `Bearer ${idToken}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await response.text();
@@ -80,11 +79,6 @@ export function createAuthoringClient(baseUrl: string, token: string, fetchImpl:
     publish: jobId => call<Published>('POST', `/v1/jobs/${encodeURIComponent(jobId)}/publish`),
   };
 }
-
-const TOKEN_KEY = 'accesslens.authoring.token';
-export function readAuthoringToken(): string { return readChoice(TOKEN_KEY, [] as readonly string[]) ?? readRaw(); }
-function readRaw(): string { try { return window.localStorage.getItem(TOKEN_KEY) ?? ''; } catch { return ''; } }
-export function writeAuthoringToken(token: string): void { writeChoice(TOKEN_KEY, token.trim() || null); }
 
 /** The API base configured for this build, or null when authoring is not offered. */
 export const authoringApiUrl: string | null = (import.meta.env.VITE_ACCESSLENS_API_URL as string | undefined) || null;

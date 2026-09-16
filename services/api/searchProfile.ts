@@ -1,4 +1,4 @@
 import { notImplemented } from './operations';
-import { withErrors } from './http';
+import { withInstructor } from './identity';
 
-export const handler = withErrors(notImplemented('R2 profile retrieval'));
+export const handler = withInstructor(notImplemented('R2 profile retrieval'));

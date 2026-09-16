@@ -1,4 +1,4 @@
 import { getJob } from './operations';
-import { withErrors } from './http';
+import { withInstructor } from './identity';
 
-export const handler = withErrors(getJob);
+export const handler = withInstructor(getJob);
