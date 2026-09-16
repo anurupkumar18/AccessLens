@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { AccessPack, LiveEvent, RoleCapability, SessionClient } from '../shared/contracts';
 import { defaultAiClient, isRelayCapability, type AiClient } from '../shared/aiClient';
 import { AskClass } from './AskClass';
@@ -9,6 +9,11 @@ import { StructuredTextView } from '../renderers/StructuredTextView';
 import { AudioView } from '../renderers/AudioView';
 import { DyslexicTextView } from '../renderers/DyslexicTextView';
 import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
+import { createIvsSubscriber, type StreamSubscriber } from '../sources/stream';
+
+// Constructing the subscriber loads nothing and connects to nothing; it joins
+// the session's video stage only once the instructor announces a stream.
+const defaultSubscriber = createIvsSubscriber();
 
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
@@ -23,6 +28,8 @@ interface Props {
   onPreferencesChange(preferences: StudentPreferences): void;
   /** AI gateway client; defaults to the one configured by VITE_ACCESSLENS_AI_URL. */
   ai?: AiClient | null;
+  /** Watches the instructor's live video; defaults to Amazon IVS Real-Time. */
+  subscriber?: StreamSubscriber;
 }
 
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
@@ -39,7 +46,7 @@ function modesFor(pack: AccessPack): typeof allModes {
   return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
 }
 
-export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient }: Props): React.ReactElement {
+export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient, subscriber = defaultSubscriber }: Props): React.ReactElement {
   const [sessionId, setSessionId] = useState('');
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
@@ -72,6 +79,30 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       setLive((current) => (connected ? markLiveStateReconnected(current) : markLiveStateStale(current)));
     });
   }, [client]);
+
+  // Live video of the instructor's tab or window. It lives beside the modes,
+  // not in `live.status`: subscribing, failing or stopping never changes what
+  // the text and audio modes show. The pane exists while the instructor's
+  // `stream.started` is in force and this connection holds a stage token.
+  const streaming = live.stream !== undefined;
+  const streamSurface = live.stream?.surface;
+  const streamToken = capability?.streamToken;
+  const [video, setVideo] = useState<MediaStream | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (!streaming || !streamToken) return;
+    setVideo(null);
+    setVideoError(null);
+    void subscriber.subscribe(streamToken, { onVideo: setVideo, onError: setVideoError });
+    return () => { subscriber.stop(); setVideo(null); };
+  }, [streaming, streamToken, subscriber]);
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element) return;
+    // `autoPlay` on the element does the playing; muted inline video needs no gesture.
+    element.srcObject = video;
+  }, [video]);
 
   async function join(): Promise<void> {
     try {
@@ -135,6 +166,27 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       <p role="status" className="live-message">{live.message}</p>
 
       <LiveCaptionsView client={client} />
+
+      {streaming && (
+        <section className="live-video" aria-label="Instructor's live slide video">
+          {streamToken ? (
+            <>
+              <video
+                ref={videoRef}
+                muted
+                playsInline
+                autoPlay
+                aria-label={`Live video of the instructor's ${streamSurface === 'browser' ? 'tab' : 'window'}`}
+              />
+              <p role="status" className="supporting-text">
+                {videoError ?? (video ? `Live video of the instructor's ${streamSurface === 'browser' ? 'tab' : 'window'}. Text and audio below follow the lesson too.` : 'Connecting to the instructor\u2019s live video\u2026')}
+              </p>
+            </>
+          ) : (
+            <p role="status" className="supporting-text">The instructor is streaming live video, but this connection has no video access. Text and audio still work.</p>
+          )}
+        </section>
+      )}
 
       <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson">
         {modes.map((mode, index) => (
