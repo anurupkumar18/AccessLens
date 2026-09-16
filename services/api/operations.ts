@@ -61,7 +61,6 @@ export const createUpload: OperationHandler = async event => {
 export const createJob: OperationHandler = async event => {
   const input = parseRequest(CreateJobRequestSchema, parseJsonBody(event));
   if (!jobsTable) throw new ApiHttpError(500, 'configuration_error', 'The jobs table is not configured.');
-  if (!decksBucket) throw new ApiHttpError(500, 'configuration_error', 'The decks bucket is not configured.');
 
   const jobId = randomUUID();
   const now = new Date().toISOString();
