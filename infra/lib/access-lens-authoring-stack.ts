@@ -28,7 +28,8 @@ const ROOT = process.cwd();
  * against Google's issuer; the audience is this deployment's own OAuth web
  * client plus the Google Cloud SDK's public client, so `gcloud auth
  * print-identity-token` works for scripts. Any verified Google account is an
- * instructor for now (D13); students never call this API.
+ * instructor for authoring routes (D13). Student-only course routes validate
+ * a server-side class membership after the same Google authentication.
  */
 const GOOGLE_ISSUER = 'https://accounts.google.com';
 const GCLOUD_CLIENT_ID = '32555940559.apps.googleusercontent.com';
@@ -53,6 +54,13 @@ const API_HANDLER_BY_OPERATION: Record<string, string> = {
   getDocument: 'getDocument.ts',
   deleteDocument: 'deleteDocument.ts',
   searchProfile: 'searchProfile.ts',
+  createInvite: 'createInvite.ts',
+  revokeInvite: 'revokeInvite.ts',
+  redeemInvite: 'redeemInvite.ts',
+  archiveProfile: 'archiveProfile.ts',
+  createFact: 'createFact.ts',
+  publishFact: 'publishFact.ts',
+  studentAsk: 'studentAsk.ts',
 };
 
 export class AccessLensAuthoringStack extends Stack {
@@ -66,6 +74,9 @@ export class AccessLensAuthoringStack extends Stack {
   readonly instructors: dynamodb.Table;
   readonly profiles: dynamodb.Table;
   readonly documents: dynamodb.Table;
+  readonly invites: dynamodb.Table;
+  readonly memberships: dynamodb.Table;
+  readonly facts: dynamodb.Table;
   readonly libraryExtension: LibraryExtension;
   readonly distribution: cloudfront.Distribution;
   readonly api: apigateway.HttpApi;
@@ -107,7 +118,12 @@ export class AccessLensAuthoringStack extends Stack {
       indexName: 'profileId-index',
       partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING },
     });
-    this.libraryExtension = new LibraryExtension(this, 'CourseLibrary', { root: ROOT, library: this.library, documents: this.documents });
+    this.invites = this.table('ClassInvites', { partitionKey: { name: 'inviteId', type: dynamodb.AttributeType.STRING } });
+    this.memberships = this.table('ClassMemberships', { partitionKey: { name: 'membershipId', type: dynamodb.AttributeType.STRING } });
+    this.memberships.addGlobalSecondaryIndex({ indexName: 'profileId-index', partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
+    this.facts = this.table('ClassFacts', { partitionKey: { name: 'factId', type: dynamodb.AttributeType.STRING } });
+    this.facts.addGlobalSecondaryIndex({ indexName: 'profileId-index', partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
+    this.libraryExtension = new LibraryExtension(this, 'CourseLibrary', { root: ROOT, library: this.library, documents: this.documents, facts: this.facts });
 
     const viewerOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.viewer);
     const packsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.packs);
@@ -329,6 +345,13 @@ export class AccessLensAuthoringStack extends Stack {
       case 'getDocument':
       case 'deleteDocument':
       case 'searchProfile':
+      case 'createInvite':
+      case 'revokeInvite':
+      case 'redeemInvite':
+      case 'archiveProfile':
+      case 'createFact':
+      case 'publishFact':
+      case 'studentAsk':
         return this.libraryEnvironment();
       default:
         return {};
@@ -343,6 +366,12 @@ export class AccessLensAuthoringStack extends Stack {
       DOCUMENTS_TABLE: this.documents.tableName,
       DECKS_BUCKET: this.decks.bucketName,
       INDEXER_FUNCTION_NAME: this.libraryExtension.indexer.functionName,
+      INVITES_TABLE: this.invites.tableName,
+      MEMBERSHIPS_TABLE: this.memberships.tableName,
+      FACTS_TABLE: this.facts.tableName,
+      // Off by default. An explicit deploy context plus the human approval
+      // decision is required before a model may receive approved excerpts.
+      COURSE_ASSISTANT_ENABLED: ['true', '1'].includes(String(this.node.tryGetContext('courseAssistantEnabled')).toLowerCase()) ? 'true' : 'false',
     };
   }
 
@@ -405,9 +434,11 @@ export class AccessLensAuthoringStack extends Stack {
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`] }));
         break;
       case 'deleteProfile':
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:DeleteItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem'], resources: [this.profiles.tableArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:DeleteItem'], resources: [this.documents.tableArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Scan', 'dynamodb:DeleteItem'], resources: [this.invites.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query', 'dynamodb:DeleteItem'], resources: [`${this.memberships.tableArn}/index/profileId-index`, `${this.facts.tableArn}/index/profileId-index`, this.memberships.tableArn, this.facts.tableArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.library.bucketArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:DeleteObject'], resources: [this.library.arnForObjects('library/*')] }));
         this.libraryExtension.grantVectors(fn, ['s3vectors:DeleteIndex', 's3vectors:DeleteVectors']);
@@ -416,7 +447,7 @@ export class AccessLensAuthoringStack extends Stack {
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], resources: [this.documents.tableArn] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.decks.bucketArn, this.library.bucketArn] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [this.decks.arnForObjects('uploads/*')] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [this.decks.arnForObjects('quarantine/*')] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:DeleteObject'], resources: [this.library.arnForObjects('library/*')] }));
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['lambda:InvokeFunction'], resources: [this.libraryExtension.indexer.functionArn] }));
         this.libraryExtension.grantVectors(fn, ['s3vectors:DeleteVectors']);
@@ -436,6 +467,36 @@ export class AccessLensAuthoringStack extends Stack {
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [this.library.arnForObjects('library/*')] }));
         this.libraryExtension.grantVectors(fn, ['s3vectors:QueryVectors', 's3vectors:GetVectors', 's3vectors:GetIndex']);
         this.libraryExtension.grantTitan(fn, this);
+        break;
+      case 'createInvite':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:PutItem'], resources: [this.invites.tableArn] }));
+        break;
+      case 'revokeInvite':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn, this.invites.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:PutItem'], resources: [this.invites.tableArn] }));
+        break;
+      case 'redeemInvite':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Scan', 'dynamodb:PutItem'], resources: [this.invites.tableArn, this.memberships.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
+        break;
+      case 'archiveProfile':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`] }));
+        break;
+      case 'createFact':
+      case 'publishFact':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], resources: [this.profiles.tableArn, this.facts.tableArn] }));
+        break;
+      case 'studentAsk':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:Scan'], resources: [this.profiles.tableArn, this.memberships.tableArn, this.facts.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [this.library.arnForObjects('library/*')] }));
+        this.libraryExtension.grantVectors(fn, ['s3vectors:QueryVectors', 's3vectors:GetVectors', 's3vectors:GetIndex']);
+        this.libraryExtension.grantTitan(fn, this);
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['bedrock:InvokeModel'], resources: [
+          `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/us.anthropic.claude-sonnet-4-6`,
+          'arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6*',
+        ] }));
         break;
       default:
         break;

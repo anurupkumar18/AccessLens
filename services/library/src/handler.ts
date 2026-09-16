@@ -4,7 +4,9 @@ import { join } from 'node:path';
 import { S3Client } from '@aws-sdk/client-s3';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import type { DocumentRecord } from '../../shared/api';
+import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import type { ClassFact, DocumentRecord } from '../../shared/api';
+import { createHash } from 'node:crypto';
 import { convertOfficeToPdf, detectInputFormat } from '../../ingest/src/ingest';
 import { readFileSync } from 'node:fs';
 import { AwsVectorAdmin, S3ChunkStore, S3LibraryStore } from './aws';
@@ -12,6 +14,7 @@ import { TitanEmbedder } from './embed';
 import { indexDocument } from './indexDocument';
 import { retrieve } from './retrieve';
 import { extractPages } from './stages/extractPages';
+import { extractClassFactDrafts } from './facts';
 
 /**
  * The course-library indexer (spec section 9.2), one Lambda invocation per
@@ -27,6 +30,7 @@ export interface IndexDocumentEvent {
   kind: DocumentRecord['kind'];
   title: string;
   citation?: string;
+  timeZone: string;
   /** Key in the library bucket, `library/{profileId}/{docId}/source.<ext>`. */
   sourceKey: string;
 }
@@ -36,6 +40,7 @@ export interface IndexerConfig {
   libraryBucket: string;
   vectorBucket: string;
   documentsTable: string;
+  factsTable: string;
 }
 
 export function indexerConfig(env: NodeJS.ProcessEnv = process.env): IndexerConfig {
@@ -44,6 +49,7 @@ export function indexerConfig(env: NodeJS.ProcessEnv = process.env): IndexerConf
     libraryBucket: env.LIBRARY_BUCKET ?? '',
     vectorBucket: env.VECTOR_BUCKET ?? '',
     documentsTable: env.DOCUMENTS_TABLE ?? '',
+    factsTable: env.FACTS_TABLE ?? '',
   };
   for (const [name, value] of Object.entries(config)) if (!value) throw new Error(`${name} is not configured for the library indexer`);
   return config;
@@ -94,9 +100,23 @@ export async function handler(event: IndexDocumentEvent): Promise<DocumentRecord
         vectors: { forProfile: id => vectors.store(id) },
         chunks,
       }),
+      onExtracted: pages => persistDraftFacts({ dynamo, factsTable: config.factsTable, event, pages }),
     });
   } finally {
     rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
+async function persistDraftFacts(input: { dynamo: DynamoDBDocumentClient; factsTable: string; event: IndexDocumentEvent; pages: readonly import('./stages/types').PageText[] }): Promise<void> {
+  const drafts = extractClassFactDrafts({ docId: input.event.docId, title: input.event.title, timeZone: input.event.timeZone, pages: input.pages });
+  for (const draft of drafts) {
+    const digest = createHash('sha256').update(`${input.event.docId}:${draft.kind}:${draft.citation.page}:${draft.body}`).digest('hex').slice(0, 24);
+    const factId = `${input.event.docId}-${digest}`;
+    const existing = await input.dynamo.send(new GetCommand({ TableName: input.factsTable, Key: { factId } }));
+    // Never downgrade an instructor-published draft during an indexing retry.
+    if (existing.Item) continue;
+    const fact: ClassFact = { factId, profileId: input.event.profileId, ...draft, status: 'draft', createdAt: new Date().toISOString() };
+    await input.dynamo.send(new PutCommand({ TableName: input.factsTable, Item: fact }));
   }
 }
 

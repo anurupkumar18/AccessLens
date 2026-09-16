@@ -34,4 +34,16 @@ describe('indexDocument', () => {
     })).rejects.toThrow(/failed at verify/u);
     expect(update).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'failed', stage: 'verify' }));
   });
+
+  it('writes automatic fact drafts only after a verified document is ready', async () => {
+    const onExtracted = vi.fn(async () => undefined);
+    await indexDocument({ profileId: 'p', docId: 'd', path: 'doc.pdf', kind: 'notes', title: 'Notes' }, {
+      update: vi.fn(async () => undefined),
+      extractPages: vi.fn(async () => [{ page: 1, text: 'A page one sentence.' }]),
+      embed: { embed: vi.fn(async (texts: readonly string[]) => texts.map(() => Array.from({ length: 1024 }, () => 1))) },
+      vectors: { put: vi.fn(async () => undefined) }, chunks: { put: vi.fn(async () => undefined), get: vi.fn(async () => undefined) },
+      retrieve: vi.fn(async () => [{ chunkId: 'd:p1-c0', docId: 'd', title: 'Notes', page: 1, score: .9, text: 'A page one sentence.' }]), onExtracted,
+    });
+    expect(onExtracted).toHaveBeenCalledWith([{ page: 1, text: 'A page one sentence.' }]);
+  });
 });

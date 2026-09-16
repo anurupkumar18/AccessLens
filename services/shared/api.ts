@@ -11,6 +11,10 @@ import { z } from 'zod';
 import { AccessPackSchema, ArtifactManifestSchema } from '../../apps/extension/src/shared/contracts';
 import { JobStatusSchema, ReviewDecisionSchema, SlideProgressSchema } from './jobs';
 
+const IanaTimeZoneSchema = z.string().min(1).max(80).refine(value => {
+  try { new Intl.DateTimeFormat('en-US', { timeZone: value }); return true; } catch { return false; }
+}, 'timeZone must be an IANA time zone.');
+
 // ---------------------------------------------------------------------------
 // Errors
 
@@ -122,12 +126,15 @@ export const HealthResponseSchema = z.object({
 // returns a whole document to anyone but the owning instructor, and the only
 // thing that ever reaches a student is a capped quote with a citation.
 
-export const DocumentKindSchema = z.enum(['textbook', 'slides', 'notes', 'problems', 'syllabus', 'other']);
+/** Deliberately excludes student submissions, assessments, and answer keys. */
+export const DocumentKindSchema = z.enum(['textbook', 'slides', 'notes', 'syllabus', 'reading', 'other']);
 
 export const CreateProfileRequestSchema = z.object({
   name: z.string().min(1).max(200),
   subject: z.string().min(1).max(120),
   level: z.string().min(1).max(80),
+  /** IANA timezone used to make due-date answers unambiguous. */
+  timeZone: IanaTimeZoneSchema.default('UTC'),
 }).strict();
 
 export const DocumentRecordSchema = z.object({
@@ -152,6 +159,8 @@ export const ProfileRecordSchema = z.object({
   name: z.string().min(1),
   subject: z.string().min(1),
   level: z.string().min(1),
+  timeZone: IanaTimeZoneSchema.default('UTC'),
+  archiveState: z.enum(['active', 'archived', 'deleting']).default('active'),
   createdAt: z.string().datetime(),
   vectorIndexName: z.string().min(1),
 }).strict();
@@ -196,6 +205,91 @@ export const SearchResponseSchema = z.object({
 }).strict();
 
 export const DeletedResponseSchema = z.object({ deleted: z.literal(true), id: z.string().min(1) }).strict();
+
+// ---------------------------------------------------------------------------
+// Approval-gated class membership and cited student assistance (AL-056)
+
+export const ClassMembershipSchema = z.object({
+  profileId: z.string().min(1),
+  studentSub: z.string().min(1),
+  role: z.literal('student'),
+  joinedAt: z.string().datetime(),
+}).strict();
+export type ClassMembership = z.infer<typeof ClassMembershipSchema>;
+
+export const ClassInviteSchema = z.object({
+  inviteId: z.string().min(1),
+  profileId: z.string().min(1),
+  token: z.string().min(16),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  maxRedemptions: z.number().int().positive(),
+  redemptions: z.number().int().nonnegative(),
+  revokedAt: z.string().datetime().optional(),
+}).strict();
+export type ClassInvite = z.infer<typeof ClassInviteSchema>;
+
+export const CreateInviteRequestSchema = z.object({
+  expiresInHours: z.number().int().positive().max(24 * 30).default(72),
+  maxRedemptions: z.number().int().positive().max(500).default(1),
+}).strict();
+export const CreateInviteResponseSchema = z.object({
+  invite: ClassInviteSchema,
+}).strict();
+export const RedeemInviteRequestSchema = z.object({ token: z.string().min(16).max(256) }).strict();
+export const RedeemInviteResponseSchema = z.object({ membership: ClassMembershipSchema }).strict();
+export const RevokeInviteResponseSchema = z.object({ invite: ClassInviteSchema }).strict();
+
+export const FactCitationSchema = z.object({
+  docId: z.string().min(1),
+  title: z.string().min(1),
+  page: z.number().int().positive(),
+  quote: z.string().min(1).max(300),
+}).strict();
+export type FactCitation = z.infer<typeof FactCitationSchema>;
+
+export const ClassFactSchema = z.object({
+  factId: z.string().min(1),
+  profileId: z.string().min(1),
+  kind: z.enum(['deadline', 'recap']),
+  status: z.enum(['draft', 'published', 'superseded']),
+  title: z.string().min(1).max(300),
+  body: z.string().min(1).max(1200),
+  occurredOn: z.string().date().optional(),
+  dueAt: z.string().datetime().optional(),
+  timeZone: IanaTimeZoneSchema,
+  citation: FactCitationSchema,
+  createdAt: z.string().datetime(),
+  publishedAt: z.string().datetime().optional(),
+  supersedesFactId: z.string().min(1).optional(),
+}).strict().superRefine((fact, context) => {
+  if (fact.kind === 'deadline' && !fact.dueAt) context.addIssue({ code: 'custom', message: 'Deadline facts require dueAt.', path: ['dueAt'] });
+  if (fact.kind === 'recap' && !fact.occurredOn) context.addIssue({ code: 'custom', message: 'Recap facts require occurredOn.', path: ['occurredOn'] });
+});
+export type ClassFact = z.infer<typeof ClassFactSchema>;
+
+export const CreateFactRequestSchema = z.object({
+  kind: z.enum(['deadline', 'recap']),
+  title: z.string().min(1).max(300),
+  body: z.string().min(1).max(1200),
+  occurredOn: z.string().date().optional(),
+  dueAt: z.string().datetime().optional(),
+  timeZone: IanaTimeZoneSchema,
+  citation: FactCitationSchema,
+}).strict().superRefine((fact, context) => {
+  if (fact.kind === 'deadline' && !fact.dueAt) context.addIssue({ code: 'custom', message: 'Deadline facts require dueAt.', path: ['dueAt'] });
+  if (fact.kind === 'recap' && !fact.occurredOn) context.addIssue({ code: 'custom', message: 'Recap facts require occurredOn.', path: ['occurredOn'] });
+});
+
+export const ClassFactResponseSchema = z.object({ fact: ClassFactSchema }).strict();
+export const PublishFactResponseSchema = z.object({ fact: ClassFactSchema }).strict();
+
+export const StudentAskRequestSchema = z.object({ question: z.string().min(3).max(300) }).strict();
+export const StudentCitationSchema = FactCitationSchema.extend({ kind: z.enum(['fact', 'document']), provisional: z.boolean() }).strict();
+export const StudentAskResponseSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('answered'), answer: z.string().min(1).max(700), citations: z.array(StudentCitationSchema).min(1), provisional: z.boolean() }).strict(),
+  z.object({ status: z.literal('declined'), reason: z.enum(['course-assistant-disabled', 'not-supported-by-material', 'class-archived', 'model-unavailable']) }).strict(),
+]);
 
 /**
  * The signed-in instructor's own record (D13). Created on first sign-in;
@@ -268,4 +362,11 @@ export const ROUTES: RouteSpec[] = [
   { method: 'GET',    path: '/v1/profiles/{profileId}/documents/{docId}', operationId: 'getDocument', summary: 'Document status and page count', response: DocumentRecordSchema, successStatus: 200, auth: 'bearer' },
   { method: 'DELETE', path: '/v1/profiles/{profileId}/documents/{docId}', operationId: 'deleteDocument', summary: 'Remove the document and its vectors', response: DeletedResponseSchema, successStatus: 200, auth: 'bearer' },
   { method: 'POST',   path: '/v1/profiles/{profileId}/search', operationId: 'searchProfile', summary: 'Ranked chunks with citations', request: SearchRequestSchema, response: SearchResponseSchema, successStatus: 200, auth: 'bearer' },
+  { method: 'POST',   path: '/v1/profiles/{profileId}/invites', operationId: 'createInvite', summary: 'Create an expiring student invite', request: CreateInviteRequestSchema, response: CreateInviteResponseSchema, successStatus: 201, auth: 'bearer' },
+  { method: 'DELETE', path: '/v1/profiles/{profileId}/invites/{inviteId}', operationId: 'revokeInvite', summary: 'Revoke an unredeemed or active student invite', response: RevokeInviteResponseSchema, successStatus: 200, auth: 'bearer' },
+  { method: 'POST',   path: '/v1/invites/redeem', operationId: 'redeemInvite', summary: 'Redeem an invite for the signed-in student', request: RedeemInviteRequestSchema, response: RedeemInviteResponseSchema, successStatus: 201, auth: 'bearer' },
+  { method: 'POST',   path: '/v1/profiles/{profileId}/archive', operationId: 'archiveProfile', summary: 'Archive a class and revoke student access', response: ProfileResponseSchema, successStatus: 200, auth: 'bearer' },
+  { method: 'POST',   path: '/v1/profiles/{profileId}/facts', operationId: 'createFact', summary: 'Create a cited provisional class fact', request: CreateFactRequestSchema, response: ClassFactResponseSchema, successStatus: 201, auth: 'bearer' },
+  { method: 'POST',   path: '/v1/profiles/{profileId}/facts/{factId}/publish', operationId: 'publishFact', summary: 'Publish a reviewed class fact', response: PublishFactResponseSchema, successStatus: 200, auth: 'bearer' },
+  { method: 'POST',   path: '/v1/student/profiles/{profileId}/ask', operationId: 'studentAsk', summary: 'Answer from this class only with citations or a decline', request: StudentAskRequestSchema, response: StudentAskResponseSchema, successStatus: 200, auth: 'bearer' },
 ];

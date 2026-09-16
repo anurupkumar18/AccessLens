@@ -16,7 +16,7 @@ export interface PublishedPackSummary { packId: string; title: string; version: 
 /** The signed-in instructor's account (D13) and course profiles. */
 export interface Instructor { sub: string; email: string; name?: string; createdAt: string; lastSeenAt: string }
 export interface CourseProfile { profileId: string; name: string; subject: string; level: string; createdAt: string }
-export type DocumentKind = 'textbook' | 'slides' | 'notes' | 'problems' | 'syllabus' | 'other';
+export type DocumentKind = 'textbook' | 'slides' | 'notes' | 'syllabus' | 'reading' | 'other';
 export type DocumentStatus = 'pending' | 'extracting' | 'chunking' | 'embedding' | 'verifying' | 'ready' | 'failed';
 export interface CourseDocument { docId: string; profileId: string; kind: DocumentKind; title: string; citation?: string; pages: number; chunks: number; status: DocumentStatus; stage?: string; error?: string }
 export interface ProfileWithDocuments { profile: CourseProfile; documents: CourseDocument[] }
@@ -79,9 +79,9 @@ export function createAuthoringClient(baseUrl: string, idToken: string, fetchImp
     return parsed as T;
   }
   /** Presigned PUT of a file; the API never sees the bytes and the PUT carries no token. */
-  async function upload(file: { name: string; body: Blob }): Promise<string> {
-    const contentType = deckContentType(file.name);
-    if (!contentType) throw new AuthoringApiError(400, 'unsupported_file', 'Upload a PDF, PPTX, DOCX or TXT file.');
+  async function upload(file: { name: string; body: Blob }, libraryPdfOnly = false): Promise<string> {
+    const contentType = libraryPdfOnly ? (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : undefined) : deckContentType(file.name);
+    if (!contentType) throw new AuthoringApiError(400, 'unsupported_file', libraryPdfOnly ? 'Upload a PDF file.' : 'Upload a PDF, PPTX, DOCX or TXT file.');
     const presigned = await call<{ uploadId: string; url: string }>('POST', '/v1/uploads', { filename: file.name, contentType });
     const put = await fetchImpl(presigned.url, { method: 'PUT', headers: { 'content-type': contentType }, body: file.body });
     if (!put.ok) throw new AuthoringApiError(put.status, 'upload_failed', `The upload answered ${put.status}.`);
@@ -110,7 +110,7 @@ export function createAuthoringClient(baseUrl: string, idToken: string, fetchImp
     getProfile: profileId => call('GET', profilePath(profileId)),
     async deleteProfile(profileId) { await call('DELETE', profilePath(profileId)); },
     async addDocument(profileId, file, document) {
-      const uploadId = await upload(file);
+      const uploadId = await upload(file, true);
       return call<CourseDocument>('POST', `${profilePath(profileId)}/documents`, { uploadId, ...document });
     },
     async deleteDocument(profileId, docId) { await call('DELETE', `${profilePath(profileId)}/documents/${encodeURIComponent(docId)}`); },

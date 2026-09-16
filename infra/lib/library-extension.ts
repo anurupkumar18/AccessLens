@@ -12,6 +12,7 @@ export interface LibraryExtensionProps {
   root: string;
   library: s3.Bucket;
   documents: dynamodb.Table;
+  facts: dynamodb.Table;
 }
 
 /** The one embedding model this account may call (hard rule 12), from Lambda only. */
@@ -48,6 +49,7 @@ export class LibraryExtension extends Construct {
       LIBRARY_BUCKET: props.library.bucketName,
       VECTOR_BUCKET: this.vectorBucketName,
       DOCUMENTS_TABLE: props.documents.tableName,
+      FACTS_TABLE: props.facts.tableName,
     };
 
     this.indexer = new lambda.DockerImageFunction(this, 'IndexerFunction', {
@@ -66,6 +68,7 @@ export class LibraryExtension extends Construct {
     props.library.grantReadWrite(this.indexer, 'library/*');
     props.library.grantRead(this.indexer);
     props.documents.grantReadWriteData(this.indexer);
+    props.facts.grantReadWriteData(this.indexer);
     this.grantVectors(this.indexer, ['s3vectors:PutVectors', 's3vectors:QueryVectors', 's3vectors:GetVectors', 's3vectors:GetIndex', 's3vectors:CreateIndex']);
     this.grantTitan(this.indexer, stack);
 

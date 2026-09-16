@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { CopyObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { CopyObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { awsClients, DynamoProfileStore, S3ChunkStore } from '../library/src/aws';
 import { TitanEmbedder } from '../library/src/embed';
 import { retrieve } from '../library/src/retrieve';
 import { RouteError, type LibraryRouteDeps, type UploadRecord } from '../library/src/routes/types';
+import { validateLibraryPdf } from '../library/src/intake';
 import { ApiHttpError } from './http';
 import { decksBucket, region, s3 } from './config';
 import type { Caller } from './identity';
@@ -61,11 +62,12 @@ export function libraryDeps(config: LibraryConfig = libraryConfig()): LibraryDep
       return record ? chunks.listForDocument(docId, record.profileId) : [];
     },
     retrieve: retrieveForProfile,
+    validateUpload: validateLibraryPdf,
     async startIndexing(input) {
       // The presigned upload landed in the decks bucket; the library keeps
       // its own private copy under the profile prefix (spec 9.1) and the
       // decks copy expires with the bucket's seven-day rule.
-      const extension = input.path.toLowerCase().match(/\.(pdf|pptx|docx)$/u)?.[1] ?? 'pdf';
+      const extension = input.path.toLowerCase().match(/\.(pdf)$/u)?.[1] ?? 'pdf';
       const sourceKey = `library/${input.profileId}/${input.docId}/source.${extension}`;
       await s3.send(new CopyObjectCommand({ Bucket: config.libraryBucket, Key: sourceKey, CopySource: `${decksBucket}/${input.path}` }));
       if (!config.indexerFunctionName) throw new ApiHttpError(500, 'configuration_error', 'The library indexer is not configured.');
@@ -78,6 +80,7 @@ export function libraryDeps(config: LibraryConfig = libraryConfig()): LibraryDep
           kind: input.kind,
           title: input.title,
           ...(input.citation ? { citation: input.citation } : {}),
+          timeZone: input.timeZone,
           sourceKey,
         })),
       }));
@@ -85,17 +88,19 @@ export function libraryDeps(config: LibraryConfig = libraryConfig()): LibraryDep
   };
 }
 
-/** Presigned uploads are S3 objects under `uploads/{uploadId}/` in the decks bucket, not records. */
+/** Presigned uploads are staged under `quarantine/{uploadId}/` until PDF intake accepts them. */
 function decksUploads(): LibraryRouteDeps['uploads'] {
   const seen = new Map<string, UploadRecord>();
   return {
     async get(uploadId: string) {
       const cached = seen.get(uploadId);
       if (cached) return cached;
-      const listed = await s3.send(new ListObjectsV2Command({ Bucket: decksBucket, Prefix: `uploads/${uploadId}/` })) as { Contents?: Array<{ Key?: string }> };
+      const listed = await s3.send(new ListObjectsV2Command({ Bucket: decksBucket, Prefix: `quarantine/${uploadId}/` })) as { Contents?: Array<{ Key?: string }> };
       const key = (listed.Contents ?? []).flatMap(object => object.Key ? [object.Key] : [])[0];
       if (!key) return undefined;
-      const record: UploadRecord = { key };
+      const head = await s3.send(new HeadObjectCommand({ Bucket: decksBucket, Key: key }));
+      const body = await s3.send(new GetObjectCommand({ Bucket: decksBucket, Key: key, Range: 'bytes=0-7' }));
+      const record: UploadRecord = { key, contentType: head.ContentType, contentLength: head.ContentLength, firstBytes: body.Body ? await body.Body.transformToByteArray() : undefined };
       seen.set(uploadId, record);
       return record;
     },

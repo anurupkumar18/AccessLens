@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { AccessPack, RoleCapability } from '../shared/contracts';
 import { AiUnavailableError, isRelayCapability, type AiClient, type AskAnswer } from '../shared/aiClient';
+import { savePrivateClassTask } from './classTasks';
 
 const DECLINE_MESSAGES: Record<string, string> = {
   'no-reviewed-material': "This lesson's reviewed material doesn't cover that. Try asking about something on the slides.",
@@ -25,6 +26,7 @@ export function AskClass({ pack, capability, ai }: Props): React.ReactElement {
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<AskAnswer | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [taskSaved, setTaskSaved] = useState(false);
   const available = ai !== null && isRelayCapability(capability);
 
   async function ask(event: React.FormEvent): Promise<void> {
@@ -33,6 +35,7 @@ export function AskClass({ pack, capability, ai }: Props): React.ReactElement {
     setPending(true);
     setError(null);
     setResult(null);
+    setTaskSaved(false);
     try {
       setResult(await ai.ask(capability, pack.packId, pack.version, question.trim()));
     } catch (caught) {
@@ -42,6 +45,16 @@ export function AskClass({ pack, capability, ai }: Props): React.ReactElement {
     } finally {
       setPending(false);
     }
+  }
+
+  function saveAsTask(): void {
+    if (result?.status !== 'answered') return;
+    savePrivateClassTask({
+      question: question.trim(),
+      answer: result.answer,
+      sources: result.citations.map(citation => `${citation.label} (${citation.assetTitle})`),
+    });
+    setTaskSaved(true);
   }
 
   return (
@@ -68,6 +81,9 @@ export function AskClass({ pack, capability, ai }: Props): React.ReactElement {
               <span className="eyebrow">From the reviewed lesson</span>
               {result.citations.map(citation => `${citation.label} (${citation.assetTitle})`).join(' · ')}
             </p>
+            <button type="button" className="secondary" onClick={saveAsTask} disabled={taskSaved}>
+              {taskSaved ? 'Saved privately on this device' : 'Add as a private task'}
+            </button>
           </div>
         ) : null}
         {result?.status === 'declined' ? <p className="answer declined">{DECLINE_MESSAGES[result.reason] ?? DECLINE_MESSAGES['not-supported-by-material']}</p> : null}
