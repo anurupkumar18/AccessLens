@@ -11,4 +11,12 @@ export default defineConfig({ plugins: [react(), { name: 'extension-assets', con
   // Agent worktrees (.claude/, .worktrees/), built output and CDK staging all
   // hold copies of this repo's tests; without these excludes `vitest run`
   // reports a count that has nothing to do with this tree.
+  // Local hosting: the browser tab on localhost has no extension host
+  // permissions, and neither CloudFront nor the AI gateway answer CORS for it,
+  // so the dev server proxies the published pack, its media and the AI routes.
+  server: { proxy: {
+    '/packs': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
+    '/media': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
+    '/ai': { target: 'https://xmisk5oc1m.execute-api.us-east-1.amazonaws.com', changeOrigin: true, rewrite: (path) => path.replace(/^\/ai/, '') },
+  } },
   test: { exclude: [...configDefaults.exclude, '.claude/**', '**/dist/**', '**/.worktrees/**', '**/cdk.out/**'] } });

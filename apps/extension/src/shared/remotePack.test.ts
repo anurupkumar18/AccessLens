@@ -24,6 +24,12 @@ describe('remotePackUrl', () => {
       expect(remotePackUrl(`?pack=${encodeURIComponent(bad)}`), bad).toBeNull();
     }
   });
+
+  it('allows a same-machine dev server over plain http, and only that', () => {
+    expect(remotePackUrl(`?pack=${encodeURIComponent('http://localhost:5173/packs/p/1.json')}`)?.hostname).toBe('localhost');
+    expect(remotePackUrl(`?pack=${encodeURIComponent('http://127.0.0.1:5173/packs/p/1.json')}`)?.hostname).toBe('127.0.0.1');
+    expect(remotePackUrl(`?pack=${encodeURIComponent('http://localhost.evil.test/p.json')}`)).toBeNull();
+  });
 });
 
 describe('loadRemotePack', () => {

@@ -23,7 +23,11 @@ export function remotePackUrl(search: string): URL | null {
   }
   // Only https: a pack fetched over plain http could be swapped in transit,
   // and a file: or chrome-extension: URL is not a published pack.
-  return url.protocol === 'https:' ? url : null;
+  // A same-machine dev server (`npx vite` with its /packs and /media proxy)
+  // is the one plain-http origin allowed, so a published pack can be viewed
+  // locally without CORS headers on the distribution.
+  const local = url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+  return url.protocol === 'https:' || local ? url : null;
 }
 
 export async function loadRemotePack(url: URL, fetchImpl: typeof fetch = fetch): Promise<AccessPack> {
