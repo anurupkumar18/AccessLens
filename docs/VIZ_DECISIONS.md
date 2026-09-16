@@ -274,3 +274,63 @@ image with the CommonJS fix builds and loads locally; whether it reached
 the stack depends on where the deploy died.
 
 **Resolution.** The user signed in again; `sts get-caller-identity` answers as the participant role and the stack reads `UPDATE_COMPLETE` on the pre-fix revision. The redeploy and the real job were started immediately.
+
+## D9 — `origin/master` moved under this branch: the UI rebuild is in, and two CDK apps now claim `infra/` — DECISION NEEDED
+
+**What the user asked.** "When you're done, the UI PR should be in so
+please check that out."
+
+**What is actually there.** No UI pull request exists. The only open PR
+(#12) is a docs-only contract review. The IBM Plex interface rebuild
+(`9d894ae`) reached `origin/master` through a direct merge commit
+(`cd52f6e` "merge: consolidate AccessLens integration"), followed by
+`231d1fb` "feat: improve realtime accesslens learning experience", which
+together touch 21 extension files (688 lines of `style.css`). So the UI is
+in master; it just never went through a PR.
+
+**Why merging master is not routine.** `origin/master` is 24 commits
+ahead of this branch's base. A dry-run merge (`git merge-tree`) conflicts
+in six places, and three of them are structural rather than textual:
+
+1. **Two CDK apps in one directory.** Part 4 added its own `infra/`
+   (`@accesslens/infra`, `bin/accesslens.ts`, `lib/live-session-stack.ts`,
+   own `package.json`, `cdk.json`, `tsconfig.json`). Part 6's `infra/`
+   (`bin/app.ts`, `lib/access-lens-authoring-stack.ts`, deploys through the
+   root package) was added independently. `cdk.json` names one app entry;
+   the two cannot both win. This is an ownership-boundary problem, not a
+   merge-tool problem.
+2. **`docs/CONTEXT_RELAY.md` numbering.** Master is at RL-035 and T-30;
+   this branch wrote RL-024/RL-025 and T-31/T-32. Every Part 6 relay entry
+   and thread must be renumbered on merge (RL-036+, T-31 becomes the next
+   free id after master's, and PR #12 also claims T-31..T-33).
+3. **Committed build output.** `dist/` and `dist/index.html` conflict as
+   rename/rename and modify/delete; they are generated and must be rebuilt
+   after the merge, not resolved by hand.
+
+Textual conflicts in `Makefile` (master added `work-board`,
+`agent-context`, `live-session-check`; this branch added `deploy`, `smoke`,
+`destroy`) and `package.json` are ordinary.
+
+**One charter-adjacent observation, not Part 6's doing.** Master added
+`capture.stopped` to `LiveEvent` (PR #12's AL-003 review). Build-prompt
+hard rule 13 forbids *this* work from adding LiveEvent types; it did not,
+and the extension's remote-pack loader is unaffected. Noted so the rule's
+author knows the enum changed underneath it.
+
+**Options.**
+- (a) **Recommended.** Merge master into `workstream/6-authoring` now.
+  Resolve `infra/` by making Part 6's stack a second stack in Part 4's CDK
+  app (one `bin`, one `package.json`, `cdk deploy AccessLensAuthoring`
+  selects it), renumber the relay entries, rebuild `dist/`, rerun
+  `make check`, then redeploy and rerun the real job so the merged tree is
+  the one proven live. Cost: one more deploy and job (~15 minutes of
+  wall-clock, cents of Bedrock).
+- (b) Move Part 6's infra to `infra-authoring/` and leave Part 4's alone.
+  Fewer conflicts, two CDK apps and two `cdk.json`s to keep in step forever.
+- (c) Do not merge; open the PR from this branch as-is and let the reviewer
+  resolve. Pushes the structural decision to whoever merges, with a
+  conflicted `infra/` in the diff.
+
+**Why this needs the user.** Merging Part 4's CDK app is a cross-part edit,
+and the rules restrict those to named cases. The recommendation is (a); the
+lead has not merged.
