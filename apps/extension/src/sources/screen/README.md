@@ -164,3 +164,33 @@ pure geometry, never content-based, so a slide with a uniform edge is cropped
 identically to any other and the pack fingerprints stay valid. With the crop
 the same frames are within 4 bits of the pack fingerprint
 (`letterbox.test.ts`).
+
+## Window and whole-screen shares (`locate.ts`)
+
+The pack fingerprints cover the slide image only. A shared **tab** is exactly
+that, so the whole frame matches. A shared **window** adds the viewer's toolbar
+and margins, and a shared **screen** adds the menu bar, dock and other windows;
+measured on the reviewed pack, the whole-frame distance rose to 31 (window) and
+47-55 (slide in half the screen) against a threshold of 26, so those shares
+never synced.
+
+When the browser reports `displaySurface` as `window` or `monitor`, the
+controller fingerprints through `createSlideLocator`: if the whole frame does
+not match, it searches the frame for a 16:9 rectangle (summed-area table of
+luminance, coarse one-cell step then quarter-cell refinement) and
+re-fingerprints the winner from real pixels. Guards against inventing a match
+(charter A9): candidates are ranked and accepted by set-bit overlap with the
+slide (>= 0.6), not Hamming distance alone, because flat screen areas hash to
+zeros close to sparse slides; the distance must be <= 0.75 x the pack threshold
+with the pack margin; a fresh search must find the same slide on two
+consecutive samples; the last matching rectangle is retried first. Tabs and
+unreported surfaces keep the whole-frame path unchanged.
+
+Measured on synthesized window and screen frames: reviewed pack 25/25 correct,
+0 false matches across 117 non-slide and other-deck frames, about 45 ms per
+search on a 1440x900 frame (a remembered rectangle is one crop). Known limits:
+the HNSW draft deck misses 9/40 (very pale slides at small sizes, and the
+04/05 near-duplicates), and the synthetic test pack's gradient-plus-one-shape
+slides can be located inside `unknown-01` in a window share, which is why the
+tab path is not searched. None of this has run on a real `getDisplayMedia()`
+window yet (AL-001).

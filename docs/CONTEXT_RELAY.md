@@ -115,7 +115,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-29 | Two internal critiques of this project (a harsh criterion-by-criterion scorecard, and a proposed scope-narrowing revision responding to it) existed only on one person's machine, uncommitted, since 2026-09-15, and were never seen by any of the other four contributors. Nobody can be aligned on a decision they have never seen. Compounding it: the scorecard is now 24h stale against what's actually built, and needs updating with real external research before anyone acts on it. | All five parts | Tomorrow's in-person product-direction meeting | OPEN | `docs/TEAM_ALIGNMENT_CHECK.md` is now a non-blocking meeting agenda. Anurup has responded; Jacob, Kunj, Omar, and Prachi are invited to respond before or during the meeting. Scoped implementation against the current extension-first MVP may continue. |
 | T-30 | The agent-first delivery system is additive: ticket files, claims, immutable updates, generated context, and validation must not become a second mutable product or risk register. Its initial portfolio intentionally keeps current-MVP proof P0 and durable identity/content work deferred behind human decisions. | Part 1 | Agent handoffs and release evidence | OPEN | `docs/AGENT_OPERATING_CONTEXT.md`; `docs/work/`; `make work-board-check`; AL-090 is in review |
 | T-33 | A malformed event received from the live relay was schema-dropped without any diagnostic, leaving the student marked `live` even though the next update was not trustworthy. Local QA now exposes only a payload-free invalid-event signal and freezes the last reviewed state as `stale`; the signal must not expose raw payloads or reset to live on socket recovery alone. | Part 1 | T-21 live-status trust and AL-004 false-live evidence | IN PROGRESS | `2d04fad`; `liveRelayClient.test.ts`; `StudentExperience.test.tsx`; `liveState.test.ts` |
-| T-34 | Chrome capture may reject window or display sharing if `getDisplayMedia()` begins only after awaited session creation consumes the Start click's transient user activation. The controller now starts the explicit browser chooser first and has an order regression test; the physical Windows tab/window/display matrix is still required. | Part 2 + QA | AL-001 capture matrix and real-device demo proof | IN PROGRESS | `apps/extension/src/instructor/captureController.ts`; `captureController.test.ts` |
+| T-34 | Chrome capture may reject window or display sharing if `getDisplayMedia()` begins only after awaited session creation consumes the Start click's transient user activation. The controller now starts the explicit browser chooser first and has an order regression test; the physical Windows tab/window/display matrix is still required. AL-053 (integrated from `ui/blacksmith-revamp`) separately fixed a second window/display bug: the fingerprint matcher only ever recognized tab shares, since a window or screen frame's toolbar/menu bar/other windows pushed the whole-frame fingerprint past threshold. Both fixes are local-only; the physical Windows matrix is still required for either. | Part 2 + QA | AL-001 capture matrix and real-device demo proof | IN PROGRESS | `apps/extension/src/instructor/captureController.ts`; `captureController.test.ts`; `apps/extension/src/sources/screen/locate.ts` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. **The second shared-contract review is now done** (`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`): stop-retains-session and restart-resumes-session are confirmed, base-only is confirmed against media/identity/preference but **not** enforced relay-side for asset/region (T-31). The existing endpoint was independently re-probed and still rejects `capture.stopped` as `event-type-not-allowlisted`. `2d04fad` separately prevents an invalid inbound lifecycle event from silently leaving a student marked live (T-33, closed). Deployed-relay update and T-31/T-32 remain before closure. |
@@ -1177,3 +1177,44 @@ now narrower since the silent-drop half is closed. T-32 matters because the
 bench's reconnect check exercises `join`, while the shipped client reconnects
 through the untested `resume`. Deployment was not attempted: that session's
 container had no AWS CLI or authorized hackathon profile, same as this one.
+
+### RL-053 — 2026-09-16 — cross-cutting — Codex
+
+**Landed:** shifted from independent feature work to cross-branch integration
+at the user's direction. Surveyed all 14 remote branches for unique commits
+against this one. Most had zero (`workstream/2-instructor-capture`,
+`workstream/3-student-ar`, `workstream/4-aws-live`, `docs/aws-access-verification`,
+`fix/ci-pnpm-corepack-order`, `claude/product-vision-scope-2uxb6j` — already
+fully absorbed). `integ/ui-api` (111 unique commits) and `workstream/6-authoring`
+(94, an ancestor of the same line) are Jacob's "Part 6" authoring/RAG pipeline —
+real AWS Bedrock calls, document ingest, retrieval. **Not merged**: this bypasses
+the institutional-approval gate AL-042/AL-045 exist specifically to enforce, and
+adopting it is a product/governance decision, not a technical merge. `ui/blacksmith-revamp`
+(14 commits, today, Omar Rizwan) mixes real bug fixes with an independently-built
+caption system (collided with this session's own AL-048/049/050), a live "AWS AI
+gateway" (Bedrock + Polly, same governance concern), and a "Dyslexic" reading mode
+also present on `master`'s one code commit (`231d1fb`) and throughout
+`docs/ADVANCED_FEATURES.md` — a team-wide naming pattern that reads as the
+medical-condition framing AGENTS.md explicitly rules out ("student-selected local
+preferences," never a diagnosis label). **Not merged**; this needs a team decision,
+not a unilateral one.
+
+Integrated what was clean and safe: AL-003's independent review (RL-052, above)
+and AL-053, Omar's window/screen slide-matching fix (`8fde5aa` from
+`ui/blacksmith-revamp`) — a real, isolated bug fix with no AI-gateway or naming
+entanglement. One real conflict (`InstructorPanel.test.tsx`, two independent new
+tests at the same insertion point, kept both); everything else auto-merged.
+Found and fixed a genuine flaky timeout in the integrated `locate.test.ts` under
+`make check`'s full parallel load (reproduced failing twice, passing in isolation
+every time) with an explicit 20s per-test timeout. Also drafted, then reverted
+before pushing, a cherry-pick of master's `docs/DEMO_BRIEF.md`: it instructs a
+live demo to click into a "Dyslexic" tab that does not exist on this branch,
+which would have been a false operational claim the moment it landed.
+**Threads touched:** T-34 updated with AL-053's fix.
+**Next agent needs to know:** the Part 6 RAG pipeline and the AI-gateway/dyslexic
+content are real, substantial, already-built work by teammates — this is not a
+dismissal of it, it is a governance flag. Bring it to the team rather than merging
+it unilaterally from either side. `94f0047` (`ui/blacksmith-revamp`) has valuable,
+narrower reconnect/`close()`/font fixes worth a second, more careful look to see
+if they can be separated from that commit's dyslexia-font CSS coupling.
+`memory/episodic/0070-window-and-screen-share-matching.md` has the full survey.

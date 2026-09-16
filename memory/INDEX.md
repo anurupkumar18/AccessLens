@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0070-window-and-screen-share-matching.md` (cross-branch integration: pulled Omar Rizwan's window/screen slide-matching fix from ui/blacksmith-revamp; flags the Part 6 RAG/Bedrock pipeline and AI-gateway content as not merged, pending a human decision)
 - `episodic/0069-fix-inert-and-inverted-high-contrast.md` (Part 1/accessibility: real-browser axe-core found "Higher contrast" was inverted in dark mode and inert on Review; fixed with a static regression guard)
 - `episodic/0068-end-session-on-instructor-panel-unmount.md` (Part 1/sharing bug: instructor panel unmount now ends the session instead of leaving students silently stale, fixing what RL-016 had only documented)
 - `episodic/0067-server-side-caption-shape-validation.md` (Part 1/security: relay now validates caption shape/bounds server-side, closing a gap security review found in AL-048/AL-049)
