@@ -1218,3 +1218,26 @@ it unilaterally from either side. `94f0047` (`ui/blacksmith-revamp`) has valuabl
 narrower reconnect/`close()`/font fixes worth a second, more careful look to see
 if they can be separated from that commit's dyslexia-font CSS coupling.
 `memory/episodic/0070-window-and-screen-share-matching.md` has the full survey.
+
+### RL-054 — 2026-09-16 — Part 1 — Codex
+
+**Landed:** AL-054. Followed up on RL-053's note about `94f0047`: its fonts/
+CSP fixes were tangled with `ui/blacksmith-revamp`'s own UI restyle (different
+CSS variable names), so instead of cherry-picking the commit, independently
+verified and reimplemented the three underlying fixes directly against this
+branch. `z.config({ jitless: true })` (new `zodConfig.ts`, imported first in
+`main.tsx`) stops Zod's `eval` probe from tripping Manifest V3's default
+extension CSP on every load. `body { font: inherit; }` defends against
+Chrome's own extension-page default font overriding `:root`'s chosen one --
+applied on documented Manifest V3 behavior since this project's `dist`
+preview runs as a plain browser tab, not `chrome-extension://`, so it can't
+reproduce the override to confirm live. Three `::before` decorative glyphs
+(`.draft-note`, `.connection-pill` x3) got the CSS alt-text production
+(`content: '...' / ''`) so a screen reader doesn't announce them redundantly
+alongside the real status text that already says the same thing -- the step
+checkmark didn't need this, it already sits under `aria-hidden="true"`.
+**Threads touched:** none new.
+**Next agent needs to know:** verify the body-font fix visually during the
+next real unpacked-extension QA pass, since this environment cannot load the
+extension at its real `chrome-extension://` origin. `94f0047`'s reconnect/
+`close()`-race fixes in `webSocketSessionClient.ts` are still unevaluated.

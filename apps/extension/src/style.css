@@ -80,7 +80,11 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); }
+/* Chrome gives an installed extension page its own default `body` font
+   (system-ui, 75% size), which overrides :root's chosen font on running
+   text in the actual packed/unpacked extension, though not in this plain
+   browser-tab dist preview. Inheriting keeps :root's font applied. */
+body { margin: 0; background: var(--paper); font: inherit; }
 
 main {
   width: 100%;
@@ -355,7 +359,9 @@ input[type='range'] { accent-color: var(--ink); }
   color: var(--muted);
   font-size: .87rem;
 }
-.draft-note::before { content: '\26A0\FE0E  '; color: var(--warn); }
+/* The `/ ''` alt-text production keeps this decorative glyph out of the
+   accessible name/description; the real state is the text that follows. */
+.draft-note::before { content: '\26A0\FE0E  ' / ''; color: var(--warn); }
 .draft-note code { font: 400 .85em var(--mono); }
 
 /* ---------- Student experience ---------------------------------------- */
@@ -420,13 +426,15 @@ input[type='range'] { accent-color: var(--ink); }
   letter-spacing: .08em;
   white-space: nowrap;
 }
-/* A leading glyph so the state is legible without colour. */
-.connection-pill::before { content: '\25CF  '; }
+/* A leading glyph so the state is legible without colour. The `/ ''` alt-text
+   production keeps it decorative-only: the pill's own text already names the
+   state, so a screen reader announcing the glyph too would be redundant noise. */
+.connection-pill::before { content: '\25CF  ' / ''; }
 .connection-pill.live { border-color: var(--live); color: var(--live); }
 .connection-pill.paused, .connection-pill.stale, .connection-pill.unmatched { border-color: var(--warn); color: var(--warn); }
-.connection-pill.paused::before, .connection-pill.stale::before, .connection-pill.unmatched::before { content: '\25B2  '; }
+.connection-pill.paused::before, .connection-pill.stale::before, .connection-pill.unmatched::before { content: '\25B2  ' / ''; }
 .connection-pill.ended, .connection-pill.incompatible { border-color: var(--line-strong); color: var(--ink); }
-.connection-pill.ended::before, .connection-pill.incompatible::before { content: '\25A0  '; }
+.connection-pill.ended::before, .connection-pill.incompatible::before { content: '\25A0  ' / ''; }
 
 .join-form {
   margin-top: 1rem;
