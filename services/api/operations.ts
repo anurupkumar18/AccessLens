@@ -113,7 +113,10 @@ export const createJob: OperationHandler = async event => {
         bucket: packsBucket,
         catalogBucket: process.env.CATALOG_BUCKET ?? '',
         publicBaseUrl: assetBaseUrl,
-        instructorHint: input.visualHints?.map(hint => `Slide ${hint.slide}: ${hint.hint}`).join('\\n') ?? undefined,
+        // Every field a state machine path names must exist: undefined is
+        // dropped by JSON.stringify and a missing path fails the Map state.
+        instructorHint: input.visualHints?.length ? input.visualHints.map(hint => `Slide ${hint.slide}: ${hint.hint}`).join('\n') : null,
+        parameters: {},
         excerpts: [],
       }),
       name: jobId,

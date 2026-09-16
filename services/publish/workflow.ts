@@ -314,17 +314,25 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
         'jobId.$': '$.jobId',
         'packId.$': '$.packId',
         'bucket.$': '$.bucket',
-        'catalogBucket.$': '$.catalogBucket',
         'lesson.$': '$.analyst.lesson',
         'excerpts.$': '$.excerpts',
-        'instructorHint.$': '$.instructorHint',
-        'parameters.$': '$.parameters',
         'assetId.$': '$$.Map.Item.Value.assetId',
         'page.$': '$$.Map.Item.Value.page',
         'mediaKey.$': '$$.Map.Item.Value.mediaKey',
         'fingerprint.$': '$$.Map.Item.Value.fingerprint',
         'extractedText.$': '$$.Map.Item.Value.extractedText',
-        repairState: { repairCount: 0 },
+        // A JSONPath in an ItemSelector that finds nothing fails the whole
+        // Map -- the third real job died exactly there on $.instructorHint.
+        // The fields only the visualization branch reads are selected only
+        // when that branch is wired, and createJob always sends them.
+        ...(withVisualization
+          ? {
+              'catalogBucket.$': '$.catalogBucket',
+              'instructorHint.$': '$.instructorHint',
+              'parameters.$': '$.parameters',
+              repairState: { repairCount: 0 },
+            }
+          : {}),
       },
       ItemProcessor: {
         ProcessorConfig: { Mode: 'INLINE' },
@@ -333,6 +341,9 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
       },
       ResultPath: '$.slides',
       Next: 'MarkReview',
+      // Without this a failed slide leaves the job stuck at "visualizing"
+      // forever while the execution reads FAILED; the record must say so.
+      Catch: [{ ErrorEquals: ['States.ALL'], ResultPath: '$.stageError', Next: 'MarkFailed' }],
     },
     MarkReview: statusUpdate('review', 'WaitForInstructor'),
     // Review is an API action, so the Standard execution waits by polling the

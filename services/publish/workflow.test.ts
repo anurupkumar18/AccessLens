@@ -35,7 +35,7 @@ describe('authoringStateMachine', () => {
 
 describe('authoringStateMachine without visualization Lambdas', () => {
   const spine = authoringStateMachine({ ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio', publish: 'arn:publish' }) as {
-    States: Record<string, { Type: string; Resource?: string; Next?: string; Parameters?: Record<string, unknown>; ItemProcessor?: { States: Record<string, { Type: string; Resource?: string; Next?: string; Parameters?: Record<string, unknown> }> } }>;
+    States: Record<string, { Type: string; Resource?: string; Next?: string; Parameters?: Record<string, unknown>; ItemSelector?: Record<string, unknown>; Catch?: unknown; ItemProcessor?: { States: Record<string, { Type: string; Resource?: string; Next?: string; Parameters?: Record<string, unknown> }> } }>;
   };
   const slide = spine.States.SlideMap.ItemProcessor!.States;
 
@@ -55,6 +55,16 @@ describe('authoringStateMachine without visualization Lambdas', () => {
     }
   });
 
+  it('selects only fields the spine stages read, so a job with no hints cannot fail the Map', () => {
+    const selector = spine.States.SlideMap.ItemSelector as Record<string, unknown>;
+    for (const key of ['instructorHint.$', 'parameters.$', 'catalogBucket.$', 'repairState']) expect(selector[key], key).toBeUndefined();
+    expect(selector['lesson.$']).toBe('$.analyst.lesson');
+  });
+
+  it('marks the job failed when a slide fails, instead of leaving it visualizing', () => {
+    expect(spine.States.SlideMap.Catch).toEqual([{ ErrorEquals: ['States.ALL'], ResultPath: '$.stageError', Next: 'MarkFailed' }]);
+  });
+
   it('records every slide as a clean no-visual', () => {
     expect(slide.FinishSlide.Parameters?.visualizationStatus).toBe('no-visual');
   });
@@ -66,6 +76,12 @@ describe('authoringStateMachine with visualization Lambdas', () => {
     planner: 'arn:planner', route: 'arn:route', adapter: 'arn:adapter', generator: 'arn:generator', critic: 'arn:critic', recordVisualization: 'arn:record',
   }) as { States: Record<string, { ItemProcessor?: { States: Record<string, { Type: string; Resource?: string; Next?: string }> } }> };
   const slide = full.States.SlideMap.ItemProcessor!.States;
+
+  it('selects the visualization inputs for the branch', () => {
+    const selector = (full.States.SlideMap as { ItemSelector?: Record<string, unknown> }).ItemSelector!;
+    expect(selector['instructorHint.$']).toBe('$.instructorHint');
+    expect(selector.repairState).toEqual({ repairCount: 0 });
+  });
 
   it('enters the visualization branch after Audio and every Task has a Resource', () => {
     expect(slide.Audio.Next).toBe('VisualizationStagesPassThrough');
