@@ -180,6 +180,21 @@ def check_aws() -> list[Check]:
         )
 
     try:
+        stacks = boto3.client("cloudformation").describe_stacks()["Stacks"]
+        names = {s["StackName"] for s in stacks}
+        for label, stack in (
+            ("live session stack", "AccessLensLiveSession"),
+            ("orb explain stack", "AccessLensOrbExplain"),
+            ("distribution stack", "AccessLensDistribution"),
+        ):
+            checks.append(
+                Check("4", label, READY if stack in names else WARN,
+                      "deployed" if stack in names else f"{stack} not deployed")
+            )
+    except (ClientError, BotoCoreError) as error:
+        checks.append(Check("4", "deployed stacks", WARN, type(error).__name__))
+
+    try:
         apis = boto3.client("apigatewayv2").get_apis().get("Items", [])
         live = [a["Name"] for a in apis if a.get("ProtocolType") == "WEBSOCKET"]
         checks.append(

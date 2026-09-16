@@ -1,8 +1,17 @@
 # AccessLens deployment
 
-**Status: not deployable yet.** Parts 2, 3, and 4 have not contributed their
-artifacts. Run `python3 scripts/deploy_preflight.py --aws` for the current
-answer rather than trusting this sentence.
+**Status: deployed.** All five parts have landed and the stacks are live. Run
+`python3 scripts/deploy_preflight.py --aws` for the current answer rather than
+trusting this sentence.
+
+| What | Where |
+| --- | --- |
+| Install page and extension download | https://d3a2yoxehy0vb7.cloudfront.net |
+| Reviewed pack assets | `https://d3a2yoxehy0vb7.cloudfront.net/packs/bio-cell-demo/` |
+| Orb explanation endpoint | `AccessLensOrbExplain` Function URL (stack output) |
+| Live session relay | `AccessLensLiveSession` (stack output) |
+
+These die with the event account. Do not print them on anything permanent.
 
 This document exists so that the deploy is not designed for the first time at
 hour 46. It records what the account can actually do, in what order things must
@@ -115,3 +124,48 @@ are the event's own infrastructure.
 
 Each is small. Each is also exactly the kind of step that is nobody's job right
 up until it is on the critical path.
+
+## Continuous deployment
+
+`.github/workflows/deploy.yml` runs the full check suite and then deploys every
+push to the integration branch, plus `workflow_dispatch` for manual runs.
+
+Five people and their agents push here, so the workflow is built to be boring:
+
+- **`concurrency` group per ref.** Two agents pushing a minute apart would
+  otherwise race each other into CloudFormation, and the loser fails with an
+  unhelpful conflict.
+- **Deploy needs checks to pass.** `workflow_dispatch` carries a `skip_checks`
+  input for demo emergencies; it is not available on push.
+- **The extension is rebuilt *after* the stacks deploy**, against the endpoints
+  they just produced. Vite inlines `import.meta.env` at build time, so a build
+  made before the deploy cannot see the endpoint no matter what the environment
+  says at run time. This is the step most likely to be got wrong by hand.
+- **The packed extension is uploaded as a workflow artifact as well as to S3**,
+  so a broken CloudFront does not cost you the build.
+
+### One-time setup, which has not been done
+
+The workflow authenticates with GitHub OIDC rather than stored keys, because
+Workshop Studio credentials expire within hours — a secret pasted in at 9am is
+dead by lunchtime, and the failure lands on whoever pushes next rather than
+whoever pasted it.
+
+Someone with repository admin has to do two things:
+
+```sh
+# 1. Deploy the role (once, by a human, from the repo root)
+cd infra && npx cdk deploy AccessLensGitHubDeploy \
+  -c withDeployRole=true -c repository=anurupkumar18/Mind-Machine
+```
+
+2. Copy the `GitHubDeployRoleArn` output into the repository as a **variable**
+   (not a secret) named `AWS_DEPLOY_ROLE_ARN`, under Settings → Secrets and
+   variables → Actions → Variables.
+
+Until that is done the deploy job fails fast with an explanatory message rather
+than half-deploying. The trust policy is scoped to the repository but open on
+ref, because every agent works on its own branch and pinning to `main` would
+mean nothing deploys until the final merge — exactly when nobody wants to
+discover the deploy is broken. **Narrow the ref condition before this outlives
+the event.**
