@@ -4,6 +4,7 @@ import { defaultPreferences, loadPreferences, savePreferences, type StudentPrefe
 import { InstructorPanel } from '../instructor';
 import { createDisplayMediaHost, type CaptureHost, type Scheduler } from '../sources/screen';
 import { StudentExperience } from '../student/StudentExperience';
+import { ReviewExperience } from '../student/ReviewExperience';
 import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pack.json';
 import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
 import { RoleNav, type Role } from './RoleNav';
@@ -45,6 +46,7 @@ interface Props {
 
 export function App({ client = defaultClient, pack, host = defaultHost, scheduler }: Props): React.ReactElement {
   const [role, setRole] = useState<Role>('instructor');
+  const [studentSurface, setStudentSurface] = useState<'live' | 'review'>('live');
   const [event, setEvent] = useState<LiveEvent | null>(null);
   const [preferences, setPreferences] = useState<StudentPreferences>(defaultPreferences);
   const [choiceId, setChoiceId] = useState(packChoices[0].id);
@@ -99,13 +101,13 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
             <InstructorPanel key={activePack.packId} client={client} pack={activePack} host={host} scheduler={scheduler} />
           </>
         ) : (
-          <StudentExperience
-            client={client}
-            event={event}
-            pack={studentPack}
-            preferences={preferences}
-            onPreferencesChange={updatePreferences}
-          />
+          <>
+            <nav className="student-surface-nav" aria-label="Student experience">
+              <button type="button" aria-current={studentSurface === 'live'} onClick={() => setStudentSurface('live')}>Live lesson</button>
+              <button type="button" aria-current={studentSurface === 'review'} onClick={() => setStudentSurface('review')}>Review</button>
+            </nav>
+            {studentSurface === 'live' ? <StudentExperience client={client} event={event} pack={studentPack} preferences={preferences} onPreferencesChange={updatePreferences} /> : <ReviewExperience pack={studentPack} preferences={preferences} />}
+          </>
         )}
       </main>
     </ErrorBoundary>

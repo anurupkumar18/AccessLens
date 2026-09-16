@@ -158,6 +158,10 @@ nav[aria-label='Role navigation'] button {
   font: 500 .88rem/1 var(--sans);
   padding: .7rem 1.4rem;
 }
+
+.student-surface-nav { display: flex; gap: .5rem; margin-top: 1.25rem; }
+.student-surface-nav button { margin: 0; }
+.student-surface-nav [aria-current='true'] { background: var(--ink); color: var(--paper); }
 nav[aria-label='Role navigation'] button + button { border-left: 1px solid var(--line); }
 nav[aria-label='Role navigation'] button:hover { color: var(--ink); }
 nav[aria-label='Role navigation'] button[aria-current='true'] {
@@ -357,6 +361,13 @@ input[type='range'] { accent-color: var(--ink); }
 /* ---------- Student experience ---------------------------------------- */
 
 .student-experience { padding: 0; }
+.review-experience { margin-top: 1.25rem; }
+.review-experience h2 { margin: 0; }
+.review-not-live { padding: .75rem .9rem; border: 1px solid var(--line-strong); border-left: 3px solid var(--warn); border-radius: var(--r-sm); background: var(--paper); }
+.review-controls { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-top: 1rem; }
+.review-controls span { text-align: center; font-size: .9em; }
+.bookmark-button { margin-top: .8rem; }
+.review-content { margin-top: 1rem; }
 .student-experience.font-system { font-family: var(--sans); }
 .student-experience.font-serif { font-family: Georgia, 'Times New Roman', serif; }
 .student-experience.font-monospace { font-family: var(--mono); }

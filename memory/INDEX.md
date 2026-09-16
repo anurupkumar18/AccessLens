@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0057-self-paced-review-route.md` (Part 1/student route: reviewed-pack-only, non-live Review surface and local bookmarks are QA-ready)
 - `episodic/0055-capture-user-activation-order.md` (Part 2/QA: browser capture now begins before awaited session creation; Windows hardware proof remains open)
 - `episodic/0054-local-reading-settings.md` (Part 1/unowned student surface: local-only reading controls and requested-audio speed are ready for QA; real-browser accessibility evidence remains open)
 - `episodic/0053-fail-closed-invalid-relay-event.md` (Part 1: malformed inbound relay events now fail closed in the student UI; deployment and real-device proof remain open)

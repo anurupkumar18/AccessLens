@@ -93,4 +93,23 @@ describe('App shell', () => {
     expect(toggle.checked).toBe(true);
     expect((await loadPreferences()).reducedMotion).toBe(true);
   });
+
+  it('switches between distinct Live lesson and Review student surfaces', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<App client={new InMemorySessionClient()} pack={syntheticPack} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} />));
+
+    const studentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
+    act(() => studentButton.click());
+    const reviewButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Review')!;
+    await act(async () => reviewButton.click());
+
+    expect(container.textContent).toContain('Review mode');
+    expect(container.textContent).toContain('Not live. This page uses reviewed pack content');
+    const liveButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Live lesson')!;
+    await act(async () => liveButton.click());
+    expect(container.textContent).toContain('Live lesson');
+    root.unmount();
+  });
 });
