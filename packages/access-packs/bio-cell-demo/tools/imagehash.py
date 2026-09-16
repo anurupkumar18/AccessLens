@@ -28,6 +28,12 @@ HEX_DIGITS = (BITS + 3) // 4
 # differ between two implementations of the same reduction and made compression
 # noise flip bits for free. Ties resolve to 0, and only a real difference of at
 # least this many luminance levels (out of 255) sets a bit.
+#
+# Deliberately one-sided: the epsilon is applied only to the `>` comparison, so
+# a tie and a near-tie both resolve to 0. Making it symmetric would look tidier
+# and would change every fingerprint in the pack, silently invalidating
+# `pack.json` and the measured thresholds. If you think this is a bug, run
+# `tools/measure_matching.py` before changing it.
 TIE_EPSILON = 0.75
 
 
