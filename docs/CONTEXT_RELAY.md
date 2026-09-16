@@ -797,3 +797,17 @@ required before calling this live-AWS behavior.
 then build and deploy `services/live-session` before running the updated
 real-device capture matrix. `memory/episodic/0050-stop-versus-end-session-lifecycle.md`
 has the precise behavior and verification record.
+### RL-033 — 2026-09-16 — Part 2 — Jacob
+
+**Landed:** pack-driven student rendering. Focus mode shows the followed
+slide from the asset's `mediaUri` with `region.bounds` outlined, for any
+pack; a pack without images gets the text alone. Slide images for both packs
+are bundled through `shared/packMedia.ts` (one glob line per pack). The AR
+tab is offered only when the pack carries an `arScene`, and a saved AR
+preference falls back to Focus otherwise. `scripts/build-pack.ts` emits
+`mediaUri`; the HNSW draft carries it.
+**Threads touched:** none opened or closed.
+**Next agent needs to know:** the AR renderer still loads a fixed cell model
+rather than the pack's `modelUri`. Gating on `arScene` is enough while only
+one pack has a scene; a second AR pack needs the renderer to read the scene
+from the pack.

@@ -20,12 +20,18 @@ interface Props {
   onPreferencesChange(preferences: StudentPreferences): void;
 }
 
-const modes: Array<{ id: StudentPreferences['mode']; label: string }> = [
+const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
   { id: 'audio', label: 'Hear' },
   { id: 'ar', label: 'AR' },
 ];
+
+/** AR is offered only when the pack actually carries a scene to render. */
+function modesFor(pack: AccessPack): typeof allModes {
+  const hasArScene = pack.assets.some((asset) => asset.arScene !== undefined);
+  return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
+}
 
 export function StudentExperience({ client, event, pack, preferences, onPreferencesChange }: Props): React.ReactElement {
   const [sessionId, setSessionId] = useState('');
@@ -94,7 +100,10 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
     window.setTimeout(() => document.querySelector<HTMLElement>(`#mode-tab-${modes[nextIndex].id}`)?.focus(), 0);
   }
 
-  const panelId = `student-panel-${preferences.mode}`;
+  const modes = modesFor(pack);
+  // A saved preference can name a mode this pack does not offer.
+  const activeMode = modes.some((mode) => mode.id === preferences.mode) ? preferences.mode : 'focus';
+  const panelId = `student-panel-${activeMode}`;
 
   return (
     <section
@@ -137,9 +146,9 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
             id={`mode-tab-${mode.id}`}
             type="button"
             role="tab"
-            aria-selected={preferences.mode === mode.id}
+            aria-selected={activeMode === mode.id}
             aria-controls={panelId}
-            tabIndex={preferences.mode === mode.id ? 0 : -1}
+            tabIndex={activeMode === mode.id ? 0 : -1}
             onClick={() => updatePreferences({ mode: mode.id })}
             onKeyDown={(keyEvent) => moveMode(index, keyEvent.key)}
           >
@@ -148,11 +157,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         ))}
       </div>
 
-      <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${preferences.mode}`} tabIndex={0}>
-        {preferences.mode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {preferences.mode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {preferences.mode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {preferences.mode === 'ar' ? (
+      <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
+        {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
             <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
           </Suspense>

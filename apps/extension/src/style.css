@@ -614,3 +614,59 @@ input[type='range'] { accent-color: var(--ink); }
 /* An interim result is a draft the recogniser is still revising. Dimmed *and*
    italic, so the distinction survives greyscale. */
 .a11y-interim { color: var(--muted); font-style: italic; }
+
+/* Pack-driven Focus View.
+ *
+ * These three classes arrived with the pack-driven renderers on `master` and
+ * were not in the tree when the interface was rebuilt, so the rebuild dropped
+ * them. FocusView.tsx still uses all three, and without `.region-highlight`
+ * the instructor's selected region simply stops being visible -- which is the
+ * demo. Restyled here in the new language rather than restored as they were:
+ * the old rules were dark-blue gradients that would clash with near-black on
+ * off-white.
+ *
+ * The highlight is a solid ink outline plus a scrim over everything else, so it
+ * reads without relying on colour (charter A7) and works in both themes.
+ */
+.slide-figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--card);
+}
+
+.slide-image { display: block; width: 100%; height: auto; }
+
+.region-highlight {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid var(--focus);
+  border-radius: var(--r-sm);
+  /* The scrim dims everything outside the region without hiding it, so a
+     student keeps the context the instructor is pointing within. */
+  box-shadow: 0 0 0 200vmax color-mix(in srgb, var(--paper) 72%, transparent);
+  pointer-events: none;
+}
+
+/* A marker on the outline itself, so the selected region is distinguishable
+   in greyscale and to a colour-blind reader. */
+.region-highlight::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -7px;
+  inset-inline-start: -7px;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  border: 2px solid var(--focus);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .region-highlight {
+    transition: inset-block-start .25s ease, inset-inline-start .25s ease,
+                width .25s ease, height .25s ease;
+  }
+}

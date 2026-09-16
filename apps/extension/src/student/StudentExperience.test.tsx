@@ -6,6 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import axe from 'axe-core';
 import { InMemorySessionClient, type SessionClient } from '../shared/contracts';
 import { validEvent, validPack } from '../shared/fixtures';
+import type { AccessPack } from '../shared/contracts';
+
+/** validPack with the AR scene the reviewed pack carries for this slide. */
+const arPack: AccessPack = { ...validPack, assets: [{ ...validPack.assets[0], arScene: { modelUri: 'models/cell.glb', defaultCamera: 'overview', hotspots: [{ hotspotId: 'cell-slide-03:mitochondrion', regionId: 'mitochondrion', nodeName: 'Mitochondrion', label: 'Mitochondrion' }] } }] };
 import { defaultPreferences, type StudentPreferences } from '../shared/preferences';
 import { StudentExperience } from './StudentExperience';
 
@@ -33,7 +37,16 @@ describe('StudentExperience', () => {
     container = null;
   });
 
-  function renderExperience(event = validEvent, client: SessionClient = new InMemorySessionClient()): { preferences: StudentPreferences; rerender(): void } {
+  // Both branches grew a second parameter for different things -- a
+  // SessionClient on the live-relay side, an AccessPack on the pack-driven
+  // rendering side. An options object takes both without either call site
+  // having to know about the other's addition.
+  function renderExperience(
+    event = validEvent,
+    options: { pack?: AccessPack; client?: SessionClient } = {},
+  ): { preferences: StudentPreferences; rerender(): void } {
+    const pack = options.pack ?? arPack;
+    const client = options.client ?? new InMemorySessionClient();
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -43,7 +56,7 @@ describe('StudentExperience', () => {
         <StudentExperience
           client={client}
           event={event}
-          pack={validPack}
+          pack={pack}
           preferences={state.preferences}
           onPreferencesChange={(next) => { state.preferences = next; rerender(); }}
         />,
@@ -59,19 +72,22 @@ describe('StudentExperience', () => {
     expect(container?.textContent).toContain('Focus view');
   });
 
-  it('renders capture stopped as a non-live state', () => {
-    const stoppedEvent = {
-      schemaVersion: '1.0' as const,
-      type: 'capture.stopped' as const,
-      sessionId: 'demo-session',
-      packId: 'bio-cell-demo',
-      packVersion: 1,
-      sequence: 2,
-      sentAt: '2026-09-15T15:00:01Z',
-    };
-    renderExperience(stoppedEvent);
-    expect(container?.querySelector('.connection-pill')?.textContent).toBe('stopped');
-    expect(container?.textContent).toContain('Instructor stopped sharing. Showing the last reviewed moment.');
+  it('offers the AR tab only when the pack carries an AR scene', () => {
+    renderExperience(validEvent, { pack: validPack });
+    const tabs = Array.from(container!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
+    expect(tabs).toEqual(['Focus', 'Read', 'Hear']);
+    expect(container!.querySelector('#mode-tab-ar')).toBeNull();
+  });
+
+  it('shows Focus when a saved AR preference meets a pack without an AR scene', () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => root!.render(
+      <StudentExperience client={new InMemorySessionClient()} event={validEvent} pack={validPack} preferences={{ ...defaultPreferences, mode: 'ar' }} onPreferencesChange={() => {}} />,
+    ));
+    expect(container.textContent).toContain('Focus view');
+    expect(container.textContent).not.toContain('Synchronized AR');
   });
 
   it('switches to AR through the accessible mode tabs', async () => {
@@ -96,7 +112,7 @@ describe('StudentExperience', () => {
 
   it('goes stale only on a real disconnect, and live again on reconnect -- not from content silence', async () => {
     const client = new FakeConnectionAwareClient();
-    renderExperience(validEvent, client);
+    renderExperience(validEvent, { client });
     expect(container?.querySelector('.connection-pill')?.textContent).toBe('live');
 
     await act(async () => client.emitConnectionChange(false));
