@@ -39,7 +39,7 @@ function render(client: InMemorySessionClient, ai: AiClient | null, preferences:
   document.body.appendChild(container);
   root = createRoot(container);
   act(() => root!.render(
-    <StudentExperience client={client} event={validEvent} pack={validPack} preferences={preferences} onPreferencesChange={() => undefined} ai={ai} />,
+    <StudentExperience client={client} event={validEvent} pack={validPack} preferences={preferences} onPreferencesChange={() => undefined} ai={ai} chat={null} />,
   ));
 }
 

@@ -29,6 +29,8 @@ export async function startWhisperCaptions(options: WhisperStreamOptions, startM
   let stopped = false;
   let mic: MicCapture | undefined;
   let inOrder: Promise<void> = Promise.resolve();
+  /** Clips in a row that failed; one is a hiccup, two means Whisper is not answering. */
+  let failuresInARow = 0;
 
   function close(): void {
     if (stopped) return;
@@ -43,11 +45,16 @@ export async function startWhisperCaptions(options: WhisperStreamOptions, startM
     inOrder = inOrder.then(async () => {
       try {
         const words = (await text).trim();
+        failuresInARow = 0;
         if (words && !stopped) options.onPiece({ text: words, isFinal: true });
       } catch (error) {
         if (stopped) return;
         const status = error instanceof AiUnavailableError ? error.status : null;
-        if (status === 503) {
+        failuresInARow += 1;
+        // 503: the endpoint is not running. 404: the deployed AI API has no Whisper route. A
+        // missing route also arrives as a network error, because API Gateway's 404 carries no
+        // CORS headers, so two failures in a row mean the same thing.
+        if (status === 503 || status === 404 || (status !== 429 && failuresInARow >= 2)) {
           options.onError('Whisper is not running on AWS right now. Choose Amazon Transcribe instead.');
           close();
         } else if (status === 429) {

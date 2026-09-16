@@ -176,6 +176,28 @@ describe('startWhisperCaptions', () => {
     expect(h.pieces).toEqual(['Now look at the nucleus', 'and the nucleolus.']);
   });
 
+  it('also stops and says so when the deployed AI service has no Whisper route', async () => {
+    const h = harness(async () => { throw new AiUnavailableError(404, 'The AI service answered 404.'); });
+    await h.started;
+    h.speak(800);
+    await h.settle();
+    expect(h.errors).toEqual(['Whisper is not running on AWS right now. Choose Amazon Transcribe instead.']);
+    expect(h.closed()).toBe(1);
+  });
+
+  it('stops after two failed clips in a row, which is how a missing route looks to the browser', async () => {
+    const h = harness(async () => { throw new AiUnavailableError(null, 'The AI service could not be reached.'); });
+    await h.started;
+    h.speak(800);
+    await h.settle();
+    expect(h.errors).toEqual(['One stretch of speech could not be captioned.']);
+    expect(h.closed()).toBe(0);
+    h.speak(800);
+    await h.settle();
+    expect(h.errors.at(-1)).toMatch(/Whisper is not running/);
+    expect(h.closed()).toBe(1);
+  });
+
   it('stops and says so when Whisper is not running', async () => {
     const h = harness(async () => { throw new AiUnavailableError(503, 'The AI service answered 503.'); });
     const stream = await h.started;
