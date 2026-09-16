@@ -1,19 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { readChoice, writeChoice } from './localChoice';
 
 type Theme = 'light' | 'dark';
 
 const STORAGE_KEY = 'accesslens-theme';
-
-/** A theme the viewer pinned earlier, or null to follow the system. Storage can
- *  be unavailable or throw (private windows, blocked site data). */
-function storedTheme(): Theme | null {
-  try {
-    const value = window.localStorage.getItem(STORAGE_KEY);
-    return value === 'light' || value === 'dark' ? value : null;
-  } catch {
-    return null;
-  }
-}
 
 function systemTheme(): Theme {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -25,7 +15,7 @@ function systemTheme(): Theme {
  * remembers it on this device only.
  */
 export function ThemeToggle(): React.ReactElement {
-  const [pinned, setPinned] = useState<Theme | null>(storedTheme);
+  const [pinned, setPinned] = useState<Theme | null>(() => readChoice(STORAGE_KEY, ['light', 'dark'] as const));
   const [system, setSystem] = useState<Theme>(systemTheme);
   const theme = pinned ?? system;
 
@@ -45,7 +35,7 @@ export function ThemeToggle(): React.ReactElement {
   function toggle(): void {
     const next: Theme = theme === 'dark' ? 'light' : 'dark';
     setPinned(next);
-    try { window.localStorage.setItem(STORAGE_KEY, next); } catch { /* remembered for this page only */ }
+    writeChoice(STORAGE_KEY, next);
   }
 
   return (

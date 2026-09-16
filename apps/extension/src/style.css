@@ -32,6 +32,9 @@
 @import '@fontsource/ibm-plex-mono/latin-400.css';
 @import '@fontsource/ibm-plex-mono/latin-500.css';
 @import '@fontsource/ibm-plex-mono/latin-600.css';
+/* OpenDyslexic for the reading-font switch. Bundled like Plex: no network under MV3. */
+@import '@fontsource/opendyslexic/latin-400.css';
+@import '@fontsource/opendyslexic/latin-700.css';
 
 :root {
   color-scheme: light dark;
@@ -184,14 +187,20 @@ mark {
   height: 28px;
   background: radial-gradient(circle at 64% 50%, var(--accent) 0 7px, var(--on-accent) 7.5px);
 }
-.masthead button.theme-toggle {
+.masthead button.reading-toggle + button.theme-toggle { margin-left: 0; }
+.masthead button.theme-toggle,
+.masthead button.reading-toggle {
   margin: 0 0 0 auto;
   border-color: var(--on-accent);
   color: var(--on-accent);
   background: transparent;
   padding: .6rem .9rem;
 }
-.masthead button.theme-toggle:hover:not(:disabled) { background: var(--on-accent); color: var(--accent); }
+.masthead button.theme-toggle:hover:not(:disabled),
+.masthead button.reading-toggle:hover:not(:disabled) { background: var(--on-accent); color: var(--accent); }
+/* In the yellow band the switch cannot turn yellow when on, so it inverts to ink. */
+.masthead button.reading-toggle[aria-pressed='true'],
+.masthead button.reading-toggle[aria-pressed='true']:hover:not(:disabled) { background: var(--on-accent); color: var(--accent); }
 .full-tab-link {
   font: 500 .82rem/1 var(--sans);
   letter-spacing: .06em;
@@ -604,6 +613,31 @@ input[type='range'] { accent-color: var(--ink); }
 .display-settings legend { float: left; width: 100%; padding: 0; margin-bottom: .25rem; color: var(--ink); }
 .display-settings label { display: flex; align-items: center; gap: .7rem; margin: 0; }
 .display-settings input[type='range'] { flex: 1; }
+
+/* ---------- Dyslexia-friendly reading --------------------------------- */
+
+/* OpenDyslexic replaces Plex Sans everywhere text is read. Mono stays for join
+   codes, where each character must be unambiguous. The tight negative tracking
+   and all-caps labels that give the default look its character are exactly
+   what makes text harder to decode, so both are undone here and line spacing
+   opens up. OpenDyslexic's own letter and word spacing is already wide, so
+   extra tracking on top of it only stretches lines apart; it gets a touch of
+   word spacing and no more. */
+:root[data-reading='dyslexic'] {
+  --sans: 'OpenDyslexic', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-reading='dyslexic'] body {
+  word-spacing: .06em;
+  line-height: 1.7;
+}
+:root[data-reading='dyslexic'] :is(h2, h3, h4, .tagline, p, li, label, legend, button, select, .eyebrow, .full-tab-link, .status .label) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-reading='dyslexic'] :is(p, li) { line-height: 1.7; }
+:root[data-reading='dyslexic'] section h2 { line-height: 1.3; }
+:root[data-reading='dyslexic'] section h3 { line-height: 1.35; }
+:root[data-reading='dyslexic'] .tagline { line-height: 1.35; }
 
 @media (max-width: 460px) {
   .topbar { gap: .6rem; }

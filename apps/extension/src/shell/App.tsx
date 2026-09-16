@@ -8,6 +8,7 @@ import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pac
 import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
 import { RoleNav, type Role } from './RoleNav';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ReadingFontToggle } from './ReadingFontToggle';
 import { ThemeToggle } from './ThemeToggle';
 import { Wordmark } from './Wordmark';
 import { createDefaultClient } from './createDefaultClient';
@@ -77,6 +78,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
           <div className="topbar">
             <span className="mark" aria-hidden="true" />
             <RoleNav role={role} onSelect={setRole} />
+            <ReadingFontToggle />
             <ThemeToggle />
             {fullTabUrl && (
               <a className="full-tab-link" href={fullTabUrl} target="_blank" rel="noopener">
