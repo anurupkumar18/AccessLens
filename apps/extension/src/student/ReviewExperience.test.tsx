@@ -7,6 +7,7 @@ import { validPack } from '../shared/fixtures';
 import { defaultPreferences } from '../shared/preferences';
 import { ReviewExperience } from './ReviewExperience';
 import { resetReviewBookmarksForTests } from './reviewBookmarks';
+import { resetReviewProgressForTests } from './reviewProgress';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -22,7 +23,7 @@ describe('ReviewExperience', () => {
   let root: Root | null = null;
   let container: HTMLDivElement | null = null;
 
-  beforeEach(() => resetReviewBookmarksForTests());
+  beforeEach(() => { resetReviewBookmarksForTests(); resetReviewProgressForTests(); });
   afterEach(() => { act(() => root?.unmount()); container?.remove(); root = null; container = null; });
 
   function render(pack = validPack): void {
@@ -50,5 +51,15 @@ describe('ReviewExperience', () => {
     await act(async () => bookmark.click());
     expect(bookmark.getAttribute('aria-pressed')).toBe('true');
     expect(container!.textContent).toContain('1 local bookmark in this pack.');
+  });
+
+  it('records only an explicit private explored mark', async () => {
+    render(multiConceptPack);
+    expect(container!.textContent).toContain('0 of 2 concepts marked explored on this device. This is private and not a grade.');
+    const mark = Array.from(container!.querySelectorAll('button')).find((button) => button.textContent === 'Mark explored')!;
+    await act(async () => mark.click());
+    const marked = Array.from(container!.querySelectorAll('button')).find((button) => button.textContent === 'Mark not explored')!;
+    expect(marked.getAttribute('aria-pressed')).toBe('true');
+    expect(container!.textContent).toContain('1 of 2 concepts marked explored on this device. This is private and not a grade.');
   });
 });

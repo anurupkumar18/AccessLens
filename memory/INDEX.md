@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0060-explicit-local-review-progress.md` (Part 1/self-paced Review: explicit private concept markers are local-only and non-assessment)
 - `episodic/0059-disabled-bedrock-gateway.md` (Part 1/model boundary: strict no-network Bedrock placeholder is review-ready; no provider is enabled)
 - `episodic/0058-reviewed-focus-pointer.md` (Part 1/instructor-to-student focus: reviewed region center now travels through the existing semantic pointer field and is QA-ready)
 - `episodic/0057-self-paced-review-route.md` (Part 1/student route: reviewed-pack-only, non-live Review surface and local bookmarks are QA-ready)

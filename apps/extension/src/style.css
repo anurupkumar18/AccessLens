@@ -367,6 +367,8 @@ input[type='range'] { accent-color: var(--ink); }
 .review-controls { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-top: 1rem; }
 .review-controls span { text-align: center; font-size: .9em; }
 .bookmark-button { margin-top: .8rem; }
+.review-progress { margin-top: .75rem; padding: .75rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
+.review-progress p { margin: .55rem 0 0; font-size: .9em; }
 .review-content { margin-top: 1rem; }
 .student-experience.font-system { font-family: var(--sans); }
 .student-experience.font-serif { font-family: Georgia, 'Times New Roman', serif; }

@@ -1,10 +1,11 @@
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { AccessPack } from '../shared/contracts';
 import type { StudentPreferences } from '../shared/preferences';
 import { AudioView } from '../renderers/AudioView';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { loadReviewBookmarks, saveReviewBookmarks } from './reviewBookmarks';
+import { loadReviewProgress, saveReviewProgress } from './reviewProgress';
 
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
@@ -43,10 +44,20 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
   })), [pack]);
   const [index, setIndex] = useState(0);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [explored, setExplored] = useState<string[]>([]);
   const [mode, setMode] = useState<ReviewMode>('read');
+  const progressChangedLocally = useRef(false);
 
   useEffect(() => { setIndex(0); }, [pack.packId, pack.version]);
   useEffect(() => { void loadReviewBookmarks(pack.packId).then(setBookmarks).catch(() => setBookmarks([])); }, [pack.packId]);
+  useEffect(() => {
+    progressChangedLocally.current = false;
+    void loadReviewProgress(pack.packId).then((stored) => {
+      if (!progressChangedLocally.current) setExplored(stored);
+    }).catch(() => {
+      if (!progressChangedLocally.current) setExplored([]);
+    });
+  }, [pack.packId]);
 
   if (concepts.length === 0) {
     return <section className="review-experience" aria-labelledby="review-title"><h2 id="review-title">Review mode</h2><p role="status">This pack has no reviewed concepts to review yet.</p></section>;
@@ -54,6 +65,7 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
 
   const concept = concepts[index]!;
   const bookmarked = bookmarks.includes(concept.id);
+  const markedExplored = explored.includes(concept.id);
   const availableModes: Array<{ id: ReviewMode; label: string }> = [
     { id: 'focus', label: 'Focus' }, { id: 'read', label: 'Read' }, { id: 'hear', label: 'Hear' },
     ...(concept.hasAr ? [{ id: 'ar' as const, label: 'AR' }] : []),
@@ -64,6 +76,13 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
     const next = bookmarked ? bookmarks.filter((id) => id !== concept.id) : [...bookmarks, concept.id];
     setBookmarks(next);
     void saveReviewBookmarks(pack.packId, next);
+  }
+
+  function toggleExplored(): void {
+    const next = markedExplored ? explored.filter((id) => id !== concept.id) : [...explored, concept.id];
+    progressChangedLocally.current = true;
+    setExplored(next);
+    void saveReviewProgress(pack.packId, next);
   }
 
   return (
@@ -78,6 +97,10 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
       </div>
       <button type="button" className="bookmark-button" aria-pressed={bookmarked} onClick={toggleBookmark}>{bookmarked ? 'Remove bookmark' : 'Bookmark for later'}</button>
       <p className="supporting-text" role="status">{bookmarks.length} local bookmark{bookmarks.length === 1 ? '' : 's'} in this pack.</p>
+      <div className="review-progress" aria-label="Private review progress">
+        <button type="button" aria-pressed={markedExplored} onClick={toggleExplored}>{markedExplored ? 'Mark not explored' : 'Mark explored'}</button>
+        <p role="status">{explored.length} of {concepts.length} concepts marked explored on this device. This is private and not a grade.</p>
+      </div>
       <div className="mode-tabs" role="tablist" aria-label="Choose a review format">
         {availableModes.map((candidate) => <button key={candidate.id} type="button" role="tab" aria-selected={activeMode === candidate.id} onClick={() => setMode(candidate.id)}>{candidate.label}</button>)}
       </div>
