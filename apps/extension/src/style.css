@@ -26,6 +26,9 @@ body { margin: 0; background: var(--bg); }
 /* Full width: the side panel is ~360px wide; in a tab the cards flow into a
    responsive grid instead of a centred column. */
 main { width: 100%; margin: 0; padding: 1rem clamp(1rem, 3vw, 2.5rem) 2rem; }
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.full-tab-link { color: var(--accent); font-weight: 600; text-decoration: none; padding: .35rem .6rem; border: 1px solid var(--accent); border-radius: .5rem; white-space: nowrap; }
+.full-tab-link:hover, .full-tab-link:focus-visible { background: var(--surface-2); }
 .content { display: grid; gap: .75rem; }
 @media (min-width: 720px) {
   header { flex-direction: row; align-items: baseline; gap: 1rem; }
