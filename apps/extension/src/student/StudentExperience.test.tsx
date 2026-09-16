@@ -82,7 +82,7 @@ describe('StudentExperience', () => {
   it('offers the AR tab only when the pack carries an AR scene', () => {
     renderExperience(validEvent, validPack);
     const tabs = Array.from(container!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
-    expect(tabs).toEqual(['Focus', 'Read', 'Hear', 'Dyslexic']);
+    expect(tabs).toEqual(['Focus', 'Read', 'Dyslexic']);
     expect(container!.querySelector('#mode-tab-ar')).toBeNull();
   });
 
@@ -303,7 +303,7 @@ describe('StudentExperience: live video pane', () => {
     const { join, deliver, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
     await join();
     deliver(streamStarted);
-    act(() => subscriber.fail('The live video could not connect. Text and audio still work.'));
+    act(() => subscriber.fail('The live video could not connect. The lesson text still works.'));
     expect(pane()!.textContent).toContain('The live video could not connect.');
     expect(container!.querySelectorAll('[role="tab"]').length).toBeGreaterThan(0);
     expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');

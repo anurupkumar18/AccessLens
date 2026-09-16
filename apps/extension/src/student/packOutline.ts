@@ -8,7 +8,7 @@ export interface OutlineSlide { asset: Asset; regions: Region[] }
 
 /**
  * The whole lesson as the student browses it: every slide, every region,
- * in reading order. Read, Hear and Dyslexic modes render this and let the
+ * in reading order. Read and Dyslexic modes render this and let the
  * student move through it at their own pace; only Focus follows the
  * instructor's live position.
  */

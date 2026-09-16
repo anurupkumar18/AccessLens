@@ -153,6 +153,7 @@ section 3; do not silently build against it.
 | The reviewed pack owns the matching thresholds, so recognition tuning is reviewed content rather than a constant compiled into Part 2. | `packages/access-packs/bio-cell-demo/pack.json`, `matching` block |
 | Perceptual-hash ties resolve to 0 with a 0.75-of-255 epsilon. Any reimplementation of the matcher must keep this; without it, worst-case drift on a distorted capture is ~4x larger. | `docs/IMPLEMENTATION_PLAN.md` risk register |
 | **Live video of one instructor-chosen tab or window may be streamed to the session's students** when the instructor turns it on, per session, from a click; the console names the surface ("Streaming a tab" / "Streaming a window") while it is on. A whole monitor is never streamed. The video travels over Amazon IVS Real-Time (one stage per session, deleted with the session); the relay carries only stage tokens and the two `stream.*` state events, never media. This is the reviewed, visibly consented exception charter A2 requires, decided by the team on 2026-09-16; it does not widen to audio, cameras, recording, or other surfaces. | Team decision 2026-09-16; `docs/prompts/window-stream-build.md`; `services/live-session/src/stage.ts` |
+| **The student extension has no spoken mode.** Hear mode, the region player and the Polly `speak` client were removed on 2026-09-16; the student's own screen reader (VoiceOver, NVDA, JAWS, ChromeVox) reads the reviewed descriptions from Focus, Read and Dyslexic. `regions[].audioUri` stays in the pack schema for the authoring pipeline but nothing in the extension plays it. | RL-046 |
 
 ---
 
@@ -1146,3 +1147,21 @@ output, not a reader; `accessibilityFeatures.spokenFeedback` is ChromeOS
 only). The bar is "works with VoiceOver, NVDA/JAWS and ChromeVox", which
 this markup meets by construction; an in-app keyboard reading mode over
 `chrome.tts` is a separate, undecided feature.
+
+### RL-046 — 2026-09-16 — Part 3 — Jacob
+
+**Landed:** Hear mode is gone. `renderers/AudioView.tsx`,
+`student/regionAudio.ts`, `regionAudioUrl` in `shared/packMedia.ts` and the
+`speak` method on `shared/aiClient.ts` were deleted with their tests; the
+`audio` value left the preferences enum, and a saved preference this build
+no longer offers now falls back to the defaults instead of throwing on
+load. The mode tabs carry a one-line hint that screen readers read every
+description here. It also removes the double-voice problem reported today:
+the Hear panel's own live region no longer competes with the screen reader.
+**Threads touched:** none.
+**Next agent needs to know:** the AI gateway's `/speak` route
+(`services/ai-gateway`) still exists and is now unused by the shell; it
+belongs to the gateway's owner to remove. `docs/ACCESSLENS_PROPOSAL.md`,
+`ACCESSLENS_MVP_REVISION.md`, `DEMO_BRIEF.md`, `ADVANCED_FEATURES.md` and
+`NEXT_STEPS.md` still describe Hear as a mode; they are historical planning
+documents and were not rewritten.

@@ -252,8 +252,8 @@ Two optional additions per asset. Schema change in
 ```
 
 `regions[].audioUri` is optional and points at Polly output for `shortDescription`.
-Hear mode plays it when present and falls back to local speech synthesis when
-absent, so packs without audio still work.
+The student extension has no spoken mode: the student's screen reader reads the
+description text, so packs with or without audio behave the same.
 
 `LiveEvent` is unchanged.
 
@@ -559,8 +559,8 @@ checked-in packs. That loader is an edit inside Part 3's directory and is
 tracked as a relay thread, not made silently.
 
 Read follows `readingOrder` and descriptions, Focus crops to `bounds` over
-`mediaUri`, Locate speaks position from `bounds`, Hear plays `audioUri` or local
-TTS. The AR tab is offered only when a pack carries `arScene`, which published
+`mediaUri`, Locate speaks position from `bounds`; nothing plays `audioUri`, screen
+readers read the text. The AR tab is offered only when a pack carries `arScene`, which published
 packs never do.
 
 New **Visualize** mode:

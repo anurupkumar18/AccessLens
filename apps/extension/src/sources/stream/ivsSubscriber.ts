@@ -34,16 +34,16 @@ export function createIvsSubscriber(): StreamSubscriber {
         if (!participant.isLocal) handlers.onVideo(null);
       });
       next.on(sdk.StageEvents.STAGE_CONNECTION_STATE_CHANGED, state => {
-        if (state === sdk.StageConnectionState.ERRORED) handlers.onError('The live video could not connect. Text and audio still work.');
+        if (state === sdk.StageConnectionState.ERRORED) handlers.onError('The live video could not connect. The lesson text still works.');
       });
-      next.on(sdk.StageEvents.ERROR, () => handlers.onError('The live video could not connect. Text and audio still work.'));
+      next.on(sdk.StageEvents.ERROR, () => handlers.onError('The live video could not connect. The lesson text still works.'));
       stage = next;
       try {
         await next.join();
       } catch {
         next.leave();
         if (stage === next) stage = null;
-        handlers.onError('The live video could not connect. Text and audio still work.');
+        handlers.onError('The live video could not connect. The lesson text still works.');
       }
     },
     stop() {

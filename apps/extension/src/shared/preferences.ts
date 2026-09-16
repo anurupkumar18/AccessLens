@@ -5,7 +5,7 @@ import { z } from 'zod';
 // diagnosis, disability label, or behavioral signal (charter A4/A8).
 export const StudentPreferencesSchema = z.object({
   schemaVersion: z.literal('1.0'),
-  mode: z.enum(['focus', 'structured-text', 'audio', 'dyslexic', 'ar']),
+  mode: z.enum(['focus', 'structured-text', 'dyslexic', 'ar']),
   textScale: z.number().min(0.75).max(2),
   reducedMotion: z.boolean(),
   captionsEnabled: z.boolean(),
@@ -57,7 +57,10 @@ export async function loadPreferences(): Promise<StudentPreferences> {
   const result = await store().get(PREFERENCES_STORAGE_KEY);
   const stored = result[PREFERENCES_STORAGE_KEY];
   if (stored === undefined) return defaultPreferences;
-  return StudentPreferencesSchema.parse(stored);
+  // A saved choice this build no longer offers starts the student on the
+  // defaults rather than failing to load at all.
+  const parsed = StudentPreferencesSchema.safeParse(stored);
+  return parsed.success ? parsed.data : defaultPreferences;
 }
 
 export async function savePreferences(preferences: StudentPreferences): Promise<void> {

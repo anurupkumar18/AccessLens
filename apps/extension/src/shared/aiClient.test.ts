@@ -25,11 +25,7 @@ describe('aiClient', () => {
     await expect(client.ask(capability, 'p', 1, 'q?')).rejects.toMatchObject({ status: 404 });
   });
 
-  it('decodes Polly audio into an mp3 blob and requires a wss Transcribe URL', async () => {
-    const speak = createAiClient('https://ai.example', reply(200, { contentType: 'audio/mpeg', audio: 'AQID' }) as unknown as typeof fetch);
-    const blob = await speak.speak(capability, 'p', 1, 'a', 'r', 'shortDescription');
-    expect(blob.type).toBe('audio/mpeg');
-    expect(blob.size).toBe(3);
+  it('requires a wss Transcribe URL', async () => {
     const bad = createAiClient('https://ai.example', reply(200, { url: 'https://nope', sampleRate: 16000, expiresIn: 300 }) as unknown as typeof fetch);
     await expect(bad.transcribeUrl(capability)).rejects.toBeInstanceOf(AiUnavailableError);
   });

@@ -66,7 +66,7 @@ flowchart TD
     subgraph StudentDevice["Student device"]
         StudentPanel["Extension side panel"]
         LocalPrefs["Local accessibility preferences"]
-        Renderer["Focus / text / captions / audio renderer"]
+        Renderer["Focus / text / captions renderer"]
         ARRenderer["Three.js AR scene renderer<br/>WebXR + spatial preview"]
         StudentPanel --> Renderer
         StudentPanel --> ARRenderer
@@ -387,7 +387,7 @@ flowchart LR
     Share["Shared screen adapter"] --> Event["LiveEvent contract"]
     Camera["Future camera adapter"] -.-> Event
     Manual["Instructor manual control"] --> Event
-    Event --> Students["Focus, text, audio, and AR renderers"]
+    Event --> Students["Focus, text, and AR renderers"]
 ```
 
 ## 12. Official implementation references

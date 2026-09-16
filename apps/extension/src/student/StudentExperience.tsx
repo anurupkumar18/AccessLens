@@ -1,12 +1,11 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import type { AccessPack, LiveEvent, RoleCapability, SessionClient } from '../shared/contracts';
-import { defaultAiClient, isRelayCapability, type AiClient } from '../shared/aiClient';
+import { defaultAiClient, type AiClient } from '../shared/aiClient';
 import { AskClass } from './AskClass';
 import { LiveCaptionsView } from './LiveCaptionsView';
 import type { StudentPreferences } from '../shared/preferences';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
-import { AudioView } from '../renderers/AudioView';
 import { DyslexicTextView } from '../renderers/DyslexicTextView';
 import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
 import { createIvsSubscriber, type StreamSubscriber } from '../sources/stream';
@@ -35,7 +34,6 @@ interface Props {
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
-  { id: 'audio', label: 'Hear' },
   { id: 'dyslexic', label: 'Dyslexic' },
   { id: 'ar', label: 'AR' },
 ];
@@ -51,11 +49,10 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
   const [capability, setCapability] = useState<RoleCapability | null>(null);
-  // Read, Hear and Dyslexic show the whole lesson for the student to move
-  // through in any order; only Focus (and AR) follow the instructor's position.
-  const speak = useMemo(() => ai && isRelayCapability(capability)
-    ? (assetId: string, regionId: string) => ai.speak(capability, pack.packId, pack.version, assetId, regionId, 'shortDescription')
-    : undefined, [ai, capability, pack.packId, pack.version]);
+  // Read and Dyslexic show the whole lesson for the student to move through
+  // in any order; only Focus (and AR) follow the instructor's position. There
+  // is no spoken mode: the student's own screen reader reads the reviewed
+  // descriptions from the text modes.
 
   // A different pack is a different lesson: the shell swaps the pack in when
   // the session names one this build did not hold (fetched from the published
@@ -82,7 +79,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
 
   // Live video of the instructor's tab or window. It lives beside the modes,
   // not in `live.status`: subscribing, failing or stopping never changes what
-  // the text and audio modes show. The pane exists while the instructor's
+  // the text modes show. The pane exists while the instructor's
   // `stream.started` is in force and this connection holds a stage token.
   const streaming = live.stream !== undefined;
   const streamSurface = live.stream?.surface;
@@ -181,16 +178,19 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
                 aria-label={`Live video of the instructor's ${streamSurface === 'browser' ? 'tab' : 'window'}`}
               />
               <p role="status" className="supporting-text">
-                {videoError ?? (video ? `Live video of the instructor's ${streamSurface === 'browser' ? 'tab' : 'window'}. Text and audio below follow the lesson too.` : 'Connecting to the instructor\u2019s live video\u2026')}
+                {videoError ?? (video ? `Live video of the instructor's ${streamSurface === 'browser' ? 'tab' : 'window'}. The text below follows the lesson too.` : 'Connecting to the instructor\u2019s live video\u2026')}
               </p>
             </>
           ) : (
-            <p role="status" className="supporting-text">The instructor is streaming live video, but this connection has no video access. Text and audio still work.</p>
+            <p role="status" className="supporting-text">The instructor is streaming live video, but this connection has no video access. The lesson text still works.</p>
           )}
         </section>
       )}
 
-      <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson">
+      <p id="mode-help" className="supporting-text">
+        Screen readers read every description here. Focus announces the slide and region the instructor is on; Read and Dyslexic hold the whole lesson.
+      </p>
+      <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson" aria-describedby="mode-help">
         {modes.map((mode, index) => (
           <button
             key={mode.id}
@@ -211,7 +211,6 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'structured-text' ? <StructuredTextView pack={pack} /> : null}
-        {activeMode === 'audio' ? <AudioView pack={pack} speak={speak} /> : null}
         {activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>

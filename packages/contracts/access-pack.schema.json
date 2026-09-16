@@ -121,7 +121,7 @@
                 "audioUri": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "Polly mp3 for this region's shortDescription. Optional: Hear mode falls back to local speech synthesis when absent."
+                  "description": "Polly mp3 for this region's shortDescription, written by the authoring pipeline. Optional; the student extension does not play it (screen readers read the text instead)."
                 }
               }
             }
