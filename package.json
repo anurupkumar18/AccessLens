@@ -13,6 +13,7 @@
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@fontsource/opendyslexic": "^5.3.0",
     "@vitejs/plugin-react": "latest",
+    "amazon-ivs-web-broadcast": "^1.39.0",
     "react": "latest",
     "react-dom": "latest",
     "three": "^0.186.0",

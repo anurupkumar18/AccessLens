@@ -19,6 +19,12 @@ export interface CaptureStream {
   readonly surface?: DisplaySurface;
   /** Returns the current frame, or null when none is available yet. */
   sampleFrame(): Frame | null;
+  /**
+   * The live video track of what the instructor shared, for publishing to the
+   * session's video stage when they ask for that. Null once stopped. The
+   * track is the capture's: publishing borrows it and never stops it.
+   */
+  videoTrack(): MediaStreamTrack | null;
   /** Releases the underlying media tracks. Idempotent. */
   stop(): void;
   /** Fires when the browser itself ends the share ("Stop sharing" bar). */

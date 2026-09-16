@@ -118,6 +118,9 @@ export class FakeCaptureStream implements CaptureStream {
     this.calls.push('sampleFrame');
     return this.queue.shift() ?? null;
   }
+  /** A stand-in track object; tests compare it by identity with what was published. */
+  readonly track = { kind: 'video', label: 'fake-capture-track', readyState: 'live' } as unknown as MediaStreamTrack;
+  videoTrack(): MediaStreamTrack | null { return this.stopped ? null : this.track; }
   stop(): void { this.calls.push('stop'); this.stopped = true; }
   onEnded(listener: () => void): () => void {
     this.calls.push('onEnded');

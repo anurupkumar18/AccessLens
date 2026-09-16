@@ -9,6 +9,7 @@ import type { CaptionDeps } from './LiveCaptions';
 import { InstructorPanel } from './index';
 import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, solidFrame, testPack } from '../sources/screen/fixtures';
 import type { PresentingSlide, SlidesSource } from '../sources/slides';
+import { FakePublisher } from '../sources/stream/fixtures';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -30,11 +31,12 @@ function render(host = new FakeCaptureHost(), slides?: SlidesSource) {
   const scheduler = new FakeScheduler();
   const events: LiveEvent[] = [];
   client.subscribe(e => events.push(e));
+  const publisher = new FakePublisher();
   root = createRoot(container);
   act(() => root!.render(
-    <InstructorPanel client={client} pack={pack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} slides={slides} />,
+    <InstructorPanel client={client} pack={pack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} slides={slides} publisher={publisher} />,
   ));
-  return { host, client, scheduler, events, stream: host.stream };
+  return { host, client, scheduler, events, publisher, stream: host.stream };
 }
 
 /** A Google Slides deck presenting in this browser, driven by the test. */
@@ -282,5 +284,87 @@ describe('InstructorPanel', () => {
       expect(container!.textContent).toContain('Live captions need the AWS session');
       expect(() => button('Start captions')).toThrow();
     });
+  });
+});
+
+// ---- Live video controls ------------------------------------------------------
+
+/** The relay hands the instructor a publish token beside the capability; the in-memory client does not, so this one does. */
+class VideoSessionClient extends InMemorySessionClient {
+  override async create(sessionId: string) {
+    return { ...(await super.create(sessionId)), streamToken: 'publish-token-1' };
+  }
+}
+
+function renderWithVideo(surface: 'browser' | 'window' | 'monitor' = 'browser') {
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  const host = new FakeCaptureHost();
+  host.stream.surface = surface;
+  const client = new VideoSessionClient();
+  const publisher = new FakePublisher();
+  const events: LiveEvent[] = [];
+  client.subscribe(e => events.push(e));
+  root = createRoot(container);
+  act(() => root!.render(
+    <InstructorPanel client={client} pack={pack} host={host} scheduler={new FakeScheduler()} clock={new FakeClock()} ids={fixedIds('JOIN42')} publisher={publisher} />,
+  ));
+  return { host, publisher, events, stream: host.stream };
+}
+
+const findButton = (label: string) => Array.from(container!.querySelectorAll('button')).find(b => b.textContent?.trim() === label);
+
+describe('InstructorPanel: live video controls', () => {
+  it('offers Stream this window only once sharing, and it is the only path to publishing', async () => {
+    const { publisher } = renderWithVideo('browser');
+    expect(findButton('Stream this window')).toBeUndefined();
+    await click('Start');
+    expect(findButton('Stream this window')).toBeDefined();
+    expect(publisher.calls).toEqual([]);
+  });
+
+  it('shows what is streaming and a Stop streaming control while on, then returns to the offer', async () => {
+    const { publisher, events } = renderWithVideo('browser');
+    await click('Start');
+    await click('Stream this window');
+    expect(publisher.calls).toEqual(['publish']);
+    expect(container!.textContent).toContain('Streaming a tab');
+    expect(container!.textContent).toContain('never your whole screen');
+    expect(findButton('Stop streaming')).toBeDefined();
+    expect(events.map(e => e.type)).toEqual(['session.started', 'stream.started']);
+
+    await click('Stop streaming');
+    expect(publisher.calls).toEqual(['publish', 'stop']);
+    expect(container!.textContent).not.toContain('Streaming a tab');
+    expect(findButton('Stream this window')).toBeDefined();
+    // Sharing itself is untouched.
+    expect(findButton('Stop')).toBeDefined();
+    expect(events.map(e => e.type)).toEqual(['session.started', 'stream.started', 'stream.stopped']);
+  });
+
+  it('names a window when a window is streamed', async () => {
+    renderWithVideo('window');
+    await click('Start');
+    await click('Stream this window');
+    expect(container!.textContent).toContain('Streaming a window');
+  });
+
+  it('refuses a whole screen in words, publishes nothing, and keeps sharing', async () => {
+    const { publisher } = renderWithVideo('monitor');
+    await click('Start');
+    await click('Stream this window');
+    expect(publisher.calls).toEqual([]);
+    expect(container!.textContent).toContain('A whole screen is never streamed to students');
+    expect(findButton('Stop')).toBeDefined();
+    expect(findButton('Stream this window')).toBeDefined();
+  });
+
+  it('says video is unavailable when the session has no stage token', async () => {
+    const { publisher } = render();
+    await click('Start');
+    await click('Stream this window');
+    expect(publisher.calls).toEqual([]);
+    expect(container!.textContent).toContain('Live video is unavailable for this session');
+    expect((findButton('Stream this window') as HTMLButtonElement).disabled).toBe(true);
   });
 });

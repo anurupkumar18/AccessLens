@@ -389,3 +389,175 @@ describe('capture controller: live captions', () => {
     expect(controller.caption('after the end', true)).toBe(false);
   });
 });
+
+// ---- Live video of the shared tab or window ---------------------------------
+
+import { FakePublisher } from '../sources/stream/fixtures';
+import { MONITOR_REFUSED_MESSAGE, STREAM_UNAVAILABLE_MESSAGE } from './captureController';
+import type { PresentingSlide, SlidesSource } from '../sources/slides';
+
+/** The relay hands the instructor a publish token beside the capability; the in-memory client does not, so this one does. */
+class VideoSessionClient extends InMemorySessionClient {
+  /** `null` stands for a session the relay opened without a video stage. */
+  constructor(private readonly token: string | null) { super(); }
+  override async create(sessionId: string) {
+    const capability = await super.create(sessionId);
+    return this.token ? { ...capability, streamToken: this.token } : capability;
+  }
+}
+
+function videoSetup(opts: { surface?: DisplaySurface; token?: string | null; slides?: SlidesSource; host?: FakeCaptureHost } = {}) {
+  const host = opts.host ?? new FakeCaptureHost();
+  if (opts.surface) host.stream.surface = opts.surface;
+  const client = new VideoSessionClient(opts.token === undefined ? 'publish-token-1' : opts.token);
+  const publisher = new FakePublisher();
+  const events: LiveEvent[] = [];
+  client.subscribe(e => events.push(e));
+  const controller = createCaptureController({ client, pack, host, scheduler: new FakeScheduler(), clock: new FakeClock(), ids: fixedIds('sess-v'), publisher, slides: opts.slides });
+  return { controller, host, publisher, events, stream: host.stream };
+}
+
+function fakeSlidesSource(): SlidesSource & { present(slide: PresentingSlide | null): void } {
+  let listener: ((slide: PresentingSlide | null) => void) | null = null;
+  return {
+    watcher: { watch(l) { listener = l; return () => { listener = null; }; } },
+    slideOrder: async () => ['p1', 'p2'],
+    present(slide) { listener?.(slide); },
+  };
+}
+
+describe('capture controller: live video of the shared tab or window', () => {
+  it('publishes the capture already chosen, without a second chooser, and announces the surface', async () => {
+    const { controller, host, publisher, events, stream } = videoSetup({ surface: 'browser' });
+    await controller.start();
+    expect(controller.getState().stream).toEqual({ status: 'off', message: null });
+
+    await controller.startStreaming();
+
+    expect(host.calls).toEqual(['requestStream']);
+    expect(publisher.calls).toEqual(['publish']);
+    expect(publisher.publishing).toEqual({ token: 'publish-token-1', track: stream.track });
+    expect(controller.getState().stream).toEqual({ status: 'on', surface: 'browser' });
+    expect(controller.getState().phase).toBe('sharing');
+    expect(types(events)).toEqual(['session.started', 'stream.started']);
+    expect(events[1]).toMatchObject({ type: 'stream.started', surface: 'browser', sequence: 2 });
+    expect(LiveEventSchema.safeParse(events[1]).success).toBe(true);
+  });
+
+  it('refuses to publish a whole monitor and says why, while slide matching carries on', async () => {
+    const { controller, publisher, events, stream } = videoSetup({ surface: 'monitor' });
+    await controller.start();
+    await controller.startStreaming();
+
+    expect(publisher.calls).toEqual([]);
+    expect(stream.stopped).toBe(false);
+    expect(controller.getState()).toMatchObject({ phase: 'sharing', stream: { status: 'off', message: MONITOR_REFUSED_MESSAGE } });
+    expect(types(events)).toEqual(['session.started']);
+  });
+
+  it('reports video as unavailable when the session came without a stage token', async () => {
+    const { controller, publisher, events } = videoSetup({ surface: 'browser', token: null });
+    await controller.start();
+    await controller.startStreaming();
+    expect(publisher.calls).toEqual([]);
+    expect(controller.getState()).toMatchObject({ phase: 'sharing', stream: { status: 'unavailable' }, message: STREAM_UNAVAILABLE_MESSAGE });
+    expect(types(events)).toEqual(['session.started']);
+  });
+
+  it('keeps sharing when publishing fails, and tells the instructor', async () => {
+    const { controller, publisher, events } = videoSetup({ surface: 'window' });
+    publisher.rejectWith = new Error('stage unreachable');
+    await controller.start();
+    await controller.startStreaming();
+    expect(controller.getState().phase).toBe('sharing');
+    expect(controller.getState().stream).toEqual({ status: 'off', message: 'Could not start the live video: stage unreachable' });
+    expect(types(events)).toEqual(['session.started']);
+  });
+
+  it('stop streaming ends the video for students and leaves sharing alone', async () => {
+    const { controller, publisher, events, stream } = videoSetup({ surface: 'window' });
+    await controller.start();
+    await controller.startStreaming();
+    controller.stopStreaming();
+
+    expect(publisher.calls).toEqual(['publish', 'stop']);
+    expect(stream.stopped).toBe(false);
+    expect(controller.getState()).toMatchObject({ phase: 'sharing', stream: { status: 'off', message: null } });
+    expect(types(events)).toEqual(['session.started', 'stream.started', 'stream.stopped']);
+  });
+
+  it('stop sharing ends the stream first, so students hear stream.stopped before capture.stopped', async () => {
+    const { controller, publisher, events } = videoSetup({ surface: 'browser' });
+    await controller.start();
+    await controller.startStreaming();
+    controller.stop();
+    expect(types(events)).toEqual(['session.started', 'stream.started', 'stream.stopped', 'capture.stopped']);
+    expect(publisher.calls).toEqual(['publish', 'stop']);
+    expect(controller.getState().stream).toEqual({ status: 'off', message: null });
+  });
+
+  it('the browser ending the share ends the stream too', async () => {
+    const { controller, publisher, events, stream } = videoSetup({ surface: 'browser' });
+    await controller.start();
+    await controller.startStreaming();
+    stream.endFromBrowser();
+    expect(types(events)).toEqual(['session.started', 'stream.started', 'stream.stopped', 'capture.stopped']);
+    expect(publisher.publishing).toBeNull();
+  });
+
+  it('end session ends the stream before session.ended', async () => {
+    const { controller, events } = videoSetup({ surface: 'browser' });
+    await controller.start();
+    await controller.startStreaming();
+    controller.endSession();
+    expect(types(events)).toEqual(['session.started', 'stream.started', 'stream.stopped', 'capture.stopped', 'session.ended']);
+  });
+
+  it('while following Google Slides, Stream opens the chooser, publishes that window, and Stop streaming releases it', async () => {
+    const slides = fakeSlidesSource();
+    const { controller, host, publisher, events, stream } = videoSetup({ surface: 'window', slides });
+    await controller.followSlides();
+    expect(host.calls).toEqual([]);
+
+    await controller.startStreaming();
+    expect(host.calls).toEqual(['requestStream']);
+    expect(publisher.publishing?.track).toBe(stream.track);
+    expect(controller.getState()).toMatchObject({ phase: 'sharing', surface: 'slides', stream: { status: 'on', surface: 'window' } });
+
+    controller.stopStreaming();
+    expect(stream.calls).toContain('stop');
+    expect(controller.getState()).toMatchObject({ phase: 'sharing', surface: 'slides', stream: { status: 'off' } });
+    expect(types(events)).toEqual(['session.started', 'stream.started', 'stream.stopped']);
+  });
+
+  it('while following Google Slides, a monitor picked in the chooser is stopped on the spot and never published', async () => {
+    const slides = fakeSlidesSource();
+    const { controller, publisher, events, stream } = videoSetup({ surface: 'monitor', slides });
+    await controller.followSlides();
+    await controller.startStreaming();
+    expect(stream.calls).toContain('stop');
+    expect(publisher.calls).toEqual([]);
+    expect(controller.getState().stream).toEqual({ status: 'off', message: MONITOR_REFUSED_MESSAGE });
+    expect(types(events)).toEqual(['session.started']);
+  });
+
+  it('a dismissed chooser while following Slides leaves the session and slide following untouched', async () => {
+    const slides = fakeSlidesSource();
+    const { controller, publisher, events } = videoSetup({ slides, host: FakeCaptureHost.denied() });
+    await controller.followSlides();
+    await controller.startStreaming();
+    expect(publisher.calls).toEqual([]);
+    expect(controller.getState()).toMatchObject({ phase: 'sharing', surface: 'slides', stream: { status: 'off' } });
+    expect((controller.getState().stream as { message: string }).message).toMatch(/pick one/i);
+    expect(types(events)).toEqual(['session.started']);
+  });
+
+  it('cannot stream before sharing, and never publishes twice', async () => {
+    const { controller, publisher } = videoSetup({ surface: 'browser' });
+    await expect(controller.startStreaming()).rejects.toThrow(/Cannot stream while idle/);
+    await controller.start();
+    await controller.startStreaming();
+    await expect(controller.startStreaming()).rejects.toThrow(/Already streaming/);
+    expect(publisher.calls).toEqual(['publish']);
+  });
+});

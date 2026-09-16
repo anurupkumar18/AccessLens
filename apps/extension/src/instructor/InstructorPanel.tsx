@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
 import type { SlidesSource } from '../sources/slides';
+import { createIvsPublisher, type StreamPublisher } from '../sources/stream';
 import { defaultAiClient, type AiClient } from '../shared/aiClient';
-import { createCaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import { createCaptureController, STREAM_UNAVAILABLE_MESSAGE, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
 import { LiveCaptions, type CaptionDeps } from './LiveCaptions';
 
 interface Props {
@@ -18,7 +19,13 @@ interface Props {
   captionDeps?: CaptionDeps;
   /** Offered as "Follow Google Slides" when this build can watch tabs. */
   slides?: SlidesSource;
+  /** Publishes live video of the shared tab or window; defaults to Amazon IVS Real-Time. */
+  publisher?: StreamPublisher;
 }
+
+// Constructing the publisher loads nothing and connects to nothing; video
+// starts only from the Stream button below (charter A1).
+const defaultPublisher = createIvsPublisher();
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
 
@@ -81,8 +88,8 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai = defaultAiClient, captionDeps, slides }: Props): React.ReactElement {
-  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, slides }));
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai = defaultAiClient, captionDeps, slides, publisher = defaultPublisher }: Props): React.ReactElement {
+  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, slides, publisher }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -143,6 +150,37 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
           <button type="button" className="quiet" onClick={() => guarded(() => controller.endSession())}>End Session</button>
         )}
       </div>
+
+      {active && (
+        <div className="stream" role="group" aria-label="Live video for students">
+          {state.stream.status === 'on' ? (
+            <>
+              <p className="stream-label" data-tone="live">
+                <span className="glyph" aria-hidden="true">▶</span>
+                Streaming {state.stream.surface === 'browser' ? 'a tab' : 'a window'}
+              </p>
+              <button type="button" className="stop" onClick={() => guarded(() => controller.stopStreaming())}>Stop streaming</button>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={state.stream.status === 'starting' || state.stream.status === 'unavailable'}
+              onClick={() => { void controller.startStreaming(); }}
+            >
+              {state.stream.status === 'starting' ? 'Opening the browser dialog…' : 'Stream this window'}
+            </button>
+          )}
+          <p role="status" className="stream-note">
+            {state.stream.status === 'unavailable'
+              ? STREAM_UNAVAILABLE_MESSAGE
+              : state.stream.status === 'off' && state.stream.message
+                ? state.stream.message
+                : state.stream.status === 'on'
+                  ? 'Students see live video of this surface next to their text and audio. Only this tab or window is streamed, never your whole screen.'
+                  : 'Optional: stream live video of the shared tab or window to students. Your whole screen is never streamed.'}
+          </p>
+        </div>
+      )}
 
       <LiveCaptions controller={controller} state={state} pack={pack} ai={ai} deps={captionDeps} />
 

@@ -97,6 +97,9 @@ export function createDisplayMediaHost(): CaptureHost {
           const image = context.getImageData(0, 0, width, height);
           return { width, height, data: image.data };
         },
+        videoTrack(): MediaStreamTrack | null {
+          return stopped || !track || track.readyState === 'ended' ? null : track;
+        },
         stop(): void {
           if (stopped) return;
           stopped = true;
