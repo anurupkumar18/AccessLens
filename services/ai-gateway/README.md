@@ -76,6 +76,20 @@ npm ci
 npm run check          # typecheck, tests (fakes for Bedrock, Polly, signer), bundle to dist/
 ```
 
+To try the routes from `npx vite` before deploying them, run the Lambda's own
+handler locally against real Bedrock, Polly, and Transcribe with your AWS
+credentials. It needs the deployed relay's signing secret so the relay's
+capabilities verify; keep it in your shell, not in a file:
+
+```sh
+CAPABILITY_SECRET=$(aws secretsmanager get-secret-value --secret-id <CapabilitySecret ARN> --query SecretString --output text) \
+AWS_PROFILE=hackathon npx tsx services/ai-gateway/scripts/local-server.ts   # http://localhost:8787
+```
+
+Then set `VITE_ACCESSLENS_AI_URL=http://localhost:8787` in `.env.local`. Live
+captions also need a relay deployed from this branch: older relays refuse
+`caption.appended` events that carry text.
+
 ## Deploy
 
 Built by the same `cdk deploy` as the relay (see `docs/DEPLOYMENT.md`), after
