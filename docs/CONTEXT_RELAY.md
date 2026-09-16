@@ -570,3 +570,18 @@ extension.
 **Next agent needs to know:** BroadcastChannel is origin-scoped. A side panel
 (`chrome-extension://`) and the Vite preview (`localhost`) cannot hear each
 other, so test both roles in the same origin until Part 4's relay exists.
+
+### RL-024 — 2026-09-16 — Part 2 — Jacob
+
+**Landed:** pack-driven student rendering. Focus mode shows the followed
+slide from the asset's `mediaUri` with `region.bounds` outlined, for any
+pack; a pack without images gets the text alone. Slide images for both packs
+are bundled through `shared/packMedia.ts` (one glob line per pack). The AR
+tab is offered only when the pack carries an `arScene`, and a saved AR
+preference falls back to Focus otherwise. `scripts/build-pack.ts` emits
+`mediaUri`; the HNSW draft carries it.
+**Threads touched:** none opened or closed.
+**Next agent needs to know:** the AR renderer still loads a fixed cell model
+rather than the pack's `modelUri`. Gating on `arScene` is enough while only
+one pack has a scene; a second AR pack needs the renderer to read the scene
+from the pack.
