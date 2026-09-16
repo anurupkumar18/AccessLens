@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "hnsw-search-stepper",
+  "artifactVersion": 3,
+  "title": "HNSW search, step by step",
+  "summary": "Layered graph; step through greedy search with adjustable ef and M.",
+  "subjects": ["computer-science", "information-retrieval"],
+  "tags": ["graph", "nearest-neighbor", "algorithm-stepper"],
+  "interaction": "stepper",
+  "provenance": {
+    "kind": "adapted",
+    "parentArtifactId": "graph-search-stepper",
+    "parentArtifactVersion": 1,
+    "sourceUrl": "https://example.org/open-interactives/graph-search-stepper",
+    "license": "MIT",
+    "generatedBy": "us.anthropic.claude-sonnet-4-6",
+    "jobId": "job_01JFIXTUREADAPTED"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "ef": { "type": "integer", "minimum": 1, "maximum": 512 },
+      "M": { "type": "integer", "minimum": 2, "maximum": 64 }
+    }
+  },
+  "defaultParameters": { "ef": 32, "M": 16 },
+  "libraries": ["d3@7"],
+  "accessibility": {
+    "description": "A layered graph. Higher layers are sparse; search starts at the top and descends.",
+    "keyboard": "Space steps the search. Arrow keys change ef and M.",
+    "semanticOutline": ["Layer 2 entry point", "Layer 1 candidates", "Layer 0 result set"]
+  },
+  "render": { "entry": "index.html", "minWidth": 480, "minHeight": 320 }
+}
