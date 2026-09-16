@@ -34,7 +34,12 @@ RUN dnf install -y \
       "https://download.documentfoundation.org/libreoffice/stable/${LIBREOFFICE_VERSION}/rpm/${LIBREOFFICE_ARCH}/LibreOffice_${LIBREOFFICE_VERSION}_Linux_x86-64_rpm.tar.gz" \
       -O /tmp/libreoffice.tar.gz \
     && tar -xzf /tmp/libreoffice.tar.gz -C /tmp/libreoffice --strip-components=1 \
-    && dnf install -y /tmp/libreoffice/RPMS/*.rpm \
+    # dnf5 (the package manager on the current AL2023 Lambda base) rejects
+    # local RPM paths as if they were package specs: "No package matches
+    # '/tmp/libreoffice/RPMS/...rpm'". The bundle is self-contained under
+    # /opt and its X11/font dependencies are installed above, so install it
+    # the way LibreOffice documents: with rpm itself.
+    && rpm -Uvh --nodeps /tmp/libreoffice/RPMS/*.rpm \
     && SOFFICE_PATH="$(find /opt /usr -type f -path '*/program/soffice' -print -quit)" \
     && test -n "${SOFFICE_PATH}" \
     && ln -s "${SOFFICE_PATH}" /usr/local/bin/soffice \
