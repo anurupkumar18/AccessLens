@@ -92,6 +92,10 @@ function safePart(value: string): string {
 
 function audioKey(jobId: string, assetId: string, regionId: string, prefix?: string): string {
   const root = (prefix ?? `staging/${safePart(jobId)}/media`).replace(/^\/+|\/+$/gu, '');
+  const expected = `staging/${safePart(jobId)}/`;
+  if (!root.startsWith(expected) || root.includes('..')) {
+    throw new Error(`audio media prefix must be under ${expected}; received ${root}`);
+  }
   return `${root}/${safePart(assetId)}.${safePart(regionId)}.mp3`;
 }
 
@@ -112,26 +116,30 @@ export async function synthesizeSlideAudio(
 
   for (const [index, region] of regions.entries()) {
     const key = audioKey(input.jobId, input.asset.assetId, region.regionId, options.mediaPrefix);
+    let bytes: Uint8Array;
     try {
-      const bytes = await polly.synthesize({
-        Text: region.shortDescription,
-        TextType: 'text',
-        OutputFormat: DEFAULT_OUTPUT_FORMAT,
-        VoiceId: DEFAULT_VOICE,
-        Engine: DEFAULT_ENGINE,
-        LanguageCode: DEFAULT_LANGUAGE_CODE,
-      });
-      await options.putObject({ key, body: bytes, contentType: 'audio/mpeg' });
-      regions[index] = { ...region, audioUri: key };
-    } catch (error) {
-      // A Polly failure must not fail a slide, and should not leave a dangling
-      // URI. Existing audio from a previous draft is also removed so a retry
-      // cannot accidentally publish stale speech for edited text.
-      const message = error instanceof Error ? error.message : String(error);
-      failures.push({ regionId: region.regionId, error: message });
-      const { audioUri: _audioUri, ...withoutAudio } = regions[index];
-      regions[index] = withoutAudio;
-    }
+      bytes = await polly.synthesize({
+          Text: region.shortDescription,
+          TextType: 'text',
+          OutputFormat: DEFAULT_OUTPUT_FORMAT,
+          VoiceId: DEFAULT_VOICE,
+          Engine: DEFAULT_ENGINE,
+          LanguageCode: DEFAULT_LANGUAGE_CODE,
+        });
+      } catch (error) {
+        // A Polly failure must not fail a slide, and should not leave a dangling
+        // URI. Existing audio from a previous draft is also removed so a retry
+        // cannot accidentally publish stale speech for edited text.
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push({ regionId: region.regionId, error: message });
+        const { audioUri: _audioUri, ...withoutAudio } = regions[index];
+        regions[index] = withoutAudio;
+        continue;
+      }
+    // Storage failure is not equivalent to a failed synthesis: swallowing it
+    // would report a successful stage while losing the only copy of audio.
+    await options.putObject({ key, body: bytes, contentType: 'audio/mpeg' });
+    regions[index] = { ...region, audioUri: key };
   }
 
   return { asset: { ...input.asset, regions }, status: 'ok', failures };

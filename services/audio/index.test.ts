@@ -56,4 +56,21 @@ describe('synthesizeSlideAudio', () => {
     expect(result.asset.regions[1].audioUri).toBeUndefined();
     expect(writes).toHaveLength(1);
   });
+
+  it('does not turn a staging write failure into a successful audio stage', async () => {
+    const polly = new FakePolly();
+    await expect(synthesizeSlideAudio({ jobId: 'job-1', packId: 'pack-1', asset }, {
+      polly,
+      putObject: async () => { throw new Error('S3 unavailable'); },
+    })).rejects.toThrow('S3 unavailable');
+  });
+
+  it('rejects a media prefix outside the current job staging area', async () => {
+    const polly = new FakePolly();
+    await expect(synthesizeSlideAudio({ jobId: 'job-1', packId: 'pack-1', asset }, {
+      polly,
+      mediaPrefix: 'media/pack-1/1',
+      putObject: async () => undefined,
+    })).rejects.toThrow(/staging.*job-1/i);
+  });
 });
