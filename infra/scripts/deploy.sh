@@ -20,6 +20,10 @@ fi
 # whatever dist/ happens to be checked in.
 npx vite build --config apps/viewer/vite.config.ts
 
+# The hosted instructor/student shell: the extension's own source, built for
+# https://<distribution>/app/ with the endpoints in .env.local baked in.
+npx vite build --base /app/ --outDir dist-web
+
 # One CDK app carries both stacks, so synth needs Part 4's Lambda bundle
 # even when only AccessLensAuthoring is deployed (services/live-session/README.md:
 # "npm run build is not optional and not automatic").
@@ -35,11 +39,16 @@ if (!stackName) throw new Error('CDK returned no stack outputs');
 const values = output[stackName];
 const required = ['ApiUrl', 'ViewerUrl', 'AssetBaseUrl', 'GoogleClientId', 'VectorBucketName'];
 for (const name of required) if (!values[name]) throw new Error(`Missing CDK output ${name}`);
-const existing = readFileSync('.env.example', 'utf8');
+import { existsSync } from 'node:fs';
 const preserved = new Map();
-for (const line of existing.split(/\r?\n/u)) {
-  const match = line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/u);
-  if (match) preserved.set(match[1], match[2]);
+// Keys and defaults from the example, then whatever this machine already had
+// set (the relay and AI URLs are not this stack's outputs), then the outputs.
+for (const file of ['.env.example', '.env.local']) {
+  if (!existsSync(file)) continue;
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/u)) {
+    const match = line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/u);
+    if (match) preserved.set(match[1], match[2]);
+  }
 }
 preserved.set('VITE_ACCESSLENS_API_URL', values.ApiUrl);
 preserved.set('VITE_ACCESSLENS_VIEWER_URL', values.ViewerUrl);

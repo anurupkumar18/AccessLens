@@ -69,6 +69,8 @@ export interface SessionStoreApi {
     now?: Date,
   ): Promise<SessionRecord>;
   getSession(sessionId: string, now?: Date): Promise<SessionRecord | undefined>;
+  /** Record which pack a session teaches, decided by its first accepted event. */
+  pinSessionPack(sessionId: string, packId: string, packVersion: number): Promise<void>;
   advanceSequence(
     sessionId: string,
     sequence: number,

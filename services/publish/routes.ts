@@ -85,6 +85,8 @@ type DynamoTransport = { send(command: unknown): Promise<unknown> };
  * handler, and route tests can run without AWS credentials.
  */
 export interface PublishRouteDeps {
+  /** Speech for edited descriptions at publish time (see publishPack). */
+  synthesizeAudio?: (text: string) => Promise<Uint8Array>;
   dynamodb: DynamoTransport;
   s3: ObjectStore;
   jobsTableName: string;
@@ -303,6 +305,7 @@ export async function publishJob(input: unknown, deps: PublishRouteDeps): Promis
         assets: staged.assets,
         publicBaseUrl: deps.publicBaseUrl,
         publishedAt: deps.now?.() ?? new Date().toISOString(),
+        ...(deps.synthesizeAudio ? { synthesizeAudio: deps.synthesizeAudio } : {}),
       }, deps.s3);
       response = PublishResponseSchema.parse({ packId: result.packId, version: result.version, packUrl: result.packUrl });
     }

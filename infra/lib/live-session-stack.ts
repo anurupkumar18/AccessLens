@@ -40,6 +40,11 @@ import { fileURLToPath } from 'node:url';
 
 // This package is ESM, so `__dirname` does not exist.
 const here = dirname(fileURLToPath(import.meta.url));
+
+export interface LiveSessionStackProps extends StackProps {
+  /** Public base URL of the published asset distribution (packs/<id>/<version>.json). */
+  packBaseUrl?: string;
+}
 // The Lambda source lives in services/, a sibling of infra/, so CDK needs the
 // repository root as the bundling project root rather than this package.
 const repoRoot = join(here, '../..');
@@ -47,7 +52,7 @@ const repoRoot = join(here, '../..');
 const CONNECTIONS_BY_SESSION_INDEX = 'connections-by-session';
 
 export class LiveSessionStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props?: LiveSessionStackProps) {
     super(scope, id, props);
 
     const sessions = new Table(this, 'Sessions', {
@@ -108,6 +113,9 @@ export class LiveSessionStack extends Stack {
         // Resolved at deployment, so the value lives in Secrets Manager and in
         // the function's environment -- never in the source or the template.
         CAPABILITY_SECRET: SecretValue.secretsManager(capabilitySecret.secretArn).unsafeUnwrap(),
+        // Where published packs live, so a session may teach any pack the
+        // authoring pipeline published and not only the one bundled here.
+        ...(props?.packBaseUrl ? { PACK_BASE_URL: props.packBaseUrl } : {}),
       },
     });
 

@@ -6,6 +6,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import publishedFixture from '../../../viewer/fixtures/published-pack.json';
 import { resetRemotePackBasesForTests } from '../shared/packMedia';
 import { App, packChoices } from './App';
+import type { AuthoringClient } from '../shared/authoringClient';
 import { InMemorySessionClient } from '../shared/contracts';
 import { loadPreferences, resetPreferencesForTests } from '../shared/preferences';
 import { FakeCaptureHost, FakeScheduler, testPack } from '../sources/screen/fixtures';
@@ -51,30 +52,6 @@ describe('App shell', () => {
     act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(container.textContent).toContain('Following nucleolus on slide-04');
-  });
-
-  it('resolves the student pack from the session events, not the instructor dropdown', async () => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    const client = new InMemorySessionClient();
-    const root = createRoot(container);
-    act(() => root.render(<App client={client} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} />));
-
-    const studentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
-    act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-
-    // An instructor elsewhere is teaching the HNSW draft pack; this tab never touched the dropdown.
-    const hnsw = packChoices.find(c => c.id === 'hnsw-explainer')!.pack;
-    await client.join('ABC123');
-    act(() => client.send({
-      schemaVersion: '1.0', type: 'asset.changed', sessionId: 'ABC123', packId: hnsw.packId, packVersion: hnsw.version,
-      sequence: 1, sentAt: '2026-09-15T15:00:00Z', assetId: hnsw.assets[1].assetId,
-    }));
-
-    expect(container.textContent).not.toContain('different reviewed lesson version');
-    // Part 3's Focus view renders the followed slide's regions from the resolved pack.
-    expect(container.textContent).toContain(`Following ${hnsw.assets[1].assetId}.`);
-    expect(container.textContent).toContain(hnsw.assets[1].regions[0].regionId);
   });
 
   it('fetches the published pack a session names when no bundled pack matches', async () => {
@@ -139,5 +116,28 @@ describe('App shell', () => {
 
     expect(toggle.checked).toBe(true);
     expect((await loadPreferences()).reducedMotion).toBe(true);
+  });
+
+  it('offers the signed-in instructor their published packs and presents the newest one', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    // A pack the pipeline published under this build's fingerprint contract (the viewer fixture predates it).
+    const published = AccessPackSchema.parse({ ...testPack, packId: 'introduction-to-hnsw', title: 'Introduction to HNSW', version: 1 });
+    const summary = { packId: published.packId, title: published.title, version: published.version, packUrl: `https://cdn.test/packs/${published.packId}/${published.version}.json`, publishedAt: '2026-09-16T18:22:00.000Z' };
+    const authoringClient = { me: vi.fn(async () => ({ instructor: { sub: 'g-1', email: 'prof@uni.edu', createdAt: '2026-09-16T00:00:00.000Z', lastSeenAt: '2026-09-16T00:00:00.000Z' }, profiles: [], packs: [summary] })) } as unknown as AuthoringClient;
+    const fetchPublishedPack = vi.fn(async () => published);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<App client={new InMemorySessionClient()} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} fetchPublishedPack={fetchPublishedPack} authoringClient={authoringClient} />);
+      await Promise.resolve();
+    });
+    await act(async () => { await Promise.resolve(); });
+
+    const select = container.querySelector<HTMLSelectElement>('#pack-choice')!;
+    expect(Array.from(select.options).map(o => o.textContent)).toContain(`${published.title} (v${published.version})`);
+    expect(select.value).toBe(`published:${published.packId}`);
+    expect(fetchPublishedPack).toHaveBeenCalledWith(published.packId, published.version);
+    expect(container.textContent).toContain(`Pack: ${published.title} · v${published.version}`);
+    root.unmount();
   });
 });

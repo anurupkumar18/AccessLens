@@ -49,6 +49,12 @@ export class MemorySessionStore implements SessionStoreApi {
     return record;
   }
 
+  async pinSessionPack(sessionId: string, packId: string, packVersion: number): Promise<void> {
+    const record = this.sessions.get(sessionId);
+    if (!record) throw new Error('missing session');
+    this.sessions.set(sessionId, { ...record, packId, packVersion });
+  }
+
   async getSession(sessionId: string, now: Date = new Date()): Promise<SessionRecord | undefined> {
     const record = this.sessions.get(sessionId);
     return isLive(record, nowSeconds(now)) ? record : undefined;

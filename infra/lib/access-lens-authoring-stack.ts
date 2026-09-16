@@ -87,6 +87,12 @@ export class AccessLensAuthoringStack extends Stack {
     this.viewer = this.bucket('Viewer');
 
     this.jobs = this.table('Jobs', { partitionKey: { name: 'jobId', type: dynamodb.AttributeType.STRING }, timeToLiveAttribute: 'expiresAt' });
+    // An instructor's published packs are listed from their own jobs (`GET /v1/me`).
+    this.jobs.addGlobalSecondaryIndex({
+      indexName: 'ownerSub-index',
+      partitionKey: { name: 'ownerSub', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+    });
     // Two roles (D13): students never reach this API; instructors get a record
     // on first sign-in and own course profiles, whose documents are indexed
     // for retrieval.
@@ -106,28 +112,46 @@ export class AccessLensAuthoringStack extends Stack {
     const viewerOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.viewer);
     const packsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.packs);
     const artifactsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.artifacts);
+    // The hosted shell lives under /app/ on the same distribution as the viewer
+    // and the published packs, so it is same-origin with everything it loads.
+    const appIndex = new cloudfront.Function(this, 'AppIndexRewrite', {
+      code: cloudfront.FunctionCode.fromInline(
+        "function handler(event) { var r = event.request; if (r.uri === '/app' || r.uri === '/app/') { r.uri = '/app/index.html'; } return r; }",
+      ),
+      runtime: cloudfront.FunctionRuntime.JS_2_0,
+    });
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultRootObject: 'index.html',
       defaultBehavior: {
         origin: viewerOrigin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        functionAssociations: [{ function: appIndex, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST }],
       },
       additionalBehaviors: {
         'packs/*': {
           origin: packsOrigin,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          // Published packs, media, and artifacts are public reads fetched
+          // cross-origin by the extension dev server and the viewer host.
+          responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
         },
         'media/*': {
           origin: packsOrigin,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          // Published packs, media, and artifacts are public reads fetched
+          // cross-origin by the extension dev server and the viewer host.
+          responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
         },
         'artifacts/*': {
           origin: artifactsOrigin,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          // Published packs, media, and artifacts are public reads fetched
+          // cross-origin by the extension dev server and the viewer host.
+          responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
         },
       },
       comment: 'AccessLens temporary viewer and published asset distribution',
@@ -138,11 +162,26 @@ export class AccessLensAuthoringStack extends Stack {
       sources: [s3deploy.Source.asset(`${ROOT}/apps/viewer/dist`)],
       destinationBucket: this.viewer,
       prune: true,
+      // The shell under app/ is its own deployment; the viewer's prune must not remove it.
+      exclude: ['app/*'],
       retainOnDelete: false,
       distribution: this.distribution,
       distributionPaths: ['/*'],
     });
     viewerDeployment.node.defaultChild && (viewerDeployment.node.defaultChild as { applyRemovalPolicy?: (policy: RemovalPolicy) => void }).applyRemovalPolicy?.(RemovalPolicy.DESTROY);
+
+    // The instructor and student shell, built by infra/scripts/deploy.sh with
+    // `--base /app/` from the same source as the extension.
+    const appDeployment = new s3deploy.BucketDeployment(this, 'AppDeployment', {
+      sources: [s3deploy.Source.asset(`${ROOT}/dist-web`)],
+      destinationBucket: this.viewer,
+      destinationKeyPrefix: 'app',
+      prune: true,
+      retainOnDelete: false,
+      distribution: this.distribution,
+      distributionPaths: ['/app/*'],
+    });
+    appDeployment.node.defaultChild && (appDeployment.node.defaultChild as { applyRemovalPolicy?: (policy: RemovalPolicy) => void }).applyRemovalPolicy?.(RemovalPolicy.DESTROY);
 
     const googleClientId = (this.node.tryGetContext('googleClientId') as string | undefined) || UNCONFIGURED_CLIENT_ID;
     const authorizer = new apigatewayAuthorizers.HttpJwtAuthorizer('GoogleSignIn', GOOGLE_ISSUER, {
@@ -196,6 +235,7 @@ export class AccessLensAuthoringStack extends Stack {
     this.output('StateMachineArn', this.stateMachine.stateMachineArn);
     this.output('ApiUrl', this.api.url ?? '');
     this.output('ViewerUrl', `https://${this.distribution.domainName}`);
+    this.output('AppUrl', `https://${this.distribution.domainName}/app/`);
     this.output('AssetBaseUrl', `https://${this.distribution.domainName}`);
     this.output('GoogleClientId', googleClientId);
     this.output('VectorBucketName', this.libraryExtension.vectorBucketName);
@@ -281,7 +321,7 @@ export class AccessLensAuthoringStack extends Stack {
       case 'getArtifactManifest':
         return { ARTIFACTS_BUCKET: this.artifacts.bucketName };
       case 'getMe':
-        return { INSTRUCTORS_TABLE: this.instructors.tableName, ...this.libraryEnvironment() };
+        return { INSTRUCTORS_TABLE: this.instructors.tableName, JOBS_TABLE: this.jobs.tableName, ASSET_BASE_URL: `https://${this.distribution.domainName}`, ...this.libraryEnvironment() };
       case 'createProfile':
       case 'getProfile':
       case 'deleteProfile':
@@ -334,6 +374,8 @@ export class AccessLensAuthoringStack extends Stack {
           actions: ['s3:PutObject'],
           resources: [this.packs.arnForObjects('packs/*'), this.packs.arnForObjects('media/*'), this.packs.arnForObjects('artifacts/*')],
         }));
+        // Edited descriptions are re-spoken at publish time with the pipeline's voice.
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }));
         break;
       case 'getJob':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.jobs.tableArn] }));
@@ -352,7 +394,7 @@ export class AccessLensAuthoringStack extends Stack {
       // besides the pipeline's retrieval Lambda.
       case 'getMe':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem'], resources: [this.instructors.tableArn] }));
-        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.profiles.tableArn}/index/ownerSub-index`] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.profiles.tableArn}/index/ownerSub-index`, `${this.jobs.tableArn}/index/ownerSub-index`] }));
         break;
       case 'createProfile':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:PutItem'], resources: [this.profiles.tableArn] }));

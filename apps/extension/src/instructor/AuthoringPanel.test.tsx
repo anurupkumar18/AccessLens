@@ -28,7 +28,7 @@ function fakeClient(statuses: JobState['status'][], profiles: CourseProfile[] = 
     getDraft: vi.fn(async () => pack),
     review: vi.fn(async (_jobId, decisions) => { reviews.push(decisions); }),
     publish: vi.fn(async () => ({ packId: pack.packId, version: 9, packUrl: 'https://cdn.test/packs/p/9.json' })),
-    me: vi.fn(async () => ({ instructor, profiles })),
+    me: vi.fn(async () => ({ instructor, profiles, packs: [] })),
     createProfile: vi.fn(async input => ({ profile: { ...algorithms, ...input, profileId: 'prof-new' }, documents: [] })),
     getProfile: vi.fn(async profileId => ({ profile: profiles.find(p => p.profileId === profileId) ?? algorithms, documents: [] })),
     deleteProfile: vi.fn(async () => undefined),
@@ -73,7 +73,7 @@ describe('AuthoringPanel', () => {
     await flush(); await flush(); await flush();
     expect(container!.textContent).toContain('Ready for your review');
     expect(container!.querySelectorAll('.authoring-slides > li')).toHaveLength(pack.assets.length);
-    expect(container!.textContent).toContain(pack.assets[0].regions[0].shortDescription);
+    expect(q<HTMLTextAreaElement>('.authoring-slides textarea.authoring-short').value).toBe(pack.assets[0].regions[0].shortDescription);
     expect(client.publish).not.toHaveBeenCalled();
     // Leave the first region out, then publish.
     act(() => { q<HTMLInputElement>('.authoring-slides input[type=checkbox]').click(); });
@@ -83,6 +83,30 @@ describe('AuthoringPanel', () => {
     expect(client.publish).toHaveBeenCalledWith('job-1');
     expect(container!.textContent).toContain('version 9');
     expect(q<HTMLAnchorElement>('a').getAttribute('href')).toContain(encodeURIComponent('https://cdn.test/packs/p/9.json'));
+  });
+
+  it('sends an edited description as a region edit, and only the fields that changed', async () => {
+    const { client, reviews } = fakeClient(['review']);
+    render(client);
+    await fillAndSubmit();
+    await flush(); await flush();
+    const first = pack.assets[0];
+    const region = first.regions[0];
+    const short = q<HTMLTextAreaElement>('.authoring-slides textarea.authoring-short');
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(short, 'A hand-written description.');
+      short.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(short.value).toBe('A hand-written description.');
+    clickButton('Approve and publish');
+    await flush();
+    const decisions = reviews[0] as Array<{ assetId: string; regionEdits?: unknown; rejectRegions?: unknown }>;
+    expect(decisions.find(d => d.assetId === first.assetId)).toEqual({
+      assetId: first.assetId,
+      regionEdits: [{ regionId: region.regionId, shortDescription: 'A hand-written description.' }],
+    });
+    // Untouched slides carry no edits at all.
+    expect(decisions.find(d => d.assetId === pack.assets[1].assetId)).toEqual({ assetId: pack.assets[1].assetId });
   });
 
   it('reports a failed job instead of pretending', async () => {

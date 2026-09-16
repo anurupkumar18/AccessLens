@@ -211,10 +211,22 @@ export const InstructorRecordSchema = z.object({
 }).strict();
 export type InstructorRecord = z.infer<typeof InstructorRecordSchema>;
 
+/** One pack this instructor published: the latest version per pack id, ready to present. */
+export const PublishedPackSummarySchema = z.object({
+  packId: z.string().min(1),
+  title: z.string().min(1),
+  version: z.number().int().positive(),
+  packUrl: z.string().url(),
+  publishedAt: z.string().datetime(),
+}).strict();
+export type PublishedPackSummary = z.infer<typeof PublishedPackSummarySchema>;
+
 export const MeResponseSchema = z.object({
   instructor: InstructorRecordSchema,
   /** Every course profile this instructor owns, newest first. */
   profiles: z.array(ProfileRecordSchema),
+  /** Every pack this instructor has published, newest first, one entry per pack id. */
+  packs: z.array(PublishedPackSummarySchema),
 }).strict();
 
 // ---------------------------------------------------------------------------
@@ -236,7 +248,7 @@ export interface RouteSpec {
 
 export const ROUTES: RouteSpec[] = [
   { method: 'GET',  path: '/v1/health', operationId: 'getHealth', summary: 'Liveness and deployed version', response: HealthResponseSchema, successStatus: 200, auth: 'bearer' },
-  { method: 'GET',  path: '/v1/me', operationId: 'getMe', summary: 'The signed-in instructor, created on first call, with their course profiles', response: MeResponseSchema, successStatus: 200, auth: 'bearer' },
+  { method: 'GET',  path: '/v1/me', operationId: 'getMe', summary: 'The signed-in instructor, created on first call, with their course profiles and published packs', response: MeResponseSchema, successStatus: 200, auth: 'bearer' },
 
   { method: 'POST', path: '/v1/uploads', operationId: 'createUpload', summary: 'Get a presigned PUT URL for a deck or a library document', request: CreateUploadRequestSchema, response: CreateUploadResponseSchema, successStatus: 200, auth: 'bearer' },
   { method: 'POST', path: '/v1/jobs', operationId: 'createJob', summary: 'Start an authoring job on an uploaded deck', request: CreateJobRequestSchema, response: CreateJobResponseSchema, successStatus: 202, auth: 'bearer' },

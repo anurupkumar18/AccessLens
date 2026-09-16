@@ -10,6 +10,8 @@ export type JobStatus = 'queued' | 'ingesting' | 'describing' | 'visualizing' | 
 export interface JobState { jobId: string; status: JobStatus; packId: string; slides: Array<{ assetId: string; stage: string; status: string }>; error?: string }
 export interface ReviewDecision { assetId: string; rejectRegions?: string[]; regionEdits?: Array<{ regionId: string; shortDescription?: string; plainLanguage?: string }> }
 export interface Published { packId: string; version: number; packUrl: string }
+/** A pack the signed-in instructor published and can present: the latest version per pack id. */
+export interface PublishedPackSummary { packId: string; title: string; version: number; packUrl: string; publishedAt: string }
 
 /** The signed-in instructor's account (D13) and course profiles. */
 export interface Instructor { sub: string; email: string; name?: string; createdAt: string; lastSeenAt: string }
@@ -27,7 +29,7 @@ export interface AuthoringClient {
   review(jobId: string, decisions: ReviewDecision[]): Promise<void>;
   publish(jobId: string): Promise<Published>;
   /** Creates the account on first call (D13) and lists the instructor's course profiles. */
-  me(): Promise<{ instructor: Instructor; profiles: CourseProfile[] }>;
+  me(): Promise<{ instructor: Instructor; profiles: CourseProfile[]; packs: PublishedPackSummary[] }>;
   createProfile(input: { name: string; subject: string; level: string }): Promise<ProfileWithDocuments>;
   getProfile(profileId: string): Promise<ProfileWithDocuments>;
   deleteProfile(profileId: string): Promise<void>;

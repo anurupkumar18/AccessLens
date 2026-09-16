@@ -27,6 +27,13 @@ const STATUS_TEXT: Record<CourseDocument['status'], string> = {
   failed: 'Indexing failed.',
 };
 
+type LibraryView = 'courses' | 'new';
+
+const VIEWS: Array<{ id: LibraryView; label: string }> = [
+  { id: 'courses', label: 'Courses' },
+  { id: 'new', label: 'New course' },
+];
+
 const indexing = (document: CourseDocument) => document.status !== 'ready' && document.status !== 'failed';
 
 /**
@@ -38,6 +45,10 @@ const indexing = (document: CourseDocument) => document.status !== 'ready' && do
  */
 export function LibraryPanel({ client, profiles, onProfilesChange, pollMs = 5000 }: Props): React.ReactElement {
   const [selected, setSelected] = useState<string | null>(profiles[0]?.profileId ?? null);
+  // Two views, not one wall of fields: the courses that exist and what is in
+  // them, or the form for a new one. A library with no courses opens on the
+  // form because there is nothing else to show.
+  const [view, setView] = useState<LibraryView>(profiles.length > 0 ? 'courses' : 'new');
   const [details, setDetails] = useState<ProfileWithDocuments | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -79,6 +90,7 @@ export function LibraryPanel({ client, profiles, onProfilesChange, pollMs = 5000
       onProfilesChange([created.profile, ...profiles]);
       setSelected(created.profile.profileId);
       setNewProfile({ name: '', subject: '', level: '' });
+      setView('courses');
     } catch (e) { fail(e); } finally { setBusy(false); }
   }
 
@@ -113,8 +125,10 @@ export function LibraryPanel({ client, profiles, onProfilesChange, pollMs = 5000
     setBusy(true); setError(null);
     try {
       await client.deleteProfile(selected);
-      onProfilesChange(profiles.filter(profile => profile.profileId !== selected));
+      const remaining = profiles.filter(profile => profile.profileId !== selected);
+      onProfilesChange(remaining);
       setSelected(null);
+      if (remaining.length === 0) setView('new');
     } catch (e) { fail(e); } finally { setBusy(false); }
   }
 
@@ -123,49 +137,75 @@ export function LibraryPanel({ client, profiles, onProfilesChange, pollMs = 5000
       <h3 id="library-heading">Course library</h3>
       <p className="supporting-text">Textbooks, notes and past slides for a course. The pipeline quotes them, by page, in the descriptions it writes; students only ever see those cited quotes.</p>
 
-      <form onSubmit={e => { void createProfile(e); }} aria-label="Create a course" className="library-new-course">
-        <label htmlFor="library-name">Course<input id="library-name" type="text" value={newProfile.name} maxLength={200} onChange={e => setNewProfile({ ...newProfile, name: e.target.value })} /></label>
-        <label htmlFor="library-subject">Subject<input id="library-subject" type="text" value={newProfile.subject} maxLength={120} onChange={e => setNewProfile({ ...newProfile, subject: e.target.value })} /></label>
-        <label htmlFor="library-level">Level<input id="library-level" type="text" value={newProfile.level} maxLength={80} onChange={e => setNewProfile({ ...newProfile, level: e.target.value })} /></label>
-        <button type="submit" disabled={busy || !newProfile.name.trim() || !newProfile.subject.trim() || !newProfile.level.trim()}>Create course</button>
-      </form>
+      <div className="mode-tabs library-tabs" role="tablist" aria-label="Course library views">
+        {VIEWS.map(candidate => (
+          <button
+            key={candidate.id}
+            id={`library-tab-${candidate.id}`}
+            type="button"
+            role="tab"
+            aria-selected={view === candidate.id}
+            aria-controls="library-view"
+            tabIndex={view === candidate.id ? 0 : -1}
+            onClick={() => setView(candidate.id)}
+          >
+            {candidate.label}
+          </button>
+        ))}
+      </div>
 
-      {profiles.length > 0 && (
-        <div className="library-course">
-          <label htmlFor="library-select">Course
-            <select id="library-select" value={selected ?? ''} onChange={e => setSelected(e.target.value || null)}>
-              {profiles.map(profile => <option key={profile.profileId} value={profile.profileId}>{profile.name} ({profile.subject}, {profile.level})</option>)}
-            </select>
-          </label>
-          <button type="button" className="secondary" disabled={busy || !selected} onClick={() => { void removeProfile(); }}>Delete course</button>
-        </div>
-      )}
+      <div id="library-view" role="tabpanel" aria-labelledby={`library-tab-${view}`}>
+        {view === 'new' && (
+          <form onSubmit={e => { void createProfile(e); }} aria-label="Create a course" className="library-new-course">
+            <label htmlFor="library-name">Course<input id="library-name" type="text" value={newProfile.name} maxLength={200} onChange={e => setNewProfile({ ...newProfile, name: e.target.value })} /></label>
+            <label htmlFor="library-subject">Subject<input id="library-subject" type="text" value={newProfile.subject} maxLength={120} onChange={e => setNewProfile({ ...newProfile, subject: e.target.value })} /></label>
+            <label htmlFor="library-level">Level<input id="library-level" type="text" value={newProfile.level} maxLength={80} onChange={e => setNewProfile({ ...newProfile, level: e.target.value })} /></label>
+            <button type="submit" disabled={busy || !newProfile.name.trim() || !newProfile.subject.trim() || !newProfile.level.trim()}>Create course</button>
+          </form>
+        )}
 
-      {selected && details && (
-        <>
-          <ul className="library-documents" aria-label="Course materials">
-            {details.documents.length === 0 && <li className="supporting-text">No materials yet.</li>}
-            {details.documents.map(document => (
-              <li key={document.docId}>
-                <span className="library-doc-title">{document.title}</span>
-                <span className="library-doc-meta">{KINDS.find(k => k.value === document.kind)?.label ?? document.kind}{document.pages ? ` · ${document.pages} pages` : ''}</span>
-                <span role="status" className={`library-doc-status library-doc-${document.status}`}>{document.status === 'failed' && document.error ? `Indexing failed: ${document.error}` : STATUS_TEXT[document.status]}</span>
-                <button type="button" className="secondary" disabled={busy} onClick={() => { void removeDocument(document.docId); }}>Remove</button>
-              </li>
-            ))}
-          </ul>
-          <form onSubmit={e => { void addDocument(e); }} aria-label="Add material" className="library-add">
-            <label htmlFor="library-doc-title">Title<input id="library-doc-title" type="text" value={newDocument.title} maxLength={300} onChange={e => setNewDocument({ ...newDocument, title: e.target.value })} /></label>
-            <label htmlFor="library-doc-kind">Kind
-              <select id="library-doc-kind" value={newDocument.kind} onChange={e => setNewDocument({ ...newDocument, kind: e.target.value as DocumentKind })}>
-                {KINDS.map(kind => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
+        {view === 'courses' && profiles.length === 0 && (
+          <p className="supporting-text">No courses yet. Create one under New course.</p>
+        )}
+
+        {view === 'courses' && profiles.length > 0 && (
+          <div className="library-course">
+            <label htmlFor="library-select">Course
+              <select id="library-select" value={selected ?? ''} onChange={e => setSelected(e.target.value || null)}>
+                {profiles.map(profile => <option key={profile.profileId} value={profile.profileId}>{profile.name} ({profile.subject}, {profile.level})</option>)}
               </select>
             </label>
-            <label htmlFor="library-doc-file">File (PDF, PPTX or DOCX)<input id="library-doc-file" ref={fileInput} type="file" accept=".pdf,.pptx,.docx" onChange={e => setNewDocument({ ...newDocument, file: e.target.files?.[0] ?? null })} /></label>
-            <button type="submit" disabled={busy || !newDocument.file || !newDocument.title.trim()}>Add to course</button>
-          </form>
-        </>
-      )}
+            <button type="button" className="secondary" disabled={busy || !selected} onClick={() => { void removeProfile(); }}>Delete course</button>
+          </div>
+        )}
+
+        {view === 'courses' && selected && details && (
+          <>
+            <ul className="library-documents" aria-label="Course materials">
+              {details.documents.length === 0 && <li className="supporting-text">No materials yet.</li>}
+              {details.documents.map(document => (
+                <li key={document.docId}>
+                  <span className="library-doc-title">{document.title}</span>
+                  <span className="library-doc-meta">{KINDS.find(k => k.value === document.kind)?.label ?? document.kind}{document.pages ? ` · ${document.pages} pages` : ''}</span>
+                  <span role="status" className={`library-doc-status library-doc-${document.status}`}>{document.status === 'failed' && document.error ? `Indexing failed: ${document.error}` : STATUS_TEXT[document.status]}</span>
+                  <button type="button" className="secondary" disabled={busy} onClick={() => { void removeDocument(document.docId); }}>Remove</button>
+                </li>
+              ))}
+            </ul>
+            <form onSubmit={e => { void addDocument(e); }} aria-label="Add material" className="library-add">
+              <h4>Add material</h4>
+              <label htmlFor="library-doc-title">Title<input id="library-doc-title" type="text" value={newDocument.title} maxLength={300} onChange={e => setNewDocument({ ...newDocument, title: e.target.value })} /></label>
+              <label htmlFor="library-doc-kind">Kind
+                <select id="library-doc-kind" value={newDocument.kind} onChange={e => setNewDocument({ ...newDocument, kind: e.target.value as DocumentKind })}>
+                  {KINDS.map(kind => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
+                </select>
+              </label>
+              <label htmlFor="library-doc-file">File (PDF, PPTX or DOCX)<input id="library-doc-file" ref={fileInput} type="file" accept=".pdf,.pptx,.docx" onChange={e => setNewDocument({ ...newDocument, file: e.target.files?.[0] ?? null })} /></label>
+              <button type="submit" disabled={busy || !newDocument.file || !newDocument.title.trim()}>Add to course</button>
+            </form>
+          </>
+        )}
+      </div>
 
       {error && <p role="alert">{error}</p>}
     </section>

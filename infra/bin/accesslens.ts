@@ -25,5 +25,8 @@ const env = {
 new LiveSessionStack(app, 'AccessLensLiveSession', {
   env,
   description: 'AccessLens temporary live session service and WebSocket relay',
+  // The authoring distribution's URL, from .env.local (make deploy sources it),
+  // so the relay can read any published pack the way students do.
+  packBaseUrl: process.env.VITE_ACCESSLENS_ASSET_BASE_URL || undefined,
 });
 new AccessLensAuthoringStack(app, 'AccessLensAuthoring');

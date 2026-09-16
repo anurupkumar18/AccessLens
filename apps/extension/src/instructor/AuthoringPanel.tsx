@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { AccessPack } from '../shared/contracts';
 import {
   AuthoringApiError, authoringApiUrl, createAuthoringClient, packIdFromTitle,
-  type AuthoringClient, type CourseProfile, type Instructor, type JobState, type Published,
+  type AuthoringClient, type CourseProfile, type Instructor, type JobState, type Published, type PublishedPackSummary,
 } from '../shared/authoringClient';
 import { LibraryPanel } from './LibraryPanel';
 import {
@@ -22,13 +22,18 @@ interface Props {
   pollMs?: number;
   /** Where a published pack can be opened in the student view. */
   studentViewUrl?: (packUrl: string) => string;
+  /** The instructor's published packs, on sign-in and after each publish; the shell offers them for presenting. */
+  onPublishedPacks?: (packs: PublishedPackSummary[]) => void;
 }
+
+/** What the instructor has typed for a region, keyed `assetId/regionId`. */
+interface RegionText { shortDescription: string; plainLanguage: string }
 
 type Phase =
   | { kind: 'idle' }
   | { kind: 'uploading' }
   | { kind: 'running'; jobId: string; job: JobState | null }
-  | { kind: 'review'; jobId: string; pack: AccessPack; rejected: Set<string> }
+  | { kind: 'review'; jobId: string; pack: AccessPack; rejected: Set<string>; edits: Map<string, RegionText> }
   | { kind: 'publishing'; jobId: string }
   | { kind: 'published'; result: Published }
   | { kind: 'failed'; message: string; jobId?: string };
@@ -52,7 +57,7 @@ const STAGE_TEXT: Record<string, string> = {
  */
 export function AuthoringPanel({
   client: injected, apiUrl = authoringApiUrl, clientId = googleClientId, signIn, pollMs = 5000,
-  studentViewUrl = url => `?pack=${encodeURIComponent(url)}`,
+  studentViewUrl = url => `?pack=${encodeURIComponent(url)}`, onPublishedPacks,
 }: Props): React.ReactElement {
   const [session, setSession] = useState<GoogleSession | null>(() => readSession());
   const [signInError, setSignInError] = useState<string | null>(null);
@@ -75,7 +80,11 @@ export function AuthoringPanel({
   useEffect(() => {
     if (!client) { setAccount(null); return; }
     let stopped = false;
-    client.me().then(me => { if (!stopped) setAccount(me); }).catch(error => {
+    client.me().then(me => {
+      if (stopped) return;
+      setAccount({ instructor: me.instructor, profiles: me.profiles });
+      onPublishedPacks?.(me.packs);
+    }).catch(error => {
       if (!stopped) setPhase({ kind: 'failed', message: failure(error) });
     });
     return () => { stopped = true; };
@@ -120,7 +129,7 @@ export function AuthoringPanel({
         if (stopped) return;
         if (job.status === 'review') {
           const pack = await client.getDraft(phase.jobId);
-          if (!stopped) setPhase({ kind: 'review', jobId: phase.jobId, pack, rejected: new Set() });
+          if (!stopped) setPhase({ kind: 'review', jobId: phase.jobId, pack, rejected: new Set(), edits: new Map() });
         } else if (job.status === 'failed' || job.status === 'needs_input') {
           setPhase({ kind: 'failed', jobId: phase.jobId, message: job.error ?? STAGE_TEXT[job.status] });
         } else {
@@ -150,15 +159,32 @@ export function AuthoringPanel({
 
   async function publish(): Promise<void> {
     if (phase.kind !== 'review' || !client) return;
-    const { jobId, pack, rejected } = phase;
+    const { jobId, pack, rejected, edits } = phase;
     setPhase({ kind: 'publishing', jobId });
     try {
       await client.review(jobId, pack.assets.map(asset => {
         const rejectRegions = asset.regions.map(r => r.regionId).filter(id => rejected.has(`${asset.assetId}/${id}`));
-        return rejectRegions.length ? { assetId: asset.assetId, rejectRegions } : { assetId: asset.assetId };
+        // Only what actually changed is sent; the API applies edits on top of the draft.
+        const regionEdits = asset.regions.flatMap(region => {
+          const edit = edits.get(`${asset.assetId}/${region.regionId}`);
+          if (!edit || rejected.has(`${asset.assetId}/${region.regionId}`)) return [];
+          const short = edit.shortDescription.trim();
+          const plain = edit.plainLanguage.trim();
+          const changed = {
+            ...(short && short !== region.shortDescription ? { shortDescription: short } : {}),
+            ...(plain && plain !== region.plainLanguage ? { plainLanguage: plain } : {}),
+          };
+          return Object.keys(changed).length ? [{ regionId: region.regionId, ...changed }] : [];
+        });
+        return {
+          assetId: asset.assetId,
+          ...(rejectRegions.length ? { rejectRegions } : {}),
+          ...(regionEdits.length ? { regionEdits } : {}),
+        };
       }));
       const result = await client.publish(jobId);
       setPhase({ kind: 'published', result });
+      if (onPublishedPacks) onPublishedPacks((await client.me()).packs);
     } catch (error) {
       setPhase({ kind: 'failed', jobId, message: failure(error) });
     }
@@ -169,6 +195,13 @@ export function AuthoringPanel({
     const rejected = new Set(phase.rejected);
     if (rejected.has(key)) rejected.delete(key); else rejected.add(key);
     setPhase({ ...phase, rejected });
+  }
+
+  function editRegion(key: string, current: RegionText, change: Partial<RegionText>): void {
+    if (phase.kind !== 'review') return;
+    const edits = new Map(phase.edits);
+    edits.set(key, { ...(edits.get(key) ?? current), ...change });
+    setPhase({ ...phase, edits });
   }
 
   function reset(): void {
@@ -237,7 +270,7 @@ export function AuthoringPanel({
 
       {phase.kind === 'review' && (
         <div className="authoring-review">
-          <p role="status">Ready for your review: {phase.pack.assets.length} slides. Untick a description to leave it out, then publish.</p>
+          <p role="status">Ready for your review: {phase.pack.assets.length} slides. Edit any description, untick one to leave it out, then publish. An edited description is re-recorded in the same voice when you publish.</p>
           <ol className="authoring-slides">
             {phase.pack.assets.map(asset => (
               <li key={asset.assetId}>
@@ -245,13 +278,26 @@ export function AuthoringPanel({
                 <ul>
                   {asset.regions.map(region => {
                     const key = `${asset.assetId}/${region.regionId}`;
+                    const current: RegionText = { shortDescription: region.shortDescription, plainLanguage: region.plainLanguage };
+                    const text = phase.edits.get(key) ?? current;
+                    const kept = !phase.rejected.has(key);
+                    const id = key.replace(/[^a-zA-Z0-9_-]/gu, '-');
                     return (
-                      <li key={region.regionId}>
-                        <label>
-                          <input type="checkbox" checked={!phase.rejected.has(key)} onChange={() => toggleRegion(key)} />
-                          <span className="authoring-short">{region.shortDescription}</span>
-                          {region.plainLanguage ? <span className="authoring-plain">{region.plainLanguage}</span> : null}
+                      <li key={region.regionId} className={kept ? undefined : 'authoring-region-out'}>
+                        <label className="authoring-keep">
+                          <input type="checkbox" checked={kept} onChange={() => toggleRegion(key)} />
+                          <span>{region.label ?? region.regionId}</span>
                         </label>
+                        <div className="authoring-region-text">
+                          <label htmlFor={`short-${id}`}>Description
+                            <textarea id={`short-${id}`} className="authoring-short" rows={2} maxLength={700} disabled={!kept} value={text.shortDescription}
+                              onChange={e => editRegion(key, current, { shortDescription: e.target.value })} />
+                          </label>
+                          <label htmlFor={`plain-${id}`}>Plain language
+                            <textarea id={`plain-${id}`} className="authoring-plain" rows={2} maxLength={500} disabled={!kept} value={text.plainLanguage}
+                              onChange={e => editRegion(key, current, { plainLanguage: e.target.value })} />
+                          </label>
+                        </div>
                       </li>
                     );
                   })}

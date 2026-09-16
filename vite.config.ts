@@ -21,4 +21,4 @@ export default defineConfig({ plugins: [react(), { name: 'extension-assets', con
     '/media': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
     '/ai': { target: 'https://xmisk5oc1m.execute-api.us-east-1.amazonaws.com', changeOrigin: true, rewrite: (path) => path.replace(/^\/ai/, '') },
   } },
-  test: { exclude: [...configDefaults.exclude, '.claude/**', '**/dist/**', '**/.worktrees/**', '**/cdk.out/**'] } });
+  test: { exclude: [...configDefaults.exclude, '.claude/**', '**/dist/**', '**/dist-web/**', '**/.worktrees/**', '**/cdk.out/**'] } });

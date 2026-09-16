@@ -741,10 +741,14 @@ input[type='range'] { accent-color: var(--ink); }
 .authoring-slides { padding-left: 1.25rem; display: grid; gap: 1rem; }
 .authoring-slides h3 { margin: 0 0 .25rem; font-size: 1rem; }
 .authoring-slides ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
-.authoring-slides label { display: grid; grid-template-columns: auto 1fr; gap: .25rem .6rem; align-items: start; }
-.authoring-slides input { margin-top: .2rem; }
-.authoring-short { grid-column: 2; }
-.authoring-plain { grid-column: 2; color: var(--muted); font-size: .92em; }
+.authoring-slides > li > ul > li { display: grid; gap: .4rem; padding: .6rem 0; border-top: 1px solid var(--rule); }
+.authoring-keep { display: flex; align-items: center; gap: .5rem; font-weight: 600; }
+.authoring-region-text { display: grid; gap: .5rem; }
+.authoring-region-text label { display: grid; gap: .25rem; }
+.authoring-region-text textarea { font: inherit; padding: .5rem .6rem; border: 1px solid var(--rule); background: var(--field); color: var(--ink); resize: vertical; width: 100%; box-sizing: border-box; }
+.authoring-region-text textarea:disabled { opacity: .5; }
+.authoring-plain { color: var(--muted); font-size: .92em; }
+.authoring-region-out .authoring-region-text { opacity: .6; }
 .authoring-review > button, .authoring-published button { margin-right: .5rem; }
 .authoring-account { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: 0 0 1rem; }
 .authoring-account button { margin: 0; }
@@ -752,6 +756,10 @@ input[type='range'] { accent-color: var(--ink); }
 .library { margin: 1.5rem 0; padding: 1rem; border: 1px solid var(--rule); }
 .library h3 { margin: 0 0 .25rem; font-size: 1.05rem; }
 .library form { display: grid; gap: .6rem; max-width: 36rem; margin-top: .75rem; }
+.library-tabs { grid-template-columns: repeat(2, 1fr); margin-top: 1rem; }
+.library-tabs button { padding: .8rem .5rem; }
+.library-add { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.library-add h4 { margin: 0; font-size: 1rem; }
 .library-course { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; margin-top: 1rem; }
 .library-course label { display: grid; gap: .25rem; flex: 1 1 16rem; }
 .library-documents { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .5rem; }

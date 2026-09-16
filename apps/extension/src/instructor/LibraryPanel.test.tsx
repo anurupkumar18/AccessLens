@@ -98,4 +98,26 @@ describe('LibraryPanel', () => {
     await flush();
     expect(q('.library-doc-status').textContent).toContain('Indexing failed: page 1 sentence');
   });
+
+  it('opens on the courses view when courses exist, and the new-course form lives in its own view', async () => {
+    mount(fakeClient(['ready']), [algorithms]);
+    await flush();
+    expect(q('[role="tab"][aria-selected="true"]').textContent).toBe('Courses');
+    expect(container!.querySelector('#library-select')).not.toBeNull();
+    expect(container!.querySelector('form[aria-label="Create a course"]')).toBeNull();
+
+    act(() => { Array.from(container!.querySelectorAll('[role="tab"]')).find(b => b.textContent === 'New course')!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    expect(container!.querySelector('form[aria-label="Create a course"]')).not.toBeNull();
+    expect(container!.querySelector('#library-select')).toBeNull();
+  });
+
+  it('opens on the new-course form when there are no courses, and returns to courses after creating one', async () => {
+    const onProfilesChange = mount(fakeClient(['ready']), []);
+    expect(q('[role="tab"][aria-selected="true"]').textContent).toBe('New course');
+    type('#library-name', 'Graph Algorithms'); type('#library-subject', 'CS'); type('#library-level', '4000');
+    submit('form[aria-label="Create a course"]');
+    await flush();
+    expect(onProfilesChange).toHaveBeenCalled();
+    expect(q('[role="tab"][aria-selected="true"]').textContent).toBe('Courses');
+  });
 });

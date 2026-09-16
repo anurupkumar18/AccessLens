@@ -12,7 +12,6 @@ type Region = Asset['regions'][number];
  */
 const bundledSlides: Record<string, Record<string, string>> = {
   'bio-cell-demo': byBasename(import.meta.glob('../../../../packages/access-packs/bio-cell-demo/slides/*.png', { eager: true, query: '?url', import: 'default' })),
-  'hnsw-explainer': byBasename(import.meta.glob('../../../../packs/hnsw/slides/*.png', { eager: true, query: '?url', import: 'default' })),
 };
 
 function byBasename(globbed: Record<string, unknown>): Record<string, string> {

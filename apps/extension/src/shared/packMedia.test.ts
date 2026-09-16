@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { regionAudioUrl, registerRemotePackBase, resetRemotePackBasesForTests, slideImageUrl } from './packMedia';
 import { AccessPackSchema } from './contracts';
 import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pack.json';
-import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
 
 describe('slideImageUrl', () => {
   it('resolves every reviewed-pack slide to a bundled image', () => {
@@ -10,13 +9,6 @@ describe('slideImageUrl', () => {
     for (const asset of pack.assets) {
       const url = slideImageUrl(pack, asset);
       expect(url, asset.assetId).toMatch(/cell-slide-\d\d.*\.png$/);
-    }
-  });
-
-  it('resolves every HNSW draft slide to a bundled image', () => {
-    const pack = AccessPackSchema.parse(hnswDraftPack);
-    for (const asset of pack.assets) {
-      expect(slideImageUrl(pack, asset), asset.assetId).toMatch(/slide-\d\d.*\.png$/);
     }
   });
 
