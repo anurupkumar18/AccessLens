@@ -103,3 +103,29 @@ describe('student live state', () => {
     expect(result.regionId).toBeUndefined();
   });
 });
+
+describe('applyLiveEvent: live video survives slide changes', () => {
+  const started = { ...validEvent, type: 'stream.started', surface: 'browser', sequence: 10, assetId: undefined, regionId: undefined, pointer: undefined } as unknown as LiveEvent;
+  const at = (type: LiveEvent['type'], sequence: number, extra: Record<string, unknown> = {}) =>
+    ({ ...validEvent, assetId: undefined, regionId: undefined, pointer: undefined, type, sequence, ...extra }) as unknown as LiveEvent;
+
+  it('keeps the stream through asset, region, unmatched and session.started events', () => {
+    let state = applyLiveEvent(initialStudentLiveState, started, validPack);
+    expect(state.stream).toEqual({ surface: 'browser' });
+    state = applyLiveEvent(state, at('asset.changed', 11, { assetId: 'cell-slide-03' }), validPack);
+    expect(state.stream).toEqual({ surface: 'browser' });
+    state = applyLiveEvent(state, at('region.changed', 12, { assetId: 'cell-slide-03', regionId: 'mitochondrion' }), validPack);
+    expect(state.stream).toEqual({ surface: 'browser' });
+    state = applyLiveEvent(state, at('source.unmatched', 13), validPack);
+    expect(state.stream).toEqual({ surface: 'browser' });
+    state = applyLiveEvent(state, at('session.started', 14), validPack);
+    expect(state.stream).toEqual({ surface: 'browser' });
+    state = applyLiveEvent(state, at('capture.paused', 15), validPack);
+    expect(state.stream).toEqual({ surface: 'browser' });
+  });
+
+  it.each(['stream.stopped', 'capture.stopped', 'session.ended'] as const)('ends the stream on %s', (type) => {
+    const state = applyLiveEvent(applyLiveEvent(initialStudentLiveState, started, validPack), at(type, 11), validPack);
+    expect(state.stream).toBeUndefined();
+  });
+});

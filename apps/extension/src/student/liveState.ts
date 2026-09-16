@@ -46,12 +46,17 @@ export function applyLiveEvent(
     };
   }
 
+  // View events say which slide is showing. They say nothing about video, so
+  // the stream in force rides through them; only the stream and lifecycle
+  // events below end it.
+  const stream = current.stream;
   switch (event.type) {
     case 'asset.changed':
       return {
         status: 'live',
         lastSequence: event.sequence,
         assetId: event.assetId,
+        stream,
         message: `Following ${event.assetId}.`,
       };
     case 'region.changed':
@@ -61,6 +66,7 @@ export function applyLiveEvent(
         assetId: event.assetId,
         regionId: event.regionId,
         hotspotId: event.arState?.action === 'clear' ? undefined : event.arState?.hotspotId,
+        stream,
         message: `Following ${event.regionId} on ${event.assetId}.`,
       };
     case 'capture.paused':
@@ -83,12 +89,13 @@ export function applyLiveEvent(
       return {
         status: 'unmatched',
         lastSequence: event.sequence,
+        stream,
         message: 'This source is not in the reviewed lesson pack yet.',
       };
     case 'session.ended':
       return { status: 'ended', lastSequence: event.sequence, message: 'The instructor ended this session.' };
     case 'session.started':
-      return { status: 'live', lastSequence: event.sequence, message: 'Connected to the live lesson.' };
+      return { status: 'live', lastSequence: event.sequence, stream, message: 'Connected to the live lesson.' };
     case 'caption.appended':
       return { ...current, lastSequence: event.sequence };
   }

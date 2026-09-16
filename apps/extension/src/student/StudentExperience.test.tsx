@@ -271,6 +271,23 @@ describe('StudentExperience: live video pane', () => {
     expect(pane()).not.toBeNull();
   });
 
+  it('the pane stays up and stays subscribed while the instructor changes slides', async () => {
+    const subscriber = new FakeSubscriber();
+    const { join, deliver, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
+    await join();
+    deliver(streamStarted);
+    const media = { id: 'fake-media-stream' } as unknown as MediaStream;
+    act(() => subscriber.deliver(media));
+
+    deliver({ ...validEvent, type: 'asset.changed', assetId: 'cell-slide-03', regionId: undefined, pointer: undefined, sequence: 3 } as unknown as LiveEvent);
+    deliver({ ...validEvent, sequence: 4 });
+
+    expect(pane()).not.toBeNull();
+    expect((pane()!.querySelector('video') as unknown as { srcObject: unknown }).srcObject).toBe(media);
+    expect(subscriber.calls).toEqual(['subscribe:subscribe-token-1']);
+    expect(container!.textContent).toContain('Following mitochondrion on cell-slide-03.');
+  });
+
   it('capture.stopped ends the video too', async () => {
     const subscriber = new FakeSubscriber();
     const { join, deliver, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
