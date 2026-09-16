@@ -27,21 +27,24 @@ Current sources of truth:
 - `docs/ACCESSLENS_PROPOSAL.md`
 - `docs/TEAM_PRODUCT_DIRECTION.md`
 
-Part 1 (foundation and contracts) is owned by Anurup Kumar; Part 5 (reviewed
-content, camera adapter, and demo QA) by Kunj Rathod. Part 5's content and
-simulator block is merged: `packages/access-packs/bio-cell-demo/` holds the
-reviewed five-slide deck, an original AR cell model with stable node names, six
-ordered event scenarios, and ten rejection fixtures, all validated by
-`make pack-check`. Parts 2, 3, and 4 can test against it today without the
-extension shell or AWS. The camera adapter remains unstarted Phase 6 scope.
+Part 1 (foundation and contracts) is owned by Anurup Kumar, Part 2 (instructor
+capture) by Jacob, and Part 5 (content, camera, and demo QA) by Kunj Rathod.
+Parts 3 and 4 have no owner. Part 5's pack merged as `a881f11`:
+`packages/access-packs/bio-cell-demo/` holds the reviewed five-slide deck, an
+original AR cell model, six ordered event scenarios, and ten rejection fixtures,
+all validated by `make pack-check`.
 
-Part 1's foundation (`df80b5d`) is merged into that branch. Conformance between
-the pack and `packages/contracts/` is tracked by `make pack-check` and reported
-in `docs/PART5_CONTRACT_CONFORMANCE.md`: thirteen known gaps, two of which are
-contract bugs — `assetId` is required on every event, which makes the
-charter-required `source.unmatched` unrepresentable, and
-`live-event.schema.json` rejects `regionId` and `pointer` that the Zod schema
-accepts, so it fails Part 1's own fixture.
+Both contract bugs Part 5 reported are fixed: `c3ddc27` made `LiveEventSchema` a
+per-type discriminated union, so `source.unmatched` is structurally unable to
+name an asset, and the JSON Schema now mirrors it. Ten conformance gaps remain,
+all requests to widen the contract, reported in
+`docs/PART5_CONTRACT_CONFORMANCE.md`. The most serious is that
+`access-pack.schema.json` forbids `arScene`, so the pack cannot carry the AR
+scene charter A10 requires.
+
+`docs/CONTEXT_RELAY.md` is the live state of the project and the register of
+every open thread; append to it at the end of any session that changes that
+state.
 
 The previous application, API, fixtures, plugin, and active coding-product guides
 were removed. Git history is the recovery path. Existing semantic records and
