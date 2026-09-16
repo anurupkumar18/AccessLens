@@ -4,7 +4,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } fro
 import { basename, extname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PNG } from 'pngjs';
-import { FINGERPRINT_ALGORITHM, FINGERPRINT_BITS, DEFAULT_MATCH_OPTIONS } from '../../../apps/extension/src/sources/screen';
+import { FINGERPRINT_ALGORITHM, FINGERPRINT_BITS, DEFAULT_MATCH_OPTIONS, fingerprintFrame } from '../../../apps/extension/src/sources/screen';
 import { DeckSchema } from '../../shared/jobs';
 import {
   CorruptInputError,
@@ -175,8 +175,6 @@ describe('[slow] deterministic acceptance', () => {
       '-png', '-scale-to-x', '1920', '-scale-to-y', '-1', pdfPath, join(referenceDir, 'page'),
     ], { stdio: 'pipe' });
 
-    const referencePages = Object.keys(import.meta.glob('../../../apps/viewer/fixtures/decks/*', { eager: false }));
-    expect(referencePages.length).toBeGreaterThan(0);
     const pageFiles = Array.from({ length: 20 }, (_, i) => join(referenceDir, `page-${i + 1}.png`)).filter(path => {
       try { readFileSync(path); return true; } catch { return false; }
     });
@@ -198,7 +196,14 @@ describe('[slow] deterministic acceptance', () => {
     expect(deck.slides).toHaveLength(pageFiles.length);
     for (const slide of deck.slides) {
       const expectedPng = join(referenceDir, `${slide.assetId}.png`);
-      expect(readFileSync(join(outputDir, `${slide.assetId}.png`))).toEqual(readFileSync(expectedPng));
+      const expectedPngBytes = readFileSync(expectedPng);
+      expect(readFileSync(join(outputDir, `${slide.assetId}.png`))).toEqual(expectedPngBytes);
+      const expected = PNG.sync.read(expectedPngBytes);
+      expect(slide.fingerprint).toBe(fingerprintFrame({
+        width: expected.width,
+        height: expected.height,
+        data: new Uint8ClampedArray(expected.data.buffer, expected.data.byteOffset, expected.data.length),
+      }));
       expect(slide.extractedText).toBe(readFileSync(join(referenceDir, `${slide.assetId}.txt`), 'utf8'));
     }
   }, 120_000);

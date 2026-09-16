@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { handleIngest } from './handler';
 
@@ -27,6 +28,7 @@ describe('ingest Lambda staging boundary', () => {
     const previousPacks = process.env.PACKS_BUCKET;
     process.env.DECKS_BUCKET = 'decks-test';
     process.env.PACKS_BUCKET = 'packs-test';
+    const tempRoot = mkdtempSync(join(tmpdir(), 'accesslens-handler-test-'));
     try {
       const s3 = new FakeS3(readFileSync(FIXTURE));
       const deck = await handleIngest({
@@ -34,7 +36,7 @@ describe('ingest Lambda staging boundary', () => {
         packId: 'mixed-subject',
         title: 'Mixed Subject Fixture',
         sourceKey: 'uploads/mixed-subject.pdf',
-      }, { s3Client: s3, tempRoot: join(process.cwd(), '.tmp-ingest-test') });
+      }, { s3Client: s3, tempRoot });
 
       expect(deck.slides.length).toBeGreaterThanOrEqual(8);
       expect(deck.slides.every(slide => slide.extractedText.length >= 0)).toBe(true);
@@ -49,6 +51,7 @@ describe('ingest Lambda staging boundary', () => {
       expect(String(stagedDeck)).toContain('extractedText');
       expect(s3.puts.filter(put => put.key?.includes('/media/')).every(put => typeof put.body !== 'string')).toBe(true);
     } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
       if (previousDecks === undefined) delete process.env.DECKS_BUCKET;
       else process.env.DECKS_BUCKET = previousDecks;
       if (previousPacks === undefined) delete process.env.PACKS_BUCKET;
