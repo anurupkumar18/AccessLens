@@ -1,4 +1,4 @@
-.PHONY: check memory-check pack-check extension-check
+.PHONY: check memory-check pack-check extension-check live-session-check
 
 memory-check:
 	python3 scripts/memory_check.py
@@ -12,5 +12,10 @@ pack-check:
 extension-check:
 	npm run check
 
-check: memory-check pack-check extension-check
-	@echo "AccessLens documentation, Access Pack, and extension checks passed."
+# Part 4. Its own package, so it needs its own install; kept separate from
+# extension-check so a failure here names the relay rather than the extension.
+live-session-check:
+	cd services/live-session && npm run check
+
+check: memory-check pack-check extension-check live-session-check
+	@echo "AccessLens documentation, Access Pack, extension, and relay checks passed."

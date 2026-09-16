@@ -60,14 +60,16 @@ during the build.
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
 | 2. Instructor capture | Jacob | not yet created | Owner assigned in `0771bce`. No code yet under `apps/extension/src/instructor/` or `src/sources/screen/`. Everything needed to start is listed in section 6. | — |
 | 3. Student experience and AR | UNOWNED | — | Not started. Nothing exists under `apps/extension/src/student/`, `src/renderers/`, or `src/ar/`. | — |
-| 4. AWS live service | UNOWNED | — | Not started. No `infra/` or `services/live-session/`. | — |
+| 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | Built and deployed. `infra/` (CDK: WebSocket API, Lambda, two TTL'd DynamoDB tables, log group, generated secret) and `services/live-session/` (rules, capabilities, store, relay, handler, redacted logging, real `SessionClient`). 49 unit tests; validator parity with Part 5's Python reference asserted per fixture event. Closed T-15, T-19, T-20. | `npm run check` in `services/live-session`; `node scripts/integration-test.mjs wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | `workstream/5-content-camera-qa`, PR #4 open | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, and a content review sheet for A15. Camera adapter still deliberately not started (T-10). | `make pack-check`; `npm run check` |
 
-**The single largest risk in this project is still the second column**, though it
-moved today: Part 2 now has an owner. Parts 3 and 4 do not. Part 3 is the student
-experience and the required AR renderer, which is most of what the demo shows, and
-Part 4 is the transport it all runs over. Part 5 exists precisely so 2, 3, and 4
-can each start without waiting for the other two — see section 6.
+**The single largest risk in this project is still the second column**, and it
+narrowed twice today: Part 2 was taken by Jacob, and Part 4 was taken, built, and
+deployed. **Part 3 is now the only unowned part, and it is the critical path** —
+it is the student experience and the required AR renderer, which is most of what
+the demo actually shows. Everything it depends on now exists: the frozen
+contract, the reviewed pack and its simulator, and a live relay. Section 6 says
+how to start it today.
 
 ---
 
@@ -82,7 +84,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 
 | ID | Thread | Owner | Blocks | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| T-01 | **Parts 3 and 4** have no owner. Part 2 was taken by Jacob in `0771bce`. Part 3 is on the critical path to the demo — it is the student experience and the required AR renderer — and Part 4 is the transport everything runs over. The contract freeze cannot complete without both. | UNOWNED | Everything downstream of the shell | UNOWNED | Ownership board in `docs/PARALLEL_WORKSTREAMS.md` |
+| T-01 | **Part 3** has no owner. Part 2 was taken by Jacob in `0771bce`; Part 4 was taken and completed on 2026-09-15 (RL-015). Part 3 is now the only unowned part and it is the critical path — it is the student experience and the required AR renderer, which is most of what the demo shows. Everything it needs now exists: the contract, the reviewed pack and simulator, and a working relay. | UNOWNED | Everything downstream of the shell | UNOWNED | Ownership board in `docs/PARALLEL_WORKSTREAMS.md` |
 | T-02 | `assetId` is `required` on every `LiveEvent`, so `source.unmatched` cannot be expressed. Violates charter A9 and breaks the runbook's 2:00–2:30 beat. | Part 1 | — | CLOSED | `c3ddc27` made `LiveEventSchema` a per-type discriminated union; `source.unmatched` is now structurally unable to name an asset |
 | T-03 | `live-event.schema.json` omitted `regionId` and `pointer` that the Zod schema accepts, so Part 1's own fixture failed Part 1's own JSON Schema. | Part 1 | — | CLOSED | `c3ddc27` mirrors the Zod matrix in the JSON Schema, with ajv tests |
 | T-04 | The event contract had no `arState`, but AR is a required renderer (A10, A12). | Part 1 + Part 3 | — | CLOSED | `c3ddc27` adds `arState {hotspotId, action}` to `region.changed`. Part 5 dropped the `camera` field it had wanted — it is derivable from the hotspot in the pack |
@@ -98,12 +100,12 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
 | T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. Hit **four times** across the `c3ddc27` and `38542ad` merges of #4 and #5. Proposal: let the pointer be a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | Four conflicts on the same line in one afternoon |
-| T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
+| T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | CLOSED | The session records `packId` and `packVersion` at create time and every event is compared against it; a mismatch is refused as `pack-version-mismatch`. Part 3 does not need to hold the version itself |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
-| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts` |
+| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | CLOSED | Pinned to 1 by the relay, matching Part 5's reference: `sequence: 0` is refused as `sequence-not-a-positive-integer` (`services/live-session/src/rules.ts`, asserted by the parity test). The shared Zod contract still permits 0, so a client can still *construct* one — the relay is what refuses it |
 | T-21 | This file claims in its own header that `scripts/relay_check.py` "runs inside `make check`". It does not. The `check` target is `memory-check pack-check extension-check`, and none of those three invoke it. Its mutation tests in `tests/relay/` are not discovered either — `pack-check` runs `unittest discover -s tests/access_pack`. So the guard added in `8b9f1f5`, and the tests guarding the guard, are both inert: a malformed relay table reaches the demo exactly as it would have before. Found while appending RL-014, by running the checker by hand because the Makefile did not. | Part 5 | Relay integrity | OPEN | `Makefile` `check` target vs. this file's header; `grep -rn relay_check Makefile` returns nothing |
 | T-22 | `make check` is **already failing** on the integration branch, before any of this branch's changes: `memory_check.py` reports the `memory/INDEX.md` "Current handoff" pointer is stale against `0041-context-relay.md`. Reproduced on a clean worktree of `1d1c72b`. This is T-18's single-pointer design predicted to conflict, now actually red — and because section 1 tells every incoming agent to run `make check` first, the first thing a new contributor sees is a failure unrelated to their work. | Part 5 | Everyone's first five minutes | OPEN | `git worktree add /tmp/base origin/accesslens-extension-ar-pivot && python3 scripts/memory_check.py` |
-| T-20 | The hackathon AWS account is verified reachable, but only with **read-only list calls** for every service Part 4 needs. Nobody has created a Lambda, a DynamoDB table, or a WebSocket API, and `iam:PassRole` is restricted to `WSParticipantRole` — which is exactly what CDK needs when it creates execution roles. A throwaway `cdk deploy` should happen early, because "the account lists the service" has already proven a bad proxy for "the account will run it" (see `docs/AWS_ACCESS_VERIFICATION.md` §3). Credentials also expire mid-event and the account is reclaimed afterwards. | Part 4 | Part 4 | OPEN | `docs/AWS_ACCESS_VERIFICATION.md` §1, §4 |
+| T-20 | Whether the hackathon AWS account would allow *writes* was unproven — every service had been checked with a read-only list call only, and `iam:PassRole` is restricted to `WSParticipantRole`. | Part 4 | Part 4 | CLOSED | Closed by deploying. The account was already CDK-bootstrapped, so `PassRole` never bit: stack `AccessLensLiveSession` created a WebSocket API, a Lambda, two DynamoDB tables with TTL, a log group, and a Secrets Manager secret. The credentials still expire and the account is still reclaimed at the end of the event |
 
 ---
 
@@ -423,3 +425,42 @@ header claims `relay_check.py` runs inside `make check`, which it does not
 (T-21) — I only caught the claim because I ran the checker by hand. A guard that
 nothing invokes is indistinguishable from no guard, which is the same shape as
 T-07 and T-08.
+
+### RL-015 — 2026-09-15 — Part 4 — Omar Rizwan
+
+**Landed:** Part 4, end to end. `services/live-session/` holds the relay —
+validation, HMAC capabilities, DynamoDB state with TTL enforced on read, the
+WebSocket handler, redacted logging, and the real `SessionClient` that replaces
+Part 1's mock. `infra/` is the CDK stack. Deployed to the hackathon account and
+verified: `node scripts/integration-test.mjs wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`
+drives one instructor and two students through all 19 happy-path events in order
+and confirms five refusals, 12/12 green. 49 unit tests locally. `make
+live-session-check` added.
+**Threads touched:** T-15, T-19, T-20 closed. T-01 narrowed to Part 3 only.
+T-21 and T-22 still open, untouched.
+**Next agent needs to know:** four things the diff will not tell you.
+
+*The endpoint is disposable.* It lives in a Workshop Studio account that is
+reclaimed when the event ends, and the credentials expire sooner than that. If it
+stops answering, that is expected — redeploy rather than debug.
+
+*Deploy is two steps, and the second silently ships stale code.* `npm run build`
+in `services/live-session` then `cdk deploy` in `infra`. The stack deploys a
+prebuilt `dist/` instead of letting CDK bundle, because `NodejsFunction` shells
+out to esbuild from the repository root, where adding it would mean editing Part
+1's `package.json`. Skipping the build deploys whatever was there before, with no
+error.
+
+*The relay's rule names are Part 5's, deliberately.* `reference_event_check.py`
+asked for that in a comment; `test/rules.parity.test.ts` now runs both
+implementations over every fixture event and fails on any disagreement, order
+included. If you change one validator, that test tells you about the other.
+
+*Two things bit and cost real time.* API Gateway does **not** forward a Lambda's
+return body to a WebSocket client without separately configured route responses —
+the relay looked completely dead while every route, integration, and permission
+was correct; replies now go back through the management API like broadcasts do. And
+CDK logical ids are a truncated path hash that can collide: `WebSocketLambdaIntegration('Default', …)`
+under an api named `LiveSessionApi` made the `$default` route's integration and
+route hash to the same id, and synth failed naming the id but neither construct.
+The integration ids are spelled out now.
