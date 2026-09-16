@@ -19,6 +19,6 @@ export default defineConfig({ plugins: [react(), { name: 'extension-assets', con
     // packs/<id>/pack.draft.json and slides are Vite modules, not proxied.
     '^/packs/[^/]+/[0-9]+\\.json$': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
     '/media': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
-    '/ai': { target: 'https://xmisk5oc1m.execute-api.us-east-1.amazonaws.com', changeOrigin: true, rewrite: (path) => path.replace(/^\/ai/, '') },
+    '/ai': { target: 'https://5skua1vus7.execute-api.us-east-1.amazonaws.com', changeOrigin: true, rewrite: (path) => path.replace(/^\/ai/, '') },
   } },
   test: { exclude: [...configDefaults.exclude, '.claude/**', '**/dist/**', '**/dist-web/**', '**/.worktrees/**', '**/cdk.out/**'] } });
