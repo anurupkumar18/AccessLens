@@ -62,6 +62,7 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
   const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
   const [correctRegion, setCorrectRegion] = useState('');
   const [indicateRegion, setIndicateRegion] = useState('');
+  const [captionText, setCaptionText] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -94,6 +95,12 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
     event.preventDefault();
     if (!indicateRegion) { setFormError('Choose a region first.'); return; }
     guarded(() => controller.indicateRegion(indicateRegion));
+  }
+
+  function submitCaption(event: React.FormEvent): void {
+    event.preventDefault();
+    if (!captionText.trim()) { setFormError('Type a caption first.'); return; }
+    guarded(() => { controller.sendCaption(captionText); setCaptionText(''); });
   }
 
   const steps = [
@@ -177,6 +184,24 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
             </select>
           </p>
           <button type="submit">Indicate region</button>
+        </form>
+      )}
+
+      {active && currentAsset && (
+        <form onSubmit={submitCaption}>
+          <h3>Add a live caption</h3>
+          <p>
+            <label htmlFor="caption-text">Caption for {currentAsset.title} (280 characters max)</label>
+            <input
+              id="caption-text"
+              type="text"
+              maxLength={280}
+              value={captionText}
+              onChange={e => setCaptionText(e.target.value)}
+              placeholder="Short instructor-authored line, not a transcript"
+            />
+          </p>
+          <button type="submit">Send caption</button>
         </form>
       )}
 

@@ -187,6 +187,33 @@ describe('StudentExperience', () => {
     }
   });
 
+  it('shows an instructor caption, labelled as speech rather than a reviewed description', () => {
+    const captionEvent = {
+      schemaVersion: '1.0' as const, type: 'caption.appended' as const, sessionId: 'demo-session',
+      packId: validPack.packId, packVersion: validPack.version,
+      assetId: 'cell-slide-03', caption: { text: 'Backside attack on the electrophile.', isFinal: true },
+      sequence: 1, sentAt: '2026-09-15T15:00:01Z',
+    };
+    renderExperience(captionEvent, validPack);
+    expect(container?.textContent).toContain('Backside attack on the electrophile.');
+    expect(container?.textContent).toContain('not a reviewed description');
+  });
+
+  it('hides captions once the student turns the preference off', () => {
+    const captionEvent = {
+      schemaVersion: '1.0' as const, type: 'caption.appended' as const, sessionId: 'demo-session',
+      packId: validPack.packId, packVersion: validPack.version,
+      assetId: 'cell-slide-03', caption: { text: 'Backside attack on the electrophile.', isFinal: true },
+      sequence: 1, sentAt: '2026-09-15T15:00:01Z',
+    };
+    const harness = renderExperience(captionEvent, validPack);
+    expect(container?.textContent).toContain('Backside attack on the electrophile.');
+    const toggle = container!.querySelector('#captions-toggle') as HTMLInputElement;
+    act(() => { toggle.click(); });
+    expect(harness.preferences.captionsEnabled).toBe(false);
+    expect(container?.textContent).not.toContain('Backside attack on the electrophile.');
+  });
+
   it('has no automatically detectable accessibility violations in the AR fallback', async () => {
     renderExperience();
     const arTab = container!.querySelector('#mode-tab-ar') as HTMLButtonElement;

@@ -129,6 +129,16 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       <p role="status" className="supporting-text">{joinMessage}</p>
       <p role="status" className="live-message">{live.message}</p>
 
+      {preferences.captionsEnabled && live.captions.length > 0 ? (
+        <div className="caption-track" role="log" aria-label="Live captions">
+          <p className="eyebrow">Instructor captions</p>
+          {live.captions.map((caption, index) => (
+            <p key={index} className={caption.isFinal ? 'caption-line' : 'caption-line pending'}>{caption.text}</p>
+          ))}
+          <p className="supporting-text">Captions are instructor speech, not a reviewed description.</p>
+        </div>
+      ) : null}
+
       <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson">
         {modes.map((mode, index) => (
           <button
@@ -176,6 +186,15 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
             onChange={() => updatePreferences({ reducedMotion: !preferences.reducedMotion })}
           />
           Reduce motion
+        </label>
+        <label htmlFor="captions-toggle">
+          <input
+            id="captions-toggle"
+            type="checkbox"
+            checked={preferences.captionsEnabled}
+            onChange={() => updatePreferences({ captionsEnabled: !preferences.captionsEnabled })}
+          />
+          Show instructor captions
         </label>
         <label htmlFor="text-scale">
           Text size

@@ -169,6 +169,40 @@ describe('InstructorPanel', () => {
     }
   });
 
+  it('sends a caption scoped to the current asset and clears the input', async () => {
+    const { stream, scheduler, events } = render();
+    await click('Start');
+    stream.enqueue(loadDemoFrame('slide-02'));
+    act(() => scheduler.tick(1));
+    const input = container!.querySelector<HTMLInputElement>('#caption-text')!;
+    // React tracks the native value setter to detect a real change; assigning
+    // `.value` directly leaves its tracker believing nothing happened.
+    const nativeValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+    await act(async () => {
+      nativeValueSetter.call(input, 'The mitochondrion releases usable energy.');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const form = input.closest('form')!;
+    await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(events.at(-1)).toMatchObject({
+      type: 'caption.appended', assetId: 'slide-02',
+      caption: { text: 'The mitochondrion releases usable energy.', isFinal: true },
+    });
+    expect(input.value).toBe('');
+  });
+
+  it('reports an empty caption without emitting', async () => {
+    const { stream, scheduler, events } = render();
+    await click('Start');
+    stream.enqueue(loadDemoFrame('slide-02'));
+    act(() => scheduler.tick(1));
+    const before = events.length;
+    const form = container!.querySelector('#caption-text')!.closest('form')!;
+    await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(container!.querySelector('[role="alert"]')?.textContent).toMatch(/caption/i);
+    expect(events.length).toBe(before);
+  });
+
   it('has no automatically detectable accessibility violations while sharing with a matched frame', async () => {
     const { stream, scheduler } = render();
     await click('Start');

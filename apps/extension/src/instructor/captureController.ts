@@ -51,6 +51,8 @@ export interface CaptureController {
   endSession(): void;
   correct(correction: Correction): void;
   indicateRegion(regionId: string): void;
+  /** Sends a bounded, instructor-authored caption line scoped to the current asset. */
+  sendCaption(text: string): void;
   /** Halts sampling without emitting anything; for unmount. */
   dispose(): void;
 }
@@ -74,7 +76,8 @@ export const SHARING_REQUIRED_MESSAGE =
 
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
   | { type: 'asset.changed'; assetId: string }
-  | { type: 'region.changed'; assetId: string; regionId: string; pointer?: { x: number; y: number } };
+  | { type: 'region.changed'; assetId: string; regionId: string; pointer?: { x: number; y: number } }
+  | { type: 'caption.appended'; assetId: string; caption: { text: string; isFinal: boolean } };
 
 export function createCaptureController(options: ControllerOptions): CaptureController {
   const { client, pack, host } = options;
@@ -307,6 +310,16 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       }
       current = { ...current, regionId };
       emit({ type: 'region.changed', assetId: current.assetId, regionId, pointer: reviewedRegionCenter(region) });
+      notify();
+    },
+
+    sendCaption(text) {
+      if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot send a caption while ${phase}`);
+      if (current.kind !== 'matched') throw new Error('No current asset to caption');
+      const trimmed = text.trim();
+      if (!trimmed) throw new Error('Caption cannot be empty');
+      if (trimmed.length > 280) throw new Error('Caption must be 280 characters or fewer');
+      emit({ type: 'caption.appended', assetId: current.assetId, caption: { text: trimmed, isFinal: true } });
       notify();
     },
 

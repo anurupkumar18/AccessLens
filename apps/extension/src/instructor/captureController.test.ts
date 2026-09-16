@@ -296,6 +296,45 @@ describe('capture controller: manual correction and region indication (A5)', () 
   });
 });
 
+describe('capture controller: live captions (T-16)', () => {
+  it('sendCaption emits caption.appended scoped to the current asset', async () => {
+    const { controller, stream, scheduler, events } = await sharing();
+    stream.enqueue(demo('slide-02'));
+    scheduler.tick(1);
+    controller.sendCaption('  The mitochondrion releases usable energy.  ');
+    expect(events.at(-1)).toMatchObject({
+      type: 'caption.appended', assetId: 'slide-02',
+      caption: { text: 'The mitochondrion releases usable energy.', isFinal: true },
+    });
+  });
+
+  it('rejects an empty or whitespace-only caption without emitting', async () => {
+    const { controller, events } = await sharing();
+    expect(() => controller.sendCaption('   ')).toThrow();
+    expect(types(events)).toEqual(['session.started']);
+  });
+
+  it('rejects a caption over 280 characters without emitting', async () => {
+    const { controller, stream, scheduler, events } = await sharing();
+    stream.enqueue(demo('slide-02'));
+    scheduler.tick(1);
+    const before = types(events);
+    expect(() => controller.sendCaption('x'.repeat(281))).toThrow();
+    expect(types(events)).toEqual(before);
+  });
+
+  it('rejects a caption with no current matched asset', async () => {
+    const { controller } = await sharing();
+    expect(() => controller.sendCaption('hello')).toThrow();
+  });
+
+  it('rejects a caption while not sharing', async () => {
+    const { controller } = await sharing();
+    controller.stop();
+    expect(() => controller.sendCaption('hello')).toThrow();
+  });
+});
+
 describe('capture controller: contract and privacy invariants (A2)', () => {
   it('every emitted event passes LiveEventSchema and the state snapshot never carries frame data', async () => {
     const { controller, stream, scheduler, events } = await sharing();

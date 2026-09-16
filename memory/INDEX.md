@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0066-caption-instructor-input-student-display.md` (Part 1/live captions: instructor input and student rolling transcript wired to AL-048's payload; device QA remains open)
 - `episodic/0065-caption-appended-payload.md` (Part 1/contract: caption.appended now carries a bounded instructor caption, closing T-16; UI wiring remains a follow-on)
 - `episodic/0064-automated-accessibility-coverage.md` (Part 1/accessibility QA: axe-core coverage extended to the instructor panel, camera control, and Review route; human review remains open)
 - `episodic/0063-local-camera-consent-lifecycle.md` (Part 1/camera foundation: explicit local start/stop exists; recognition and physical QA remain review-gated)

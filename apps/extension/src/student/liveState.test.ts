@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveEvent } from '../shared/contracts';
 import { validEvent, validPack } from '../shared/fixtures';
-import { applyLiveEvent, initialStudentLiveState, markLiveStateProtocolInvalid, markLiveStateStale, markLiveStateReconnected } from './liveState';
+import { MAX_RECENT_CAPTIONS, applyLiveEvent, initialStudentLiveState, markLiveStateProtocolInvalid, markLiveStateStale, markLiveStateReconnected } from './liveState';
 
 describe('student live state', () => {
   it('applies the newest reviewed region and AR hotspot', () => {
@@ -120,5 +120,49 @@ describe('student live state', () => {
     expect(result).toMatchObject({ status: 'unmatched', lastSequence: 2 });
     expect(result.assetId).toBeUndefined();
     expect(result.regionId).toBeUndefined();
+  });
+
+  it('appends a caption without replacing the current region', () => {
+    const withRegion = applyLiveEvent(initialStudentLiveState, { ...validEvent, sequence: 1 } as LiveEvent, validPack);
+    const captioned = applyLiveEvent(withRegion, {
+      schemaVersion: '1.0', type: 'caption.appended', sessionId: 'demo-session',
+      packId: validPack.packId, packVersion: validPack.version,
+      assetId: 'cell-slide-03', caption: { text: 'Backside attack on the electrophile.', isFinal: true },
+      sequence: 2, sentAt: '2026-09-15T15:00:01Z',
+    } as LiveEvent, validPack);
+    expect(captioned.captions).toEqual([{ assetId: 'cell-slide-03', text: 'Backside attack on the electrophile.', isFinal: true }]);
+    expect(captioned.regionId).toBe(withRegion.regionId);
+    expect(captioned.assetId).toBe(withRegion.assetId);
+  });
+
+  it('caps the rolling caption transcript at MAX_RECENT_CAPTIONS', () => {
+    let state = initialStudentLiveState;
+    for (let i = 0; i < MAX_RECENT_CAPTIONS + 3; i++) {
+      state = applyLiveEvent(state, {
+        schemaVersion: '1.0', type: 'caption.appended', sessionId: 'demo-session',
+        packId: validPack.packId, packVersion: validPack.version,
+        assetId: 'cell-slide-03', caption: { text: `line ${i}`, isFinal: true },
+        sequence: i + 1, sentAt: '2026-09-15T15:00:01Z',
+      } as LiveEvent, validPack);
+    }
+    expect(state.captions).toHaveLength(MAX_RECENT_CAPTIONS);
+    expect(state.captions[0].text).toBe('line 3');
+    expect(state.captions.at(-1)?.text).toBe(`line ${MAX_RECENT_CAPTIONS + 2}`);
+  });
+
+  it('clears the caption transcript on a fresh session.started', () => {
+    const captioned = applyLiveEvent(initialStudentLiveState, {
+      schemaVersion: '1.0', type: 'caption.appended', sessionId: 'demo-session',
+      packId: validPack.packId, packVersion: validPack.version,
+      assetId: 'cell-slide-03', caption: { text: 'hello', isFinal: true },
+      sequence: 1, sentAt: '2026-09-15T15:00:01Z',
+    } as LiveEvent, validPack);
+    expect(captioned.captions).toHaveLength(1);
+    const restarted = applyLiveEvent(captioned, {
+      schemaVersion: '1.0', type: 'session.started', sessionId: 'demo-session',
+      packId: validPack.packId, packVersion: validPack.version,
+      sequence: 2, sentAt: '2026-09-15T15:00:02Z',
+    } as LiveEvent, validPack);
+    expect(restarted.captions).toEqual([]);
   });
 });

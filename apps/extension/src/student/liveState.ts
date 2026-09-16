@@ -10,6 +10,16 @@ export type LiveStatus =
   | 'ended'
   | 'incompatible';
 
+/** Instructor speech, never a pack description or raw audio (charter A2). */
+export interface StudentCaption {
+  assetId: string;
+  text: string;
+  isFinal: boolean;
+}
+
+/** A short rolling transcript, not a durable record; nothing is persisted. */
+export const MAX_RECENT_CAPTIONS = 5;
+
 export interface StudentLiveState {
   status: LiveStatus;
   /** An invalid relay payload must not be reset to live by socket recovery alone. */
@@ -21,12 +31,14 @@ export interface StudentLiveState {
   pointer?: { x: number; y: number };
   hotspotId?: string;
   message: string;
+  captions: StudentCaption[];
 }
 
 export const initialStudentLiveState: StudentLiveState = {
   status: 'waiting',
   lastSequence: -1,
   message: 'Waiting for instructor event.',
+  captions: [],
 };
 
 export function applyLiveEvent(
@@ -41,6 +53,7 @@ export function applyLiveEvent(
       status: 'incompatible',
       lastSequence: event.sequence,
       message: 'The instructor is using a different reviewed lesson version.',
+      captions: current.captions,
     };
   }
 
@@ -51,6 +64,7 @@ export function applyLiveEvent(
         lastSequence: event.sequence,
         assetId: event.assetId,
         message: `Following ${event.assetId}.`,
+        captions: current.captions,
       };
     case 'region.changed':
       return {
@@ -61,6 +75,7 @@ export function applyLiveEvent(
         pointer: event.pointer,
         hotspotId: event.arState?.action === 'clear' ? undefined : event.arState?.hotspotId,
         message: `Following ${event.regionId} on ${event.assetId}.`,
+        captions: current.captions,
       };
     case 'capture.paused':
       return { ...current, status: 'paused', staleReason: undefined, lastSequence: event.sequence, message: 'Instructor sharing is paused.' };
@@ -79,13 +94,19 @@ export function applyLiveEvent(
         status: 'unmatched',
         lastSequence: event.sequence,
         message: 'This source is not in the reviewed lesson pack yet.',
+        captions: current.captions,
       };
     case 'session.ended':
-      return { status: 'ended', lastSequence: event.sequence, message: 'The instructor ended this session.' };
+      return { status: 'ended', lastSequence: event.sequence, message: 'The instructor ended this session.', captions: [] };
     case 'session.started':
-      return { status: 'live', lastSequence: event.sequence, message: 'Connected to the live lesson.' };
+      return { status: 'live', lastSequence: event.sequence, message: 'Connected to the live lesson.', captions: [] };
     case 'caption.appended':
-      return { ...current, staleReason: undefined, lastSequence: event.sequence };
+      return {
+        ...current,
+        staleReason: undefined,
+        lastSequence: event.sequence,
+        captions: [...current.captions, { assetId: event.assetId, text: event.caption.text, isFinal: event.caption.isFinal }].slice(-MAX_RECENT_CAPTIONS),
+      };
   }
 }
 

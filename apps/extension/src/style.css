@@ -450,6 +450,17 @@ input[type='range'] { accent-color: var(--ink); }
   background: var(--card);
 }
 
+.caption-track {
+  margin-top: .5rem;
+  padding: .75rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+}
+.caption-track .caption-line { margin: .3rem 0 0; }
+.caption-track .caption-line.pending { opacity: .7; font-style: italic; }
+.caption-track .supporting-text { margin-top: .5rem; }
+
 /* Mode tabs: a single bordered strip, the selected one inverted. */
 .mode-tabs {
   display: grid;
