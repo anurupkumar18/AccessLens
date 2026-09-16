@@ -15,7 +15,9 @@ export default defineConfig({ plugins: [react(), { name: 'extension-assets', con
   // permissions, and neither CloudFront nor the AI gateway answer CORS for it,
   // so the dev server proxies the published pack, its media and the AI routes.
   server: { proxy: {
-    '/packs': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
+    // Only the published shape packs/<packId>/<version>.json; the bundled
+    // packs/<id>/pack.draft.json and slides are Vite modules, not proxied.
+    '^/packs/[^/]+/[0-9]+\\.json$': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
     '/media': { target: 'https://d7dxgg82mglf.cloudfront.net', changeOrigin: true },
     '/ai': { target: 'https://xmisk5oc1m.execute-api.us-east-1.amazonaws.com', changeOrigin: true, rewrite: (path) => path.replace(/^\/ai/, '') },
   } },
