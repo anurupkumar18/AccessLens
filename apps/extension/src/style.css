@@ -1,169 +1,598 @@
-/* AccessLens side-panel theme. Dark by default. Colour is never the only
-   carrier of meaning: every state has a text label and a distinct glyph.
-   Accent palette is drawn from the Okabe-Ito colour-blind-safe set
-   (sky blue, orange, bluish green, yellow); no red/green pairing anywhere. */
+/* AccessLens interface.
+ *
+ * The look is deliberately closer to a developer tool than to a classroom app:
+ * IBM Plex Sans and Plex Mono, near-black on off-white, hairline rules, small
+ * radii, a single acid-yellow accent, and space doing the work that borders and
+ * gradients used to do.
+ *
+ * Two rules constrain every choice here, and they come from the product rather
+ * than from taste:
+ *
+ * 1. **Colour never carries meaning alone.** Every state has a glyph and a word
+ *    as well as a colour, so it survives a colour-blind reader, a greyscale
+ *    display, and a screenshot in a bug report. Charter A7.
+ * 2. **The accent is a background, never small text.** #f0fb29 on white is about
+ *    1.2:1 — invisible. The same yellow *behind* #202020 text is ~13.7:1, which
+ *    is how it is used: fills, rules, and markers, never a thin label. That one
+ *    rule is what lets a high-energy accent live in an accessibility product.
+ *
+ * Both themes are defined from the same tokens, because a student who needs
+ * dark should not get a worse-tuned version of the interface.
+ */
+/* Latin subsets only. The unscoped imports pull Cyrillic, Greek and Vietnamese
+   too — 86 font files into a committed `dist/`, for scripts this pack's content
+   never uses. `latin-ext` covers the accented characters Translate returns for
+   the European languages Read mode offers. */
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-sans/latin-700.css';
+@import '@fontsource/ibm-plex-sans/latin-ext-400.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-600.css';
+
 :root {
-  color-scheme: dark;
-  --bg: #0e1220;
-  --surface: #161c2c;
-  --surface-2: #1e2638;
-  --border: #2b3550;
-  --text: #e9edf5;
-  --muted: #a3aec4;
-  --accent: #56b4e9;       /* sky blue: primary action, live state */
-  --accent-ink: #06121c;
-  --warn: #e69f00;         /* orange: attention, unmatched, paused */
-  --ok: #4fc3a1;           /* bluish green: matched */
-  --focus: #f0e442;        /* yellow focus ring */
-  --code: #ffffff;
-  --radius: 12px;
-  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: var(--text);
-  background: var(--bg);
+  color-scheme: light dark;
+
+  /* Blacksmith's palette: near-black, off-white, acid yellow. */
+  --ink: #202020;
+  --paper: #f5f5f5;
+  --card: #ffffff;
+  --muted: #5c5c5c;
+  --line: #e2e2e2;
+  --line-strong: #cfcfcf;
+  --accent: #f0fb29;
+  --accent-ink: #202020;
+
+  /* State hues, kept from the Okabe-Ito colour-blind-safe set and darkened for
+     light-background contrast. Each is paired with a glyph in the markup. */
+  --live: #0b62d6;
+  --ok: #00695c;
+  --warn: #8a5300;
+  --focus: #202020;
+
+  --sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --r: 6px;
+  --r-sm: 4px;
+  --pad: clamp(1rem, 2.2vw, 1.6rem);
+
+  font: 400 15px/1.55 var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f2f2f2;
+    --paper: #161616;
+    --card: #1e1e1e;
+    --muted: #a0a0a0;
+    --line: #2e2e2e;
+    --line-strong: #3d3d3d;
+    --live: #7cb8ff;
+    --ok: #5ad1b4;
+    --warn: #f0b429;
+    --focus: #f0fb29;
+  }
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); }
-/* Full width: the side panel is ~360px wide; in a tab the cards flow into a
-   responsive grid instead of a centred column. */
-main { width: 100%; margin: 0; padding: 1rem clamp(1rem, 3vw, 2.5rem) 2rem; }
-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.full-tab-link { color: var(--accent); font-weight: 600; text-decoration: none; padding: .35rem .6rem; border: 1px solid var(--accent); border-radius: .5rem; white-space: nowrap; }
-.full-tab-link:hover, .full-tab-link:focus-visible { background: var(--surface-2); }
-.content { display: grid; gap: .75rem; }
-@media (min-width: 720px) {
-  header { flex-direction: row; align-items: baseline; gap: 1rem; }
-  nav[aria-label="Role navigation"] { max-width: 24rem; }
-  section > .panel-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1rem 2rem; align-items: start; }
+body { margin: 0; background: var(--paper); }
+
+main {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2.5rem) var(--pad) 4rem;
 }
 
-/* Header */
-header { display: flex; flex-direction: column; gap: .15rem; padding: .25rem 0 .75rem; }
-header h1 { margin: 0; font-size: 1.35rem; letter-spacing: .01em; }
-header h1::before { content: "\25D0  "; color: var(--accent); }
-header p { margin: 0; color: var(--muted); font-size: .9rem; }
+/* ---------- Header ---------------------------------------------------- */
 
-/* Role navigation as a segmented control */
-nav[aria-label="Role navigation"] {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
-  padding: 4px; margin: .5rem 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
 }
-nav[aria-label="Role navigation"] button {
-  margin: 0; border: 0; border-radius: 999px; background: transparent; color: var(--muted); padding: .55rem .75rem;
+header h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+  font-weight: 600;
+  letter-spacing: -0.022em;
 }
-nav[aria-label="Role navigation"] button[aria-current="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+/* The mark: a yellow block, not an emoji. Decorative, so it is hidden from
+   assistive technology by being a background rather than content. */
+header h1::before {
+  content: '';
+  display: inline-block;
+  width: .62em;
+  height: .62em;
+  margin-right: .5rem;
+  background: var(--accent);
+  border: 1px solid var(--ink);
+  vertical-align: baseline;
+}
+header p {
+  margin: .3rem 0 0;
+  color: var(--muted);
+  font-size: .92rem;
+  flex-basis: 100%;
+  order: 3;
+}
+.full-tab-link {
+  font: 500 .8rem/1 var(--mono);
+  color: var(--ink);
+  text-decoration: none;
+  padding: .55rem .8rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+  background: var(--card);
+}
+.full-tab-link:hover { border-color: var(--ink); }
 
-/* Cards */
-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-top: .75rem; }
-section h2 { margin: 0 0 .5rem; font-size: 1.05rem; }
-section h3 { margin: 1rem 0 .4rem; font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-p { margin: .35rem 0; }
+/* ---------- Role navigation ------------------------------------------- */
 
-/* Buttons */
+nav[aria-label='Role navigation'] {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 0;
+  margin: 1.5rem 0 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--card);
+}
+nav[aria-label='Role navigation'] button {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 500 .88rem/1 var(--sans);
+  padding: .7rem 1.4rem;
+}
+nav[aria-label='Role navigation'] button + button { border-left: 1px solid var(--line); }
+nav[aria-label='Role navigation'] button:hover { color: var(--ink); }
+nav[aria-label='Role navigation'] button[aria-current='true'] {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: none;
+}
+
+/* ---------- Cards ----------------------------------------------------- */
+
+.content { display: grid; gap: 1rem; }
+
+section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: var(--pad);
+  margin-top: 1rem;
+}
+section h2 {
+  margin: 0 0 .75rem;
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+}
+/* Small caps mono labels are the spine of this look: they mark a section
+   without needing a rule, a colour, or a heavier weight. */
+section h3,
+.eyebrow,
+.status .label,
+label {
+  font: 500 .72rem/1.3 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+}
+section h3 { margin: 1.5rem 0 .5rem; }
+.eyebrow { margin: 0 0 .15rem; color: var(--muted); }
+p { margin: .4rem 0; }
+.muted, .supporting-text { color: var(--muted); font-size: .92rem; }
+
+@media (min-width: 760px) {
+  section > .panel-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 1rem 2.5rem;
+    align-items: start;
+  }
+}
+
+/* ---------- Buttons --------------------------------------------------- */
+
 button {
-  font: inherit; font-weight: 600; padding: .7rem 1rem; margin: .35rem .5rem .35rem 0;
-  border: 2px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text); cursor: pointer;
+  font: 500 .9rem/1 var(--sans);
+  padding: .68rem 1.1rem;
+  margin: .3rem .45rem .3rem 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color .12s ease, background-color .12s ease;
 }
-button:hover { border-color: var(--muted); }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-button.quiet { background: transparent; }
-button.stop { border-color: var(--warn); }
-[role="group"][aria-label="Capture controls"] { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .75rem; }
-[role="group"][aria-label="Capture controls"] button { flex: 1 1 auto; margin: 0; }
+button:hover:not(:disabled) { border-color: var(--ink); }
+button:disabled { cursor: not-allowed; opacity: .45; }
 
-/* Status banner: glyph + label + sentence. Colour reinforces, text carries. */
+/* The accent earns its keep here: a yellow block with near-black text, which
+   is both the loudest thing on the page and one of the highest-contrast. */
+button.primary {
+  background: var(--accent);
+  border-color: var(--ink);
+  color: var(--accent-ink);
+  font-weight: 600;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+button.primary:hover:not(:disabled) { box-shadow: 3px 3px 0 var(--ink); }
+button.primary:active:not(:disabled) { box-shadow: 1px 1px 0 var(--ink); transform: translate(1px, 1px); }
+button.quiet { background: transparent; border-color: transparent; color: var(--muted); }
+button.quiet:hover:not(:disabled) { color: var(--ink); border-color: var(--line-strong); }
+button.stop { border-color: var(--warn); color: var(--warn); }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+[role='group'][aria-label='Capture controls'] { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+[role='group'][aria-label='Capture controls'] button { flex: 1 1 auto; margin: 0; }
+
+/* ---------- Status ---------------------------------------------------- */
+
 .status {
-  display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; align-items: start;
-  padding: .85rem 1rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .1rem .8rem;
+  align-items: start;
+  padding: .9rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
 }
-.status .glyph { font-size: 1.4rem; line-height: 1; grid-row: 1 / span 2; padding-top: .1rem; }
-.status .label { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; color: var(--muted); }
-.status[data-tone="live"] { border-color: var(--accent); }
-.status[data-tone="live"] .glyph, .status[data-tone="live"] .label { color: var(--accent); }
-.status[data-tone="ok"] { border-color: var(--ok); }
-.status[data-tone="ok"] .glyph, .status[data-tone="ok"] .label { color: var(--ok); }
-.status[data-tone="warn"] { border-color: var(--warn); }
-.status[data-tone="warn"] .glyph, .status[data-tone="warn"] .label { color: var(--warn); }
-.status [role="status"] { margin: 0; }
+.status .glyph { font-size: 1.15rem; line-height: 1.3; grid-row: 1 / span 2; }
+.status [role='status'] { margin: 0; }
+.status[data-tone='live'] { border-left-color: var(--live); }
+.status[data-tone='live'] .glyph, .status[data-tone='live'] .label { color: var(--live); }
+.status[data-tone='ok'] { border-left-color: var(--ok); }
+.status[data-tone='ok'] .glyph, .status[data-tone='ok'] .label { color: var(--ok); }
+.status[data-tone='warn'] { border-left-color: var(--warn); }
+.status[data-tone='warn'] .glyph, .status[data-tone='warn'] .label { color: var(--warn); }
 
-/* Join code */
-.join { margin-top: .75rem; padding: .75rem 1rem; border-radius: var(--radius); background: var(--bg); border: 1px dashed var(--border); }
-.join .hint { margin: 0; color: var(--muted); font-size: .85rem; }
-.join code { display: block; font: 700 1.9rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; color: var(--code); }
+/* ---------- Join code ------------------------------------------------- */
 
-/* Step list */
-ol.steps { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .4rem; }
-ol.steps li { display: grid; grid-template-columns: 1.6rem 1fr; gap: .6rem; align-items: baseline; color: var(--muted); }
-ol.steps li .n { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 1px solid var(--border); font-size: .8rem; font-weight: 700; }
-ol.steps li[aria-current="step"] { color: var(--text); }
-ol.steps li[aria-current="step"] .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-ol.steps li[data-done="true"] .n { border-color: var(--ok); color: var(--ok); }
-ol.steps li[data-done="true"] .n::before { content: "\2713"; }
-ol.steps li[data-done="true"] .n span { display: none; }
-
-/* Forms */
-form { margin-top: .5rem; padding-top: .25rem; border-top: 1px solid var(--border); }
-label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .2rem; }
-select, input[type="text"] {
-  font: inherit; width: 100%; padding: .6rem .7rem; border-radius: 10px;
-  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+.join {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
 }
-input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); vertical-align: -.15rem; }
-[role="alert"] { border-left: 4px solid var(--warn); padding: .5rem .75rem; background: var(--surface-2); border-radius: 6px; }
-.muted { color: var(--muted); }
+.join .hint { margin: 0 0 .35rem; color: var(--muted); font-size: .85rem; }
+.join code {
+  display: block;
+  font: 600 clamp(1.7rem, 4.5vw, 2.3rem)/1.1 var(--mono);
+  letter-spacing: .16em;
+  color: var(--ink);
+  /* The yellow underscores the code instead of colouring it, so the glyphs
+     keep full contrast and the highlight still reads at a glance. */
+  box-shadow: inset 0 -.32em 0 var(--accent);
+  width: fit-content;
+  padding: 0 .1em;
+}
+@media (prefers-color-scheme: dark) { .join code { box-shadow: inset 0 -.32em 0 rgba(240, 251, 41, .28); } }
 
-.draft-note { margin: .75rem 0 0; padding: .6rem .8rem; border-radius: 8px; border: 1px dashed var(--warn); color: var(--text); font-size: .85rem; }
-.draft-note::before { content: "\26A0  "; color: var(--warn); }
-.draft-note code { font-size: .8rem; }
+/* ---------- Steps ----------------------------------------------------- */
 
-/* ---- Student experience (Part 3), on the shared dark tokens ---- */
-.student-experience { padding: 1rem; }
-.student-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
-.student-heading h2, .eyebrow { margin: 0; }
-.eyebrow { color: var(--accent); font-size: .76rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
-.connection-pill { padding: .2rem .55rem; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-size: .75rem; font-weight: 750; text-transform: capitalize; }
-.connection-pill.live { border-color: var(--ok); color: var(--ok); }
+ol.steps { list-style: none; padding: 0; margin: .75rem 0 0; display: grid; gap: .55rem; }
+ol.steps li {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: .7rem;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: .93rem;
+}
+ol.steps li .n {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem; height: 1.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  font: 500 .72rem/1 var(--mono);
+}
+ol.steps li[aria-current='step'] { color: var(--ink); font-weight: 500; }
+ol.steps li[aria-current='step'] .n { background: var(--accent); border-color: var(--ink); color: var(--accent-ink); }
+ol.steps li[data-done='true'] .n { border-color: var(--ok); color: var(--ok); }
+ol.steps li[data-done='true'] .n::before { content: '\2713'; }
+ol.steps li[data-done='true'] .n span { display: none; }
+
+/* ---------- Forms ----------------------------------------------------- */
+
+form { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+label { display: block; margin-bottom: .35rem; }
+select, input[type='text'] {
+  font: 400 .95rem/1.4 var(--sans);
+  width: 100%;
+  padding: .62rem .75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--ink);
+}
+select:hover, input[type='text']:hover { border-color: var(--muted); }
+input[type='checkbox'] { width: 1.05rem; height: 1.05rem; accent-color: var(--ink); vertical-align: -.15rem; }
+input[type='range'] { accent-color: var(--ink); }
+
+[role='alert'] {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--r-sm);
+  padding: .7rem .9rem;
+  background: var(--card);
+}
+
+.draft-note {
+  margin: 1rem 0 0;
+  padding: .7rem .9rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-size: .87rem;
+}
+.draft-note::before { content: '\26A0\FE0E  '; color: var(--warn); }
+.draft-note code { font: 400 .85em var(--mono); }
+
+/* ---------- Student experience ---------------------------------------- */
+
+.student-experience { padding: 0; }
+.student-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.student-heading h2 { margin: 0; }
+
+.connection-pill {
+  padding: .3rem .6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  color: var(--muted);
+  font: 500 .7rem/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+/* A leading glyph so the state is legible without colour. */
+.connection-pill::before { content: '\25CF  '; }
+.connection-pill.live { border-color: var(--live); color: var(--live); }
 .connection-pill.paused, .connection-pill.stale, .connection-pill.unmatched { border-color: var(--warn); color: var(--warn); }
-.connection-pill.ended, .connection-pill.incompatible { border-color: var(--muted); color: var(--text); }
-.join-form > label { display: block; margin-top: 1rem; font-weight: 700; color: var(--text); }
-.join-form div { display: flex; align-items: center; gap: .45rem; }
-.join-form input { min-width: 0; flex: 1; }
-.join-form .join-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.35rem; letter-spacing: .12em; text-transform: uppercase; padding: .55rem .7rem; }
-.join-form { padding: .9rem; border: 1px solid var(--accent); border-radius: .6rem; background: var(--surface-2); }
+.connection-pill.paused::before, .connection-pill.stale::before, .connection-pill.unmatched::before { content: '\25B2  '; }
+.connection-pill.ended, .connection-pill.incompatible { border-color: var(--line-strong); color: var(--ink); }
+.connection-pill.ended::before, .connection-pill.incompatible::before { content: '\25A0  '; }
+
+.join-form {
+  margin-top: 1rem;
+  padding: 1.1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--paper);
+}
 .join-form > label { margin-top: 0; }
-.join-form button { margin: 0; }
-.supporting-text { color: var(--muted); font-size: .9rem; }
-.live-message { padding: .7rem; border-left: 4px solid var(--accent); background: var(--surface-2); border-radius: 6px; }
-.mode-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; margin-top: 1rem; }
-.mode-tabs button { margin: 0; padding-inline: .4rem; }
-[role="tab"][aria-selected="true"], [aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-[role="tabpanel"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-.mode-panel { margin-top: .75rem; }
-.active-concept { display: flex; flex-direction: column; gap: .2rem; padding: .75rem; border-radius: .55rem; background: var(--surface-2); }
-.slide-figure { position: relative; margin: 0; border-radius: .65rem; overflow: hidden; background: #000; border: 1px solid var(--border, #2a3550); }
-.slide-image { display: block; width: 100%; height: auto; }
-.region-highlight { position: absolute; box-sizing: border-box; border: 3px solid var(--focus); border-radius: 4px; box-shadow: 0 0 0 200vmax rgba(9, 13, 24, .55); pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) { .region-highlight { transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; } }
-.ar-view { background: var(--surface); }
-.ar-canvas { min-height: 280px; overflow: hidden; border-radius: .75rem; background: radial-gradient(circle at 50% 25%, #28487a, #091221 70%); }
+.join-form div { display: flex; align-items: stretch; gap: .5rem; }
+.join-form input { min-width: 0; flex: 1; }
+.join-form .join-code {
+  font: 600 1.25rem/1 var(--mono);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  padding: .7rem .8rem;
+}
+/* Join is the student's one real action on this screen, so it gets the accent
+   without the markup having to know that. */
+.join-form button {
+  margin: 0;
+  background: var(--accent);
+  border-color: var(--ink);
+  color: var(--accent-ink);
+  font-weight: 600;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.join-form button:hover:not(:disabled) { box-shadow: 3px 3px 0 var(--ink); }
+.join-form button:active:not(:disabled) { box-shadow: 1px 1px 0 var(--ink); transform: translate(1px, 1px); }
+
+.live-message {
+  padding: .75rem .9rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--live);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
+
+/* Mode tabs: a single bordered strip, the selected one inverted. */
+.mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  margin-top: 1.25rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.mode-tabs button {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: .7rem .4rem;
+  background: var(--card);
+  font-weight: 500;
+}
+.mode-tabs button + button { border-left: 1px solid var(--line); }
+[role='tab'][aria-selected='true'], [aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+}
+.mode-tabs [role='tab'][aria-selected='true'] { box-shadow: inset 0 -3px 0 var(--accent); }
+[role='tabpanel']:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mode-panel { margin-top: 1rem; }
+
+.active-concept {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+}
+
+/* The diagram keeps its own hues — they are content, identifying organelles,
+   not interface chrome. Flat ground so they sit on a neutral field. */
+.focus-diagram {
+  display: grid;
+  min-height: 250px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+}
+.cell-membrane { position: relative; width: 190px; height: 150px; border: 5px solid #00695c; border-radius: 50%; background: rgba(0, 105, 92, .1); }
+.cell-nucleus { position: absolute; top: 45px; left: 55px; width: 58px; height: 58px; border-radius: 50%; background: #5a3fc0; }
+.cell-mitochondrion { position: absolute; right: 28px; bottom: 30px; width: 55px; height: 26px; border-radius: 50%; background: #c2570a; transform: rotate(-24deg); }
+.cell-mitochondrion.active { outline: 4px solid var(--ink); outline-offset: 3px; }
+@media (prefers-color-scheme: dark) {
+  .cell-membrane { border-color: #5ad1b4; background: rgba(90, 209, 180, .12); }
+  .cell-nucleus { background: #a68bff; }
+  .cell-mitochondrion { background: #f0913f; }
+  .cell-mitochondrion.active { outline-color: var(--accent); }
+}
+
+.ar-view { background: var(--card); }
+.ar-canvas {
+  min-height: 280px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+}
 .ar-canvas canvas { display: block; width: 100%; height: 280px; cursor: grab; }
 .ar-canvas canvas:active { cursor: grabbing; }
-.ar-toolbar { display: flex; flex-wrap: wrap; gap: .3rem; }
-.notice { padding: 1rem; border-radius: .55rem; border: 1px dashed var(--warn); color: var(--text); }
-.semantic-hotspots { display: grid; gap: .65rem; padding: 0; list-style: none; }
-.semantic-hotspots li { display: grid; grid-template-columns: minmax(8rem, .4fr) 1fr; align-items: center; gap: .65rem; padding-top: .65rem; border-top: 1px solid var(--border); }
+.ar-toolbar { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+
+.notice {
+  padding: 1rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+}
+
+.semantic-hotspots { display: grid; gap: 0; padding: 0; margin: .5rem 0 0; list-style: none; }
+.semantic-hotspots li {
+  display: grid;
+  grid-template-columns: minmax(8rem, .4fr) 1fr;
+  align-items: center;
+  gap: .8rem;
+  padding: .7rem 0;
+  border-top: 1px solid var(--line);
+}
 .semantic-hotspots button { margin: 0; }
-.display-settings { display: grid; gap: .65rem; margin-top: 1rem; padding: .85rem; border: 1px solid var(--border); border-radius: .65rem; }
-.display-settings label { display: flex; align-items: center; gap: .55rem; }
-.display-settings input[type="range"] { flex: 1; accent-color: var(--accent); }
+
+.display-settings {
+  display: grid;
+  gap: .8rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+}
+.display-settings label { display: flex; align-items: center; gap: .6rem; margin: 0; text-transform: none; letter-spacing: 0; font: 400 .92rem/1.4 var(--sans); color: var(--ink); }
+.display-settings input[type='range'] { flex: 1; }
+
 .pack-picker label { display: inline; margin-right: .5rem; }
 .pack-picker select { width: auto; display: inline-block; }
-button:disabled { cursor: not-allowed; opacity: .58; }
 
-@media (max-width: 420px) {
+@media (max-width: 460px) {
   .mode-tabs { grid-template-columns: repeat(2, 1fr); }
+  .mode-tabs button:nth-child(2) { border-right: 0; }
+  .mode-tabs button:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+  .mode-tabs button:nth-child(4) { border-top: 1px solid var(--line); }
   .semantic-hotspots li { grid-template-columns: 1fr; }
+  .student-heading { flex-direction: column; gap: .5rem; }
 }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+  button.primary:active:not(:disabled) { transform: none; }
+}
+
+/* Pack-driven Focus View.
+ *
+ * These three classes arrived with the pack-driven renderers on `master` and
+ * were not in the tree when the interface was rebuilt, so the rebuild dropped
+ * them. FocusView.tsx still uses all three, and without `.region-highlight`
+ * the instructor's selected region simply stops being visible -- which is the
+ * demo. Restyled here in the new language rather than restored as they were:
+ * the old rules were dark-blue gradients that would clash with near-black on
+ * off-white.
+ *
+ * The highlight is a solid ink outline plus a scrim over everything else, so it
+ * reads without relying on colour (charter A7) and works in both themes.
+ */
+.slide-figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--card);
+}
+
+.slide-image { display: block; width: 100%; height: auto; }
+
+.region-highlight {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid var(--focus);
+  border-radius: var(--r-sm);
+  /* The scrim dims everything outside the region without hiding it, so a
+     student keeps the context the instructor is pointing within. */
+  box-shadow: 0 0 0 200vmax color-mix(in srgb, var(--paper) 72%, transparent);
+  pointer-events: none;
+}
+
+/* A marker on the outline itself, so the selected region is distinguishable
+   in greyscale and to a colour-blind reader. */
+.region-highlight::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -7px;
+  inset-inline-start: -7px;
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+  border: 2px solid var(--focus);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .region-highlight {
+    transition: inset-block-start .25s ease, inset-inline-start .25s ease,
+                width .25s ease, height .25s ease;
+  }
 }
