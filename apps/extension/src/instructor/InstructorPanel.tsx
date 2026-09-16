@@ -180,6 +180,18 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
         </form>
       )}
 
+      {active && currentAsset?.arScene && (
+        <div className="ar-launch-control">
+          <h3>Make this slide interactive</h3>
+          <p className="supporting-text">
+            Find the first reviewed AR concept for this slide and focus it for students.
+          </p>
+          <button type="button" onClick={() => guarded(() => controller.findAr())}>
+            Find AR for this slide
+          </button>
+        </div>
+      )}
+
       {formError && <p role="alert">{formError}</p>}
       </div>
       </div>
