@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0052-al003-independent-contract-review.md` (cross-cutting: the independent second review AL-003 was gated on; two statements confirmed, base-only found to be schema-deep only, and the reconnect path found untested)
 - `episodic/0051-demo-proof-sprint-operator-evidence.md` (cross-cutting: privacy-safe operator packet and a 30-event relay quality bench; deployment and human-only proof remain explicitly open)
 - `episodic/0050-stop-versus-end-session-lifecycle.md` (Part 1/cross-cutting: `capture.stopped` separates stopped sharing from terminal session end; locally verified and awaiting contract review/deploy)
 - `episodic/0049-agent-first-delivery-system.md` (Part 1: repository-native tickets, claims, immutable updates, generated agent context, and validation)
