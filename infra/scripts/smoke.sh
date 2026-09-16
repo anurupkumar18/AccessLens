@@ -15,7 +15,7 @@ set +a
 : "${VITE_ACCESSLENS_API_URL:?VITE_ACCESSLENS_API_URL is missing from .env.local}"
 TOKEN="${ACCESSLENS_API_TOKEN:-${BEARER_TOKEN:-}}"
 if [[ -z "$TOKEN" && -f .cdk-outputs.json ]]; then
-  TOKEN="$(node --input-type=module -e "const o=JSON.parse(require('fs').readFileSync('.cdk-outputs.json')); const v=o[Object.keys(o)[0]]; process.stdout.write(v.BearerToken || '')")"
+  TOKEN="$(node --input-type=module -e "import { readFileSync } from 'node:fs'; const o=JSON.parse(readFileSync('.cdk-outputs.json')); const v=o[Object.keys(o)[0]]; process.stdout.write(v.BearerToken || '')")"
 fi
 : "${TOKEN:?Bearer token is missing; run make deploy and keep the printed token in ACCESSLENS_API_TOKEN or .cdk-outputs.json}"
 
