@@ -84,9 +84,22 @@ export const SANDBOX_OPAQUE_ORIGIN = 'null';
 
 export function parseAllowedOrigins(value: string | undefined, currentOrigin = typeof window === 'undefined' ? '' : window.location.origin): string[] {
   const configured = (value ?? '').split(',').map((origin) => origin.trim()).filter(Boolean);
-  // The viewer's own origin is useful for local harnesses and does not grant an
-  // extension origin. A deployment can replace it with an explicit allowlist.
-  return [...new Set([currentOrigin, ...configured, 'chrome-extension://*'].filter(Boolean))];
+  // Keep configured origins first so the host can select the concrete parent
+  // origin for viewer -> extension replies. The viewer origin is only the
+  // local/top-level fallback; it does not replace an explicit allowlist.
+  return [...new Set([...configured, currentOrigin, 'chrome-extension://*'].filter(Boolean))];
+}
+
+export function originFromUrl(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    // URL.origin is "null" for some extension URL implementations even
+    // though the serialized origin is a valid postMessage target.
+    if (parsed.protocol === 'chrome-extension:') return `${parsed.protocol}//${parsed.host}`;
+    return parsed.origin === 'null' ? null : parsed.origin;
+  } catch {
+    return null;
+  }
 }
 
 export function originAllowed(origin: string, allowlist: readonly string[]): boolean {

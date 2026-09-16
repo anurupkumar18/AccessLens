@@ -11,6 +11,7 @@ import {
   SandboxToHostSchema,
   ViewerToExtensionSchema,
   originAllowed,
+  originFromUrl,
   type ExtensionToViewer,
   type HostToSandbox,
   type SandboxToHost,
@@ -262,8 +263,8 @@ export class ViewerHostController {
     try {
       const referrer = this.options.window.document.referrer;
       if (referrer) {
-        const origin = new URL(referrer).origin;
-        if (originAllowed(origin, this.options.allowedOrigins)) return origin;
+        const origin = originFromUrl(referrer);
+        if (origin && originAllowed(origin, this.options.allowedOrigins)) return origin;
       }
     } catch {
       // A malformed referrer is not an authorization signal; use the configured

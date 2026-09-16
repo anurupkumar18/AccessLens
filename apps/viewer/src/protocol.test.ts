@@ -4,6 +4,9 @@ import {
   HostToSandboxSchema,
   SandboxToHostSchema,
   ViewerToExtensionSchema,
+  originAllowed,
+  originFromUrl,
+  parseAllowedOrigins,
 } from './protocol';
 
 const ctx = {
@@ -44,5 +47,11 @@ describe('viewer protocol schemas', () => {
     expect(HostToSandboxSchema.safeParse({ type: 'sandbox.freeze' }).success).toBe(true);
     expect(SandboxToHostSchema.safeParse({ type: 'sandbox.ready' }).success).toBe(true);
     expect(SandboxToHostSchema.safeParse({ type: 'sandbox.loaded', artifactId: 'x', artifactVersion: 1 }).success).toBe(true);
+  });
+
+  it('matches only explicit origins and the chrome-extension wildcard', () => {
+    expect(originFromUrl('chrome-extension://abc123/panel.html')).toBe('chrome-extension://abc123');
+    expect(originAllowed('chrome-extension://abc123', parseAllowedOrigins('https://allowed.example.test', 'https://viewer.example.test'))).toBe(true);
+    expect(originAllowed('https://evil.example.test', ['chrome-extension://*', 'https://allowed.example.test'])).toBe(false);
   });
 });
