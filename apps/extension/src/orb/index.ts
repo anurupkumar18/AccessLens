@@ -9,6 +9,7 @@
 import { requestExplanation, ExplainUnavailable, type ExplainMode } from './explain';
 import { mountOrb, type OrbView } from './orbUi';
 import { readPageContext } from './pageContext';
+import { readCanvasContext, isCanvasPage } from './canvasContext';
 import { speakableText, type Attributed } from './provenance';
 import { createSpeaker } from './speech';
 
@@ -68,7 +69,7 @@ function start(): void {
     inFlight = new AbortController();
     view.setBusy(true, PROMPTS[mode]);
     try {
-      const context = readPageContext();
+      const context = isCanvasPage() ? readCanvasContext('') : readPageContext();
       if (!context.text) {
         view.showError('There is no readable text on this page to explain.');
         return;
@@ -97,7 +98,7 @@ function start(): void {
     {
       onAction: mode => void run(mode),
       onSpeak: () => {
-        const context = readPageContext();
+        const context = isCanvasPage() ? readCanvasContext('') : readPageContext();
         // Prefer the generated explanation if there is one; otherwise read the
         // page itself, which is quoted rather than generated and so needs no
         // AI-generated warning.
