@@ -15,7 +15,7 @@ turns accessibility telemetry into surveillance or grading.
 | ID | Invariant |
 | --- | --- |
 | A1 | Screen, tab, window, microphone, or camera capture starts only after a clear instructor or user action and the browser's permission flow. AccessLens never captures silently. |
-| A2 | Raw screen, audio, and camera streams stay on the originating device by default. The live service receives semantic events, not a recording. Any future remote-media processing requires a separate reviewed decision and visible consent. |
+| A2 | Raw screen, audio, and camera streams stay on the originating device by default. When the instructor explicitly enables AI screen analysis, transient frames may be sent to the configured AWS analysis endpoint with a visible indicator; frames are not stored or relayed to students. The live service still receives semantic events, not a recording. |
 | A3 | Access Packs come only from instructor-approved or checked-in public/mock assets. Machine-generated descriptions, regions, translations, and activities remain drafts until human review. |
 | A4 | Student accessibility preferences remain extension-local. The server stores no diagnosis, disability label, learner profile, gaze, emotion, attention estimate, or private response history. |
 | A5 | Live sessions are temporary, course-scoped, role-scoped, and sequence-checked. Session and connection records expire; a session code is not a general Canvas credential. |

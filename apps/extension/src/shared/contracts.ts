@@ -66,6 +66,15 @@ export const AccessPackSchema = z.object({
 const LiveEventBase = { schemaVersion:z.literal('1.0'), sessionId:z.string().min(1), packId:z.string().min(1), packVersion:z.number().int().positive(), sequence:z.number().int().nonnegative(), sentAt:z.string().datetime() };
 const Pointer = z.object({x:z.number().min(0).max(1),y:z.number().min(0).max(1)});
 const ArState = z.object({hotspotId:z.string().min(1), action:z.enum(['focus','highlight','clear'])});
+const ScreenRegion = z.object({
+  label: z.string().min(1), x: z.number().min(0).max(1), y: z.number().min(0).max(1),
+  width: z.number().min(0).max(1), height: z.number().min(0).max(1), description: z.string().min(1),
+}).strict();
+/** Transient Bedrock/Textract result; raw pixels never travel in this event. */
+const ScreenAnalysis = z.object({
+  title: z.string().min(1), summary: z.string().min(1), text: z.array(z.string().min(1)),
+  audioDescription: z.string().min(1), focusRegion: ScreenRegion.optional(),
+}).strict();
 
 // Per-type field matrix: only asset.changed and region.changed may name an
 // asset/region. Every other type -- including source.unmatched -- is
@@ -80,6 +89,7 @@ export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ ...LiveEventBase, type:z.literal('capture.resumed') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.stopped') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('source.unmatched') }).strict(),
+  z.object({ ...LiveEventBase, type:z.literal('screen.analyzed'), analysis: ScreenAnalysis }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('session.ended') }).strict(),
 ]);
 export const SessionMessageSchema = z.discriminatedUnion('kind',[
@@ -190,6 +200,7 @@ export const ArtifactManifestSchema = z.object({
   }
 });
 
+export type ScreenAnalysisResult = z.infer<typeof ScreenAnalysis>;
 export type AccessPack=z.infer<typeof AccessPackSchema>; export type LiveEvent=z.infer<typeof LiveEventSchema>; export type SessionMessage=z.infer<typeof SessionMessageSchema>; export type RoleCapability=z.infer<typeof RoleCapabilitySchema>; export type ArtifactManifest=z.infer<typeof ArtifactManifestSchema>; export type PackVisualization=NonNullable<z.infer<typeof Asset>['visualization']>; export type PackReference=z.infer<typeof Reference>;
 
 // SessionClient freezes the shape from PARALLEL_WORKSTREAMS.md's contract

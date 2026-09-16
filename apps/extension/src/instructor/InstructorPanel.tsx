@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
+import type { ScreenAnalyzer } from '../sources/screen/screenAnalyzer';
 import { createCaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
   scheduler?: Scheduler;
   clock?: Clock;
   ids?: IdGenerator;
+  analyzer?: ScreenAnalyzer;
 }
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
@@ -56,8 +58,8 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: Props): React.ReactElement {
-  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids }));
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, analyzer }: Props): React.ReactElement {
+  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, analyzer }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
   const [correctRegion, setCorrectRegion] = useState('');
@@ -106,6 +108,7 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
     <section aria-labelledby="instructor-heading">
       <h2 id="instructor-heading">Instructor</h2>
       <p className="muted">Pack: {pack.title} · v{pack.version}</p>
+      {analyzer ? <p className="supporting-text" role="status">AI screen analysis is enabled. Shared frames are sent transiently to the configured AWS analyzer; they are not stored.</p> : <p className="supporting-text" role="note">AI screen analysis is not configured. The offline reviewed-pack demo matcher is being used.</p>}
       <div className="panel-grid">
       <div>
       <div className="status" data-tone={b.tone}>

@@ -8,7 +8,7 @@
 
 ## 1. Product loop
 
-`instructor consent -> capture locally -> match approved asset -> emit semantic event -> student-selected rendering`
+`instructor consent -> capture locally -> transient AWS screen analysis (when enabled) -> emit semantic event -> student-selected rendering`
 
 Capture, recognition, live transport, accessible rendering, and AR interaction
 remain separate modules so privacy or recognition failures do not silently become
@@ -21,7 +21,7 @@ student-facing misinformation.
 - Manifest V3 browser extension with Instructor and Student modes;
 - explicit instructor tab/window/screen sharing;
 - one checked-in biology Access Pack;
-- local matching of the current slide;
+- transient screen analysis through the configured AWS Textract/Bedrock adapter;
 - temporary live session with ordered semantic events;
 - automatic student following;
 - Focus, structured-text, audio, and synchronized AR modes;
@@ -74,8 +74,9 @@ are rejected deterministically; student preferences never leave local storage.
 
 - **A3 — Explicit capture:** instructor clicks Start and chooses a tab, window, or
   screen through the browser-provided chooser.
-- **A4 — Mock slide matcher:** instructor-side worker matches frames only against
-  the checked-in biology deck and emits a stable asset/page ID.
+- **A4 — Screen analysis:** instructor-side capture sends transient frames only
+  when the instructor enables AI analysis; the configured AWS adapter returns a
+  validated accessibility object and raw pixels are discarded.
 - **A5 — Correction control:** instructor can override a wrong match or pause
   sharing immediately.
 

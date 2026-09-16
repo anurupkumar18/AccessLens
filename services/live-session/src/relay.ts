@@ -31,6 +31,7 @@ const VIEW_BEARING = new Set([
   'capture.resumed',
   'capture.stopped',
   'source.unmatched',
+  'screen.analyzed',
 ]);
 
 export interface RelayConfig {

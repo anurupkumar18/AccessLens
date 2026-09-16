@@ -34,6 +34,7 @@ export const ALLOWED_EVENT_TYPES = [
   'capture.resumed',
   'capture.stopped',
   'source.unmatched',
+  'screen.analyzed',
   'session.ended',
 ] as const;
 
@@ -68,6 +69,7 @@ export const KNOWN_FIELDS: ReadonlySet<string> = new Set([
   'pointer',
   'arState',
   'caption',
+  'analysis',
 ]);
 
 /**

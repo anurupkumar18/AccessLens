@@ -35,7 +35,7 @@ export interface Sampler {
 export function createSampler(
   stream: CaptureStream,
   scheduler: Scheduler,
-  onSample: (fingerprint: string | null) => void,
+  onSample: (fingerprint: string | null, frame?: import('./captureHost').Frame) => void,
   intervalMs: number = DEFAULT_SAMPLE_INTERVAL_MS,
 ): Sampler {
   let handle: SchedulerHandle | null = null;
@@ -46,7 +46,7 @@ export function createSampler(
     handle = null;
     const frame = stream.sampleFrame();
     const fingerprint = frame ? fingerprintFrame(cropToAspect(frame)) : null;
-    onSample(fingerprint);
+    onSample(fingerprint, frame ?? undefined);
     if (running && handle === null) handle = scheduler.schedule(tick, intervalMs);
   }
 

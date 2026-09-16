@@ -1,4 +1,4 @@
-import type { AccessPack, LiveEvent } from '../shared/contracts';
+import type { AccessPack, LiveEvent, ScreenAnalysisResult } from '../shared/contracts';
 
 export type LiveStatus =
   | 'waiting'
@@ -17,6 +17,7 @@ export interface StudentLiveState {
   regionId?: string;
   hotspotId?: string;
   message: string;
+  analysis?: ScreenAnalysisResult;
 }
 
 export const initialStudentLiveState: StudentLiveState = {
@@ -74,6 +75,8 @@ export function applyLiveEvent(
         lastSequence: event.sequence,
         message: 'This source is not in the reviewed lesson pack yet.',
       };
+    case 'screen.analyzed':
+      return { status: 'live', lastSequence: event.sequence, analysis: event.analysis, message: `Understanding: ${event.analysis.title}.` };
     case 'session.ended':
       return { status: 'ended', lastSequence: event.sequence, message: 'The instructor ended this session.' };
     case 'session.started':

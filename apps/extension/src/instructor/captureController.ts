@@ -4,6 +4,7 @@ import {
   DEFAULT_MATCH_OPTIONS, DEFAULT_SAMPLE_INTERVAL_MS,
   type CaptureHost, type CaptureStream, type MatchOptions, type Sampler, type Scheduler,
 } from '../sources/screen';
+import type { ScreenAnalyzer } from '../sources/screen/screenAnalyzer';
 
 /** Injected time source; production uses the system clock. */
 export interface Clock { now(): string }
@@ -66,6 +67,7 @@ export interface ControllerOptions {
   ids?: IdGenerator;
   sampleIntervalMs?: number;
   match?: MatchOptions;
+  analyzer?: ScreenAnalyzer;
 }
 
 /** Consecutive unmatched samples before source.unmatched fires. */
@@ -76,7 +78,8 @@ export const SHARING_REQUIRED_MESSAGE =
 
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
   | { type: 'asset.changed'; assetId: string }
-  | { type: 'region.changed'; assetId: string; regionId: string; arState?: { hotspotId: string; action: 'focus' | 'highlight' | 'clear' } };
+  | { type: 'region.changed'; assetId: string; regionId: string; arState?: { hotspotId: string; action: 'focus' | 'highlight' | 'clear' } }
+  | { type: 'screen.analyzed'; analysis: import('../shared/contracts').ScreenAnalysisResult };
 
 export function createCaptureController(options: ControllerOptions): CaptureController {
   const { client, pack, host } = options;
@@ -85,6 +88,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   const ids = options.ids ?? randomIds;
   const intervalMs = options.sampleIntervalMs ?? DEFAULT_SAMPLE_INTERVAL_MS;
   const matchOptions = options.match ?? DEFAULT_MATCH_OPTIONS;
+  const analyzer = options.analyzer;
   assertPackFingerprints(pack);
 
   const listeners = new Set<(state: ControllerSnapshot) => void>();
@@ -149,8 +153,15 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     stream = null;
   }
 
-  function onSample(fingerprint: string | null): void {
+  async function onSample(fingerprint: string | null, frame?: import('../sources/screen').Frame): Promise<void> {
     if (phase !== 'sharing' || fingerprint === null) return;
+    if (analyzer && frame) {
+      try {
+        const analysis = await analyzer.analyze(frame);
+        if (analysis && phase === 'sharing') emit({ type: 'screen.analyzed', analysis });
+      } catch { /* transient analysis failure does not stop capture */ }
+      return;
+    }
     lastFingerprint = fingerprint;
     if (correctionAnchor !== null) {
       if (hammingDistance(fingerprint, correctionAnchor) <= matchOptions.threshold) return;

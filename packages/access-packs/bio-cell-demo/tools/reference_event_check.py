@@ -25,6 +25,7 @@ ALLOWED_EVENT_TYPES = (
     "capture.resumed",
     "capture.stopped",
     "source.unmatched",
+    "screen.analyzed",
     "session.ended",
 )
 
@@ -40,6 +41,7 @@ KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "pointer",
     "arState",
     "caption",
+    "analysis",
 }
 
 INSTRUCTOR_ONLY_TYPES = (
@@ -51,6 +53,7 @@ INSTRUCTOR_ONLY_TYPES = (
     "capture.resumed",
     "capture.stopped",
     "source.unmatched",
+    "screen.analyzed",
     "session.ended",
 )
 

@@ -5,6 +5,7 @@ import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { AudioView } from '../renderers/AudioView';
 import { DyslexicTextView } from '../renderers/DyslexicTextView';
+import { ScreenAnalysisView } from '../renderers/ScreenAnalysisView';
 import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
 
 const CellArView = React.lazy(async () => {
@@ -139,10 +140,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       </div>
 
       <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
-        {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {live.analysis && activeMode !== 'ar' ? <ScreenAnalysisView analysis={live.analysis} mode={activeMode === 'structured-text' ? 'read' : activeMode === 'audio' ? 'hear' : activeMode as 'focus' | 'dyslexic'} /> : null}
+        {!live.analysis && activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {!live.analysis && activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {!live.analysis && activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
             <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
