@@ -1,0 +1,488 @@
+{
+  "schemaVersion": "1.0",
+  "packId": "hnsw-explainer",
+  "version": 1,
+  "title": "How HNSW Works",
+  "matching": {
+    "algorithm": "dhash12",
+    "hashBits": 132,
+    "maxHammingDistance": 26,
+    "minMargin": 14,
+    "onNoMatch": "source.unmatched"
+  },
+  "assets": [
+    {
+      "assetId": "slide-01",
+      "fingerprint": "dhash12:00100000000000000001011e2ac470800",
+      "title": "How HNSW Works",
+      "readingOrder": [
+        "title",
+        "brand-label",
+        "subtitle-label",
+        "body-text",
+        "hnsw-diagram"
+      ],
+      "regions": [
+        {
+          "regionId": "brand-label",
+          "bounds": {
+            "x": 0.05,
+            "y": 0.06,
+            "width": 0.1,
+            "height": 0.05
+          },
+          "shortDescription": "Brand name 'Quantiiv' in small white text in the top-left corner.",
+          "plainLanguage": "The word 'Quantiiv' appears in the top-left corner as a brand name."
+        },
+        {
+          "regionId": "subtitle-label",
+          "bounds": {
+            "x": 0.05,
+            "y": 0.62,
+            "width": 0.45,
+            "height": 0.06
+          },
+          "shortDescription": "Blue uppercase text reading 'ENGINEERING EXPLAINER', used as a category label above the main title.",
+          "plainLanguage": "A blue label above the main title that says 'ENGINEERING EXPLAINER'."
+        },
+        {
+          "regionId": "title",
+          "bounds": {
+            "x": 0.05,
+            "y": 0.67,
+            "width": 0.55,
+            "height": 0.12
+          },
+          "shortDescription": "Large bold white heading reading 'How HNSW Works'.",
+          "plainLanguage": "The main title reads 'How HNSW Works' in large white letters."
+        },
+        {
+          "regionId": "body-text",
+          "bounds": {
+            "x": 0.05,
+            "y": 0.81,
+            "width": 0.48,
+            "height": 0.1
+          },
+          "shortDescription": "White body text reading: 'Hierarchical Navigable Small Worlds — the graph index behind fast approximate nearest-neighbor search.'",
+          "plainLanguage": "A short description that says HNSW stands for Hierarchical Navigable Small Worlds, and it is the index used for fast approximate nearest-neighbor search."
+        },
+        {
+          "regionId": "hnsw-diagram",
+          "bounds": {
+            "x": 0.78,
+            "y": 0.5,
+            "width": 0.2,
+            "height": 0.42
+          },
+          "shortDescription": "A stylized diagram showing three stacked parallelogram-shaped layers connected by a vertical dashed line. Each layer contains blue circular nodes linked by lines. The bottom layer has a green node, suggesting a point of interest at the lowest level.",
+          "plainLanguage": "A simple drawing of three flat stacked layers, each with dots connected by lines, representing the layered graph structure of HNSW. A green dot marks one node on the bottom layer."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-02",
+      "fingerprint": "dhash12:00150380000c21cca88590f3106000002",
+      "title": "The Nearest-Neighbor Problem",
+      "readingOrder": [
+        "title",
+        "section-label",
+        "intro-text",
+        "complexity-cards",
+        "caveat-text",
+        "diagram"
+      ],
+      "regions": [
+        {
+          "regionId": "section-label",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.055,
+            "width": 0.25,
+            "height": 0.04
+          },
+          "shortDescription": "Small blue uppercase label reading ",
+          "plainLanguage": "A small label at the top reads "
+        },
+        {
+          "regionId": "intro-text",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.23,
+            "width": 0.47,
+            "height": 0.17
+          },
+          "shortDescription": "Paragraph stating: \"Given a query embedding, find the most similar vectors in a collection. The exact answer requires a distance computation against every single vector.\" The phrase \"every single vector\" is bold.",
+          "plainLanguage": "To find the closest match exactly, you must compare the query to every single vector in the collection."
+        },
+        {
+          "regionId": "complexity-cards",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.38,
+            "width": 0.47,
+            "height": 0.22
+          },
+          "shortDescription": "Two side-by-side cards. Left card: \"Brute force, per query\" with complexity O(N · d) and note \"100M vectors × 1,536 dims — seconds\". Right card (blue): \"HNSW, per query\" with complexity ~O(log N) and note \"Milliseconds, at 95–99% recall\".",
+          "plainLanguage": "Brute force search costs O(N·d) time — seconds for large datasets. HNSW cuts that to roughly O(log N) — milliseconds — but with 95–99% accuracy."
+        },
+        {
+          "regionId": "caveat-text",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.62,
+            "width": 0.47,
+            "height": 0.15
+          },
+          "shortDescription": "Paragraph reading: \"The catch: it is approximate — it occasionally misses the true nearest neighbor. For search, RAG, and recommendations, that trade is almost always worth it.\" The word \"approximate\" is italicised.",
+          "plainLanguage": "The downside is that HNSW sometimes misses the true closest match, but for most uses like search and recommendations that small error is acceptable."
+        },
+        {
+          "regionId": "diagram",
+          "bounds": {
+            "x": 0.54,
+            "y": 0.18,
+            "width": 0.44,
+            "height": 0.65
+          },
+          "shortDescription": "A scatter diagram of grey dots connected by thin grey lines radiating from a central orange dot labelled \"query\". A green dot nearby is labelled \"nearest\", connected to the query dot by a short green line.",
+          "plainLanguage": "A diagram showing many grey dots spread out, all connected by lines to one central orange dot called \"query\". The closest dot is green and labelled \"nearest\"."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-03",
+      "fingerprint": "dhash12:0010020040044188314620d608c000442",
+      "title": "Skip Lists",
+      "readingOrder": [
+        "title",
+        "subtitle-label",
+        "intro-text",
+        "skip-list-diagram",
+        "footer-note"
+      ],
+      "regions": [
+        {
+          "regionId": "subtitle-label",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.055,
+            "width": 0.22,
+            "height": 0.04
+          },
+          "shortDescription": "Small blue uppercase label reads: \"THE CORE IDEA, IN 1-D\".",
+          "plainLanguage": "A small label at the top says \"THE CORE IDEA, IN 1-D\"."
+        },
+        {
+          "regionId": "intro-text",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.155,
+            "width": 0.82,
+            "height": 0.115
+          },
+          "shortDescription": "Two sentences of body text: \"Sparse 'express lanes' sit above the full list. Start on the top lane and take big jumps; drop down a lane whenever the next jump would overshoot. Finding 31 takes 3 hops instead of scanning 7 nodes.\"",
+          "plainLanguage": "The text explains that skip lists use fast upper lanes to jump ahead, dropping to lower lanes when a jump goes too far, finding 31 in just 3 hops."
+        },
+        {
+          "regionId": "skip-list-diagram",
+          "bounds": {
+            "x": 0.12,
+            "y": 0.28,
+            "width": 0.78,
+            "height": 0.55
+          },
+          "shortDescription": "A three-level skip list diagram with levels L0, L1, and L2. L0 is the full linked list: H, 3, 7, 12, 19, 25, 31, 42, 57. L1 contains H, 7, 25, and 42. L2 contains H and 25. Blue highlighted nodes mark the search path through H→25 (L2), down to 25 (L1), where a dashed arrow to 42 is labeled \"overshoots\" in red, then down to 25 (L0), stepping to node 31 highlighted in green and labeled \"found\" in green.",
+          "plainLanguage": "The diagram shows three rows of linked boxes (levels L0–L2). The search jumps along the top rows to node 25, skips node 42 because it is too big, then steps right on the bottom row to find node 31, shown in green."
+        },
+        {
+          "regionId": "footer-note",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.83,
+            "width": 0.72,
+            "height": 0.05
+          },
+          "shortDescription": "Footer text reads: \"HNSW applies the same 'coarse first, fine last' idea to a proximity graph in high-dimensional space.\" with the word \"graph\" in bold.",
+          "plainLanguage": "A note at the bottom says HNSW uses this same coarse-to-fine idea, but on a graph in high-dimensional space."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-04",
+      "fingerprint": "dhash12:00100300298e398738c71c630d630d002",
+      "title": "The Layered Graph",
+      "readingOrder": [
+        "title",
+        "layered-graph-diagram",
+        "bullet-points"
+      ],
+      "regions": [
+        {
+          "regionId": "title",
+          "bounds": {
+            "x": 0.04,
+            "y": 0.04,
+            "width": 0.5,
+            "height": 0.14
+          },
+          "shortDescription": "Section label reads \"THE STRUCTURE\" in small blue caps above the main heading \"The Layered Graph\" in large bold text.",
+          "plainLanguage": "The slide heading says \"The Layered Graph\" under a small label that reads \"THE STRUCTURE\"."
+        },
+        {
+          "regionId": "layered-graph-diagram",
+          "bounds": {
+            "x": 0.1,
+            "y": 0.18,
+            "width": 0.55,
+            "height": 0.62
+          },
+          "shortDescription": "A diagram of three stacked horizontal planes labeled Layer 2 (top), Layer 1 (middle), and Layer 0 (bottom). The top layer has two blue nodes connected by a line, with one black node labeled \"entry point.\" The middle layer has five blue nodes with connecting edges. The bottom layer is densely populated with gray nodes and edges. Dashed vertical lines connect corresponding nodes across layers. A caption reads \"Layer 0 contains every vector.\"",
+          "plainLanguage": "Three stacked flat planes show a graph at each level. The top plane has very few nodes, the middle has more, and the bottom has the most. Dashed lines link the same node across layers."
+        },
+        {
+          "regionId": "bullet-points",
+          "bounds": {
+            "x": 0.58,
+            "y": 0.22,
+            "width": 0.38,
+            "height": 0.65
+          },
+          "shortDescription": "Four bold headings each followed by a short explanation: \"Every vector lives in layer 0\" — the bottom layer is a proximity graph over the full dataset, each node linked to its nearest neighbors. \"Higher layers are random samples\" — each node is promoted upward with exponentially decaying probability, so every layer up is ~an order of magnitude sparser. \"Sparse layers = long-range links\" — nearest neighbors in a sparse layer are far apart in space, those edges are the express lanes. \"One entry point on top\" — the highest-layer node is where every search begins.",
+          "plainLanguage": "Four labeled points explain the structure: all data is in layer 0; upper layers hold fewer nodes chosen randomly; sparser layers create long-range shortcuts; and every search starts from a single entry node at the top."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-05",
+      "fingerprint": "dhash12:00140300290e21c438d7102389e308002",
+      "title": "Searching the Index",
+      "readingOrder": [
+        "title",
+        "layered-graph-diagram",
+        "steps-list",
+        "callout-box"
+      ],
+      "regions": [
+        {
+          "regionId": "title",
+          "bounds": {
+            "x": 0.04,
+            "y": 0.04,
+            "width": 0.5,
+            "height": 0.14
+          },
+          "shortDescription": "Section label reads ",
+          "plainLanguage": "The slide is titled "
+        },
+        {
+          "regionId": "layered-graph-diagram",
+          "bounds": {
+            "x": 0.13,
+            "y": 0.18,
+            "width": 0.55,
+            "height": 0.62
+          },
+          "shortDescription": "A diagram of three stacked horizontal planes labeled Layer (top), Layer (middle), and Layer (bottom). A black dot marked \"start here\" sits on the top layer; a blue line traces a path from it to another node, then a dashed blue vertical line drops through the middle layer—where two blue hops are shown among gray nodes—down to the bottom layer, ending at a blue node. An orange dot labeled \"query\" and a green dot labeled \"nearest neighbor\" sit near the bottom-left of the lowest layer.",
+          "plainLanguage": "Three stacked flat layers show a search path: it starts at the top, hops across each layer following the closest node, and ends near an orange query dot and a green nearest-neighbor dot at the bottom."
+        },
+        {
+          "regionId": "steps-list",
+          "bounds": {
+            "x": 0.57,
+            "y": 0.17,
+            "width": 0.4,
+            "height": 0.48
+          },
+          "shortDescription": "A four-step numbered list: 1 (black) Start at the entry point on the top layer. 2 (blue) Greedily hop to whichever neighbor is closest to the query. 3 (blue) When no neighbor is closer, drop down one layer and repeat. 4 (green) On layer 0, widen to a small candidate beam (efSearch) and return the best k.",
+          "plainLanguage": "Four numbered steps describe the search: start at the top, greedily hop to the nearest neighbor, drop a layer when stuck, and at the bottom layer use a wider beam to return the best results."
+        },
+        {
+          "regionId": "callout-box",
+          "bounds": {
+            "x": 0.57,
+            "y": 0.67,
+            "width": 0.4,
+            "height": 0.14
+          },
+          "shortDescription": "A light blue bordered box with text: \"Coarse layers cover distance; layer 0 does the fine positioning. Only ~dozens of nodes are visited out of millions.\"",
+          "plainLanguage": "A highlighted note explains that upper layers quickly cover large distances, while the bottom layer fine-tunes the result, visiting only about dozens of nodes out of millions."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-06",
+      "fingerprint": "dhash12:00140300628cc3807540700f210630002",
+      "title": "Inserting a Vector",
+      "readingOrder": [
+        "title",
+        "section-label",
+        "step-1-heading",
+        "level-probability-chart",
+        "step-2-heading",
+        "graph-diagram",
+        "pruning-note"
+      ],
+      "regions": [
+        {
+          "regionId": "section-label",
+          "bounds": {
+            "x": 0.05,
+            "y": 0.04,
+            "width": 0.2,
+            "height": 0.05
+          },
+          "shortDescription": "Small blue uppercase label reading \"BUILD TIME\" above the slide title.",
+          "plainLanguage": "A small label at the top says \"BUILD TIME\"."
+        },
+        {
+          "regionId": "step-1-heading",
+          "bounds": {
+            "x": 0.05,
+            "y": 0.17,
+            "width": 0.42,
+            "height": 0.15
+          },
+          "shortDescription": "Step 1 card headed \"1 · Draw a random top level\" with body text: \"Exponential distribution — the hierarchy emerges from a coin flip, no balancing needed.\" A footnote reads \"Probabilities shown for M = 16\".",
+          "plainLanguage": "Step 1 says: pick a random level using an exponential distribution, like a coin flip, so no manual balancing is needed."
+        },
+        {
+          "regionId": "level-probability-chart",
+          "bounds": {
+            "x": 0.05,
+            "y": 0.32,
+            "width": 0.42,
+            "height": 0.38
+          },
+          "shortDescription": "Horizontal bar chart showing node probability by level. Level 0: full-width blue bar, 100%. Level ≥ 1: very short blue bar, ~6%. Level ≥ 2: near-invisible bar, ~0.4%.",
+          "plainLanguage": "A bar chart shows that every node appears at Level 0 (100%), only about 6% reach Level 1 or higher, and about 0.4% reach Level 2 or higher."
+        },
+        {
+          "regionId": "step-2-heading",
+          "bounds": {
+            "x": 0.46,
+            "y": 0.17,
+            "width": 0.49,
+            "height": 0.15
+          },
+          "shortDescription": "Step 2 card headed \"2 · Search down, then link to the M nearest\" with body text: \"A normal search finds the neighborhood; the new node connects to its M closest nodes on each layer it belongs to.\"",
+          "plainLanguage": "Step 2 says: search the graph to find the closest existing nodes, then connect the new node to its M nearest neighbors on each layer it joins."
+        },
+        {
+          "regionId": "graph-diagram",
+          "bounds": {
+            "x": 0.49,
+            "y": 0.32,
+            "width": 0.46,
+            "height": 0.42
+          },
+          "shortDescription": "A diagram of a layered graph. An orange node labeled \"new vector\" sits on a layer plane and is connected by blue edges to three blue neighbor nodes. Grey nodes and grey edges show the rest of the graph. A caption reads \"M = 3 new links, on every layer it joins\".",
+          "plainLanguage": "A diagram shows a new orange node being linked to three nearby blue nodes inside a layered graph structure, illustrating that M equals 3 new connections are made on each layer."
+        },
+        {
+          "regionId": "pruning-note",
+          "bounds": {
+            "x": 0.46,
+            "y": 0.73,
+            "width": 0.49,
+            "height": 0.1
+          },
+          "shortDescription": "Footer text: \"If a neighbor exceeds its link budget, its worst edge is pruned — degree stays bounded.\"",
+          "plainLanguage": "A note explains that if a neighbor already has too many connections, its weakest link is removed to keep the number of connections under control."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-07",
+      "fingerprint": "dhash12:001402844c8999132640981302626600a",
+      "title": "The Three Parameters",
+      "readingOrder": [
+        "title",
+        "card-m",
+        "card-efconstruction",
+        "card-efsearch"
+      ],
+      "regions": [
+        {
+          "regionId": "card-m",
+          "bounds": {
+            "x": 0.055,
+            "y": 0.18,
+            "width": 0.305,
+            "height": 0.65
+          },
+          "shortDescription": "Card headed 'M — Links per node'. Body text: 'Graph connectivity. Higher M → better recall and more robust graphs, but memory and build time grow linearly with it.' Footer: 'Typical: 12 – 48 · fixed at build'.",
+          "plainLanguage": "The M parameter sets how many links each node has. A higher M means better results but uses more memory and takes longer to build. Typical range is 12 to 48, set once at build time."
+        },
+        {
+          "regionId": "card-efconstruction",
+          "bounds": {
+            "x": 0.365,
+            "y": 0.18,
+            "width": 0.305,
+            "height": 0.65
+          },
+          "shortDescription": "Card headed 'efConstruction — Build-time beam width'. Body text: 'How many candidates are examined when choosing each new node's neighbors. Higher → better graph quality, slower indexing.' Footer: 'Typical: 100 – 400 · fixed at build'.",
+          "plainLanguage": "The efConstruction parameter controls how many options are checked when building the graph. A higher value makes a better graph but slows down indexing. Typical range is 100 to 400, set once at build time."
+        },
+        {
+          "regionId": "card-efsearch",
+          "bounds": {
+            "x": 0.675,
+            "y": 0.18,
+            "width": 0.305,
+            "height": 0.65
+          },
+          "shortDescription": "Card headed 'efSearch — Query-time beam width', highlighted with a light blue background. Body text: 'How many candidates the layer-0 search keeps alive. The knob you turn in production — raise it for recall, lower it for latency.' Footer in blue: 'Typical: k – 512 · tunable per query'.",
+          "plainLanguage": "The efSearch parameter controls how many candidates are tracked during a search. Raising it improves accuracy; lowering it reduces response time. Typical range is k to 512, and it can be changed for each query."
+        }
+      ]
+    },
+    {
+      "assetId": "slide-08",
+      "fingerprint": "dhash12:001003000001b0c732c4d8a3506180002",
+      "title": "Recall vs. Speed",
+      "readingOrder": [
+        "title",
+        "subtitle-label",
+        "operating-curve-chart",
+        "what-to-remember-list"
+      ],
+      "regions": [
+        {
+          "regionId": "subtitle-label",
+          "bounds": {
+            "x": 0.04,
+            "y": 0.06,
+            "width": 0.3,
+            "height": 0.04
+          },
+          "shortDescription": "Section label in small blue uppercase text reading \"THE OPERATING CURVE\".",
+          "plainLanguage": "A small blue label at the top says \"THE OPERATING CURVE\"."
+        },
+        {
+          "regionId": "operating-curve-chart",
+          "bounds": {
+            "x": 0.08,
+            "y": 0.26,
+            "width": 0.55,
+            "height": 0.55
+          },
+          "shortDescription": "A line chart with \"efSearch, increasing\" on the x-axis and no labeled y-axis. A solid blue curve labeled \"Recall\" rises steeply then flattens, showing diminishing returns. A dashed black line labeled \"Latency\" rises more steadily. A green dot marks \"the knee: ~95–99% recall\" near the point where the recall curve begins to flatten.",
+          "plainLanguage": "A chart showing that as efSearch increases, recall improves quickly at first then levels off, while latency keeps rising. A green dot marks the sweet spot at roughly 95–99% recall."
+        },
+        {
+          "regionId": "what-to-remember-list",
+          "bounds": {
+            "x": 0.57,
+            "y": 0.27,
+            "width": 0.4,
+            "height": 0.56
+          },
+          "shortDescription": "A numbered list headed \"What to remember\" with four items: 01 HNSW is a skip list generalized to a proximity graph: coarse layers travel far, layer 0 refines. 02 Search is greedy descent from a single entry point — ~O(log N) hops, no training step. 03 The hierarchy comes from a random level draw at insert time; M links bound every node's degree. 04 In production, efSearch is your dial: sweep it, plot this curve, pick your (text appears cut off).",
+          "plainLanguage": "A four-point summary: HNSW uses layered graphs, search takes about O(log N) steps, node levels are assigned randomly at insert time, and efSearch lets you trade speed for recall in production."
+        }
+      ]
+    }
+  ]
+}

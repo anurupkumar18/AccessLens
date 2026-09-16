@@ -1,0 +1,68 @@
+{
+  "title": "The Nearest-Neighbor Problem",
+  "readingOrder": [
+    "title",
+    "section-label",
+    "intro-text",
+    "complexity-cards",
+    "caveat-text",
+    "diagram"
+  ],
+  "regions": [
+    {
+      "regionId": "section-label",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.055,
+        "width": 0.25,
+        "height": 0.04
+      },
+      "shortDescription": "Small blue uppercase label reading ",
+      "plainLanguage": "A small label at the top reads "
+    },
+    {
+      "regionId": "intro-text",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.23,
+        "width": 0.47,
+        "height": 0.17
+      },
+      "shortDescription": "Paragraph stating: \"Given a query embedding, find the most similar vectors in a collection. The exact answer requires a distance computation against every single vector.\" The phrase \"every single vector\" is bold.",
+      "plainLanguage": "To find the closest match exactly, you must compare the query to every single vector in the collection."
+    },
+    {
+      "regionId": "complexity-cards",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.38,
+        "width": 0.47,
+        "height": 0.22
+      },
+      "shortDescription": "Two side-by-side cards. Left card: \"Brute force, per query\" with complexity O(N · d) and note \"100M vectors × 1,536 dims — seconds\". Right card (blue): \"HNSW, per query\" with complexity ~O(log N) and note \"Milliseconds, at 95–99% recall\".",
+      "plainLanguage": "Brute force search costs O(N·d) time — seconds for large datasets. HNSW cuts that to roughly O(log N) — milliseconds — but with 95–99% accuracy."
+    },
+    {
+      "regionId": "caveat-text",
+      "bounds": {
+        "x": 0.055,
+        "y": 0.62,
+        "width": 0.47,
+        "height": 0.15
+      },
+      "shortDescription": "Paragraph reading: \"The catch: it is approximate — it occasionally misses the true nearest neighbor. For search, RAG, and recommendations, that trade is almost always worth it.\" The word \"approximate\" is italicised.",
+      "plainLanguage": "The downside is that HNSW sometimes misses the true closest match, but for most uses like search and recommendations that small error is acceptable."
+    },
+    {
+      "regionId": "diagram",
+      "bounds": {
+        "x": 0.54,
+        "y": 0.18,
+        "width": 0.44,
+        "height": 0.65
+      },
+      "shortDescription": "A scatter diagram of grey dots connected by thin grey lines radiating from a central orange dot labelled \"query\". A green dot nearby is labelled \"nearest\", connected to the query dot by a short green line.",
+      "plainLanguage": "A diagram showing many grey dots spread out, all connected by lines to one central orange dot called \"query\". The closest dot is green and labelled \"nearest\"."
+    }
+  ]
+}

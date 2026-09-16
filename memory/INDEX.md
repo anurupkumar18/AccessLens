@@ -27,21 +27,24 @@ Current sources of truth:
 - `docs/ACCESSLENS_PROPOSAL.md`
 - `docs/TEAM_PRODUCT_DIRECTION.md`
 
-Part 1 (foundation and contracts) is owned by Anurup Kumar; Part 5 (reviewed
-content, camera adapter, and demo QA) by Kunj Rathod. Part 5's content and
-simulator block is merged: `packages/access-packs/bio-cell-demo/` holds the
-reviewed five-slide deck, an original AR cell model with stable node names, six
-ordered event scenarios, and ten rejection fixtures, all validated by
-`make pack-check`. Parts 2, 3, and 4 can test against it today without the
-extension shell or AWS. The camera adapter remains unstarted Phase 6 scope.
+Part 1 (foundation and contracts) is owned by Anurup Kumar, Part 2 (instructor
+capture) by Jacob, and Part 5 (content, camera, and demo QA) by Kunj Rathod.
+Parts 3 and 4 have no owner. Part 5's pack merged as `a881f11`:
+`packages/access-packs/bio-cell-demo/` holds the reviewed five-slide deck, an
+original AR cell model, six ordered event scenarios, and ten rejection fixtures,
+all validated by `make pack-check`.
 
-Part 1's foundation (`df80b5d`) is merged into that branch. Conformance between
-the pack and `packages/contracts/` is tracked by `make pack-check` and reported
-in `docs/PART5_CONTRACT_CONFORMANCE.md`: thirteen known gaps, two of which are
-contract bugs — `assetId` is required on every event, which makes the
-charter-required `source.unmatched` unrepresentable, and
-`live-event.schema.json` rejects `regionId` and `pointer` that the Zod schema
-accepts, so it fails Part 1's own fixture.
+Both contract bugs Part 5 reported are fixed: `c3ddc27` made `LiveEventSchema` a
+per-type discriminated union, so `source.unmatched` is structurally unable to
+name an asset, and the JSON Schema now mirrors it. Ten conformance gaps remain,
+all requests to widen the contract, reported in
+`docs/PART5_CONTRACT_CONFORMANCE.md`. The most serious is that
+`access-pack.schema.json` forbids `arScene`, so the pack cannot carry the AR
+scene charter A10 requires.
+
+`docs/CONTEXT_RELAY.md` is the live state of the project and the register of
+every open thread; append to it at the end of any session that changes that
+state.
 
 The previous application, API, fixtures, plugin, and active coding-product guides
 were removed. Git history is the recovery path. Existing semantic records and
@@ -63,4 +66,13 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 
 ## Current handoff
 
-- `episodic/0040-bio-cell-demo-access-pack.md`
+Parallel workstreams number their own episodic records (T-17), so there is no
+longer one single "latest" file. Each part's newest record:
+
+- `episodic/0043-deployment-readiness.md` (Part 4 recon: AWS account is deployable, CDK not bootstrapped)
+- `episodic/0042-merge-parts-1-2-3-5.md` (cross-cutting: merged PRs #6/#7/#8 onto the integration branch)
+- `episodic/0041-part2-instructor-capture.md` (Part 2: instructor capture)
+- `episodic/0041-context-relay.md` (cross-cutting: relay log and open threads)
+- `episodic/0040-part3-student-ar.md` (Part 3: student experience and AR, merged into Part 2's branch)
+- `episodic/0040-bio-cell-demo-access-pack.md` (Part 5: reviewed pack)
+- `episodic/0039-part1-contract-gaps.md` (Part 1: foundation and contracts)

@@ -19,7 +19,7 @@ jobs:
       # Without these two steps it fails with `sh: vitest: command not found`.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
       - run: npm ci
       - run: make check
