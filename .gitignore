@@ -15,3 +15,4 @@ output/
 .claude/
 test-results/
 .worktrees/
+node_modules
