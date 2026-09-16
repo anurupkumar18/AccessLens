@@ -108,7 +108,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
 | T-23 | CDK was not bootstrapped in the hackathon AWS account, so no `cdk deploy` would have worked. | Part 5 | — | CLOSED | Bootstrapped 2026-09-15: `CDKToolkit` version 32, staging bucket `cdk-hnb659fds-assets-087328706621-us-east-1`. `deploy_preflight.py --aws` now reports it ready |
 | T-24 | This file is itself a conflict magnet. Every part is asked to append a log entry and edit the same tables, so parallel branches collide in section 8 — PR #8 conflicts on exactly `CONTEXT_RELAY.md` and `memory/INDEX.md` and nothing else. Same structural problem as T-18, caused by the fix for it. Proposal: split the relay log into one file per entry under `docs/relay/NNN-*.md` (the pattern `memory/episodic/` already uses successfully) and have `relay_check.py` assemble and validate them, leaving only the tables shared. | Part 5 | Everyone appending | OPEN | PR #8's conflict set; this file's own growth; renumbered from a collision with T-21/T-22 during PR #9's merge, proving the point a third time |
-| T-25 | **The relay is deployed and the extension does not use it.** `WebSocketSessionClient` implements Part 1's frozen interface and is tested, but nothing constructs it: the extension still runs on `BroadcastChannel`, which is one browser profile on one machine. `VITE_ACCESSLENS_WS_URL` is unset. Until someone swaps the transport at its construction site and rehearses across two real devices, "multi-device demo" is an untested claim — and the swap is the cheap part, while discovering a problem during the rehearsal is not. | Part 1 + Part 3 | The demo | OPEN | `services/live-session/src/client/webSocketSessionClient.ts` exists; `git grep -l BroadcastChannel apps/` still matches |
+| T-25 | **The relay is deployed and the extension does not use it.** `WebSocketSessionClient` implements Part 1's frozen interface and is tested, but nothing constructs it: the extension still runs on `BroadcastChannel`, which is one browser profile on one machine. `VITE_ACCESSLENS_WS_URL` is unset. Until someone swaps the transport at its construction site and rehearses across two real devices, "multi-device demo" is an untested claim — and the swap is the cheap part, while discovering a problem during the rehearsal is not. | Part 1 + Part 3 | The demo | IN PROGRESS | `apps/extension/src/shell/createDefaultClient.ts` swaps the transport when `VITE_ACCESSLENS_WS_URL` is set; verified with the real deployed endpoint from two real browser tabs (instructor `create()` succeeded, student `join()` correctly rejected a bogus code) and Part 4's own `integration-test.mjs` (12/12). What has *not* happened is the rehearsal across two real devices with real `getDisplayMedia()` permission -- no sandboxed tool can grant that. |
 | T-26 | The deployed endpoint has no authorizer on `$connect`: anyone who can reach the URL can create a session, and the session id is the only secret. Acceptable for a reviewed demo pack with no student data, and stated in `services/live-session/README.md`, but it must not be described as secure, and it is not a shape to carry into anything holding real course content. | Part 4 | Claims made about the demo | ACCEPTED | Deliberate scope call for the hackathon; `services/live-session/README.md` "What is not built" |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
@@ -616,3 +616,42 @@ which is the only reason the register still means anything. The Makefile
 conflict was the same story in miniature: my side had dropped `relay-check`,
 `freeze-check`, and `deploy-preflight`, and taking either side wholesale would
 have deleted someone's work. **If you are merging this file, read both sides.**
+
+### RL-025 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** `apps/extension/src/shell/createDefaultClient.ts` and
+`liveRelayClient.ts` -- the transport swap T-25 was waiting on. `App.tsx`'s
+`defaultClient` now uses Part 4's real `WebSocketSessionClient` when
+`VITE_ACCESSLENS_WS_URL` is set, falling back to `BroadcastChannel` then
+in-memory as before. The wrapper validates every inbound event against
+`LiveEventSchema` and every capability against `RoleCapabilitySchema` before
+either reaches the rest of the app, since `webSocketSessionClient.ts`
+deliberately types both as bare `Record<string, unknown>` to avoid importing
+Part 1's schema package -- assigning it to `SessionClient` directly was
+also a real `tsc` error, not just a style question.
+
+Then launch-tested the whole stack: ran Part 4's own `integration-test.mjs`
+against the live endpoint fresh (12/12, still green today), built the
+extension with the live URL, and drove it from two real browser tabs. The
+instructor tab's Start button produced "Sharing is required for live sync"
+rather than "Could not open a session" -- which the source only distinguishes
+when `client.create()` already succeeded against the real relay and it was
+`getDisplayMedia()` that failed. The student tab joined a made-up code and
+got a real "Could not join this session" from the live relay, not a canned
+message. No sandboxed tool here can grant real screen-share permission, so
+that is as far as this environment can verify the capture path.
+
+The committed `dist/` was deliberately rebuilt *without* the live URL, so the
+checked-in default stays network-free; a build with it set was tested but not
+committed. `memory/episodic/0044-wire-live-relay-and-launch-test.md` has the
+full evidence.
+
+**Threads touched:** T-25 moved to IN PROGRESS (not CLOSED -- the wiring and
+network path are verified; the real-device rehearsal is not, and nothing in
+this environment can do that part).
+**Next agent needs to know:** whoever does the real two-device rehearsal
+needs `.env.local` with `VITE_ACCESSLENS_WS_URL` set to the live endpoint
+(`.env.example` has the name; the value is in `services/live-session/README.md`
+and this file's section 2) before running `npm run build`. Loading the
+already-committed `dist/` will not reach the relay -- it was intentionally
+built without that variable.

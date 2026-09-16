@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0044-wire-live-relay-and-launch-test.md` (cross-cutting: wired the deployed relay into the shell, launch-tested the full stack)
 - `episodic/0043-deployment-readiness.md` (Part 4 recon: AWS account is deployable, CDK not bootstrapped)
 - `episodic/0042-merge-parts-1-2-3-5.md` (cross-cutting: merged PRs #6/#7/#8 onto the integration branch)
 - `episodic/0041-part2-instructor-capture.md` (Part 2: instructor capture)

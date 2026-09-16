@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { AccessPackSchema, InMemorySessionClient, type AccessPack, type LiveEvent, type SessionClient } from '../shared/contracts';
+import { AccessPackSchema, type AccessPack, type LiveEvent, type SessionClient } from '../shared/contracts';
 import { defaultPreferences, loadPreferences, savePreferences, type StudentPreferences } from '../shared/preferences';
-import { BroadcastSessionClient, hasBroadcastChannel } from '../shared/broadcastSessionClient';
 import { InstructorPanel } from '../instructor';
 import { createDisplayMediaHost, type CaptureHost, type Scheduler } from '../sources/screen';
 import { StudentExperience } from '../student/StudentExperience';
@@ -9,10 +8,11 @@ import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pac
 import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
 import { RoleNav, type Role } from './RoleNav';
 import { ErrorBoundary } from './ErrorBoundary';
+import { createDefaultClient } from './createDefaultClient';
 
-// Local demo transport: instructor and student tabs in the same browser
-// profile follow each other with no network. Part 4's relay replaces it.
-const defaultClient: SessionClient = hasBroadcastChannel() ? new BroadcastSessionClient() : new InMemorySessionClient();
+// Part 4's real relay when VITE_ACCESSLENS_WS_URL is configured (.env.local);
+// otherwise BroadcastChannel for a same-browser demo, or in-memory.
+const defaultClient: SessionClient = createDefaultClient(import.meta.env.VITE_ACCESSLENS_WS_URL);
 // Constructing the host calls nothing; capture starts only from the panel's
 // Start button (charter A1).
 const defaultHost = createDisplayMediaHost();
