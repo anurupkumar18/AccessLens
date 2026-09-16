@@ -1,5 +1,6 @@
 /**
- * The three accessibility services: captions, catch-up, and translation.
+ * The accessibility services: captions, catch-up, translation, and course
+ * media preparation (alt text and recorded-media captions).
  *
  * One stack rather than three, because they share a shape exactly — a single
  * Lambda behind a Function URL, called from a browser extension on an
@@ -33,14 +34,24 @@ interface ServiceSpec {
   /** Seconds. Speech synthesis and model calls are slower than a translation. */
   readonly timeout: number;
   readonly memory: number;
-  readonly actions: string[];
-  readonly resources: string[];
+  readonly policies: { actions: string[]; resources: string[] }[];
   readonly environment?: Record<string, string>;
 }
 
 export class AccessibilityServicesStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps = {}) {
     super(scope, id, props);
+
+    // Wildcarded across regions on purpose: `us.anthropic.*` is a
+    // cross-region inference profile that routes by capacity, so scoping
+    // to this.region looks tighter and fails at runtime with AccessDenied.
+    const bedrockInvoke = {
+      actions: ['bedrock:InvokeModel'],
+      resources: [
+        'arn:aws:bedrock:*::foundation-model/*',
+        `arn:aws:bedrock:*:${this.account}:inference-profile/*`,
+      ],
+    };
 
     const specs: ServiceSpec[] = [
       {
@@ -49,30 +60,32 @@ export class AccessibilityServicesStack extends Stack {
         // Transcribe streaming holds the connection open for the audio chunk.
         timeout: 60,
         memory: 512,
-        actions: ['transcribe:StartStreamTranscription'],
-        resources: ['*'],
+        policies: [{ actions: ['transcribe:StartStreamTranscription'], resources: ['*'] }],
       },
       {
         id: 'Recap',
         directory: 'services/recap',
         timeout: 60,
         memory: 512,
-        // Wildcarded across regions on purpose: `us.anthropic.*` is a
-        // cross-region inference profile that routes by capacity, so scoping
-        // to this.region looks tighter and fails at runtime with AccessDenied.
-        actions: ['bedrock:InvokeModel'],
-        resources: [
-          'arn:aws:bedrock:*::foundation-model/*',
-          `arn:aws:bedrock:*:${this.account}:inference-profile/*`,
-        ],
+        policies: [bedrockInvoke],
       },
       {
         id: 'TranslateSpeak',
         directory: 'services/translate-speak',
         timeout: 30,
         memory: 512,
-        actions: ['translate:TranslateText', 'polly:SynthesizeSpeech', 'comprehend:DetectDominantLanguage'],
-        resources: ['*'],
+        policies: [{ actions: ['translate:TranslateText', 'polly:SynthesizeSpeech', 'comprehend:DetectDominantLanguage'], resources: ['*'] }],
+      },
+      {
+        // Instructor course media: draft alt text for images and slide
+        // pictures, timed transcripts for recorded audio and video. The
+        // extension sends about a minute of audio per call, several in
+        // parallel, so the timeout covers one chunk rather than a lecture.
+        id: 'MediaAccess',
+        directory: 'services/media-access',
+        timeout: 120,
+        memory: 512,
+        policies: [bedrockInvoke, { actions: ['transcribe:StartStreamTranscription'], resources: ['*'] }],
       },
     ];
 
@@ -92,9 +105,9 @@ export class AccessibilityServicesStack extends Stack {
         environment: spec.environment ?? {},
       });
 
-      handler.addToRolePolicy(
-        new PolicyStatement({ effect: Effect.ALLOW, actions: spec.actions, resources: spec.resources }),
-      );
+      for (const policy of spec.policies) {
+        handler.addToRolePolicy(new PolicyStatement({ effect: Effect.ALLOW, ...policy }));
+      }
 
       const url = handler.addFunctionUrl({
         // NONE, for the same narrow reason as the orb: the caller is a content

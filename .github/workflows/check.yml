@@ -26,5 +26,5 @@ jobs:
       # and lockfile (Part 4's live-session-check target), so the root
       # `npm ci` above does not cover it -- without this it fails with
       # "Cannot find module '@aws-sdk/...'" instead of running any tests.
-      - run: npm ci --prefix services/live-session
+      - run: for dir in services/*/; do test -f "${dir}package.json" && npm ci --prefix "$dir"; done
       - run: make check

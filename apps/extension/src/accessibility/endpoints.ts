@@ -13,18 +13,20 @@ interface ExtensionApis {
 }
 declare const chrome: ExtensionApis | undefined;
 
-export type ServiceName = 'captions' | 'recap' | 'translate';
+export type ServiceName = 'captions' | 'recap' | 'translate' | 'media';
 
 const BUILT_IN: Record<ServiceName, string> = {
   captions: import.meta.env?.VITE_ACCESSLENS_CAPTIONS_ENDPOINT ?? '',
   recap: import.meta.env?.VITE_ACCESSLENS_RECAP_ENDPOINT ?? '',
   translate: import.meta.env?.VITE_ACCESSLENS_TRANSLATE_ENDPOINT ?? '',
+  media: import.meta.env?.VITE_ACCESSLENS_MEDIA_ENDPOINT ?? '',
 };
 
 const STORAGE_KEY: Record<ServiceName, string> = {
   captions: 'captionsEndpoint',
   recap: 'recapEndpoint',
   translate: 'translateEndpoint',
+  media: 'mediaEndpoint',
 };
 
 export async function resolveEndpoint(service: ServiceName): Promise<string> {
