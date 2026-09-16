@@ -54,7 +54,7 @@ describe('App shell', () => {
     expect(fetchPublishedPack).toHaveBeenCalledTimes(1);
     expect(fetchPublishedPack).toHaveBeenCalledWith(published.packId, published.version);
     expect(container.textContent).not.toContain('different reviewed lesson version');
-    expect(container.textContent).toContain(`Following ${published.assets[0].assetId}.`);
+    expect(container.textContent).toContain(`Now on ${published.assets[0].title}.`);
     expect(container.textContent).toContain(published.assets[0].regions[0].regionId);
   });
 

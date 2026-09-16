@@ -59,7 +59,7 @@ describe('StudentExperience', () => {
 
   it('follows an instructor event and renders Focus mode first', () => {
     renderExperience();
-    expect(container?.textContent).toContain('Following mitochondrion on cell-slide-03.');
+    expect(container?.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
     expect(container?.textContent).toContain('Focus view');
   });
 
@@ -254,7 +254,7 @@ describe('StudentExperience: live video pane', () => {
     expect((video as unknown as { srcObject: unknown }).srcObject).toBe(media);
     expect(section.textContent).toContain("Live video of the instructor's tab");
     // Focus mode is still following the slide underneath.
-    expect(container!.textContent).toContain('Following mitochondrion on cell-slide-03.');
+    expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
 
     deliver(streamStopped);
     expect(pane()).toBeNull();
@@ -306,7 +306,7 @@ describe('StudentExperience: live video pane', () => {
     act(() => subscriber.fail('The live video could not connect. Text and audio still work.'));
     expect(pane()!.textContent).toContain('The live video could not connect.');
     expect(container!.querySelectorAll('[role="tab"]').length).toBeGreaterThan(0);
-    expect(container!.textContent).toContain('Following mitochondrion on cell-slide-03.');
+    expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
   });
 
   it('without a stage token the pane explains and never subscribes', async () => {

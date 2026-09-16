@@ -51,15 +51,26 @@ export function applyLiveEvent(
   // events below end it.
   const stream = current.stream;
   switch (event.type) {
-    case 'asset.changed':
+    case 'asset.changed': {
+      const asset = pack.assets.find((candidate) => candidate.assetId === event.assetId);
       return {
         status: 'live',
         lastSequence: event.sequence,
         assetId: event.assetId,
         stream,
-        message: `Following ${event.assetId}.`,
+        message: `Now on ${asset?.title ?? event.assetId}.`,
       };
-    case 'region.changed':
+    }
+    case 'region.changed': {
+      // The status line is a live region, so this sentence is what a screen
+      // reader speaks when the instructor moves. It carries the reviewed
+      // description itself, not the identifiers: a student hears "Mitochondrion:
+      // the mitochondrion releases usable energy for the cell", once, without
+      // having to find it.
+      const asset = pack.assets.find((candidate) => candidate.assetId === event.assetId);
+      const region = asset?.regions.find((candidate) => candidate.regionId === event.regionId);
+      const name = region?.label ?? event.regionId;
+      const described = region ? `${name}: ${region.shortDescription}` : `${name} on ${asset?.title ?? event.assetId}.`;
       return {
         status: 'live',
         lastSequence: event.sequence,
@@ -67,8 +78,9 @@ export function applyLiveEvent(
         regionId: event.regionId,
         hotspotId: event.arState?.action === 'clear' ? undefined : event.arState?.hotspotId,
         stream,
-        message: `Following ${event.regionId} on ${event.assetId}.`,
+        message: described,
       };
+    }
     case 'capture.paused':
       return { ...current, status: 'paused', lastSequence: event.sequence, message: 'Instructor sharing is paused.' };
     case 'capture.resumed':

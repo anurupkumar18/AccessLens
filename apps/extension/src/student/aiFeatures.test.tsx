@@ -76,7 +76,7 @@ describe('student live captions', () => {
     expect(lines.querySelector('.caption-partial')?.textContent).toBe('Notice the folded');
     expect(container!.textContent).toContain('not reviewed text');
     // Reviewed description is still there, untouched by captions.
-    expect(container!.textContent).toContain('Following mitochondrion on cell-slide-03.');
+    expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
   });
 
   it('keeps screen-reader announcement off until the student turns it on, and remembers it locally', () => {

@@ -163,7 +163,9 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         </div>
       </form>
       <p role="status" className="supporting-text">{joinMessage}</p>
-      <p role="status" className="live-message">{live.message}</p>
+      {/* The one live region that follows the instructor. aria-atomic so the
+          whole sentence is read, not the words that changed. */}
+      <p role="status" aria-atomic="true" className="live-message">{live.message}</p>
 
       <LiveCaptionsView client={client} />
 
