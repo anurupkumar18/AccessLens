@@ -33,6 +33,20 @@ describe('App shell', () => {
     const root = createRoot(container);
     act(() => root.render(<App client={client} pack={syntheticPack} host={host} scheduler={new FakeScheduler()} />));
 
+    // A separate device/tab, not this instructor tab's own role toggle: since
+    // switching this tab to Student would now correctly end the open session
+    // (see the "unmounting while sharing ends the session" InstructorPanel
+    // test), the realistic way to observe what a student sees is a second
+    // App instance sharing the same client, exactly as two real browser tabs
+    // would -- subscribed before the instructor sends anything, exactly as a
+    // student who joined before the instructor spoke would be.
+    const studentContainer = document.createElement('div');
+    document.body.appendChild(studentContainer);
+    const studentRoot = createRoot(studentContainer);
+    act(() => studentRoot.render(<App client={client} pack={syntheticPack} />));
+    const studentButton = Array.from(studentContainer.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
+    act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
     expect(host.calls).toEqual([]);
     const startButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start')!;
     await act(async () => { startButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
@@ -45,10 +59,36 @@ describe('App shell', () => {
     const apply = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Apply correction')!;
     await act(async () => { apply.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
 
-    const studentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
+    expect(studentContainer.textContent).toContain('Following nucleolus on slide-04');
+    act(() => studentRoot.unmount());
+    studentContainer.remove();
+  });
+
+  it('switching this tab away from Instructor while sharing tells students the session ended, not silence', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const client = new InMemorySessionClient();
+    const host = new FakeCaptureHost();
+    const root = createRoot(container);
+    act(() => root.render(<App client={client} pack={syntheticPack} host={host} scheduler={new FakeScheduler()} />));
+
+    const studentContainer = document.createElement('div');
+    document.body.appendChild(studentContainer);
+    const studentRoot = createRoot(studentContainer);
+    act(() => studentRoot.render(<App client={client} pack={syntheticPack} />));
+    const studentButton = Array.from(studentContainer.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
     act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    expect(container.textContent).toContain('Following nucleolus on slide-04');
+    const startButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start')!;
+    await act(async () => { startButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    expect(studentContainer.textContent).toContain('Connected to the live lesson');
+
+    const thisTabStudentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
+    await act(async () => { thisTabStudentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+
+    expect(studentContainer.textContent).toContain('The instructor ended this session.');
+    act(() => studentRoot.unmount());
+    studentContainer.remove();
   });
 
   it('resolves the student pack from the session events, not the instructor dropdown', async () => {

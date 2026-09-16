@@ -67,7 +67,17 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
 
   useEffect(() => {
     const unsubscribe = controller.subscribe(setState);
-    return () => { unsubscribe(); controller.dispose(); };
+    return () => {
+      unsubscribe();
+      // Unmounting (switching role or pack away from this panel) must not
+      // silently drop an open session: a student would keep showing the last
+      // live moment with no signal that the instructor left. End it properly
+      // so students see an explicit, honest "session ended" rather than a
+      // connection that quietly stops updating.
+      const current = controller.getState();
+      if (current.phase !== 'closed' && current.sessionId !== null) controller.endSession();
+      controller.dispose();
+    };
   }, [controller]);
 
   const active = state.phase === 'sharing' || state.phase === 'paused';

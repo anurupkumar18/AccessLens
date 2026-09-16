@@ -169,6 +169,21 @@ describe('InstructorPanel', () => {
     }
   });
 
+  it('unmounting while sharing ends the session rather than dropping it silently', async () => {
+    const { events, stream } = render();
+    await click('Start');
+    expect(events.map(e => e.type)).toEqual(['session.started']);
+    await act(async () => { root!.unmount(); root = null; });
+    expect(events.map(e => e.type)).toEqual(['session.started', 'capture.stopped', 'session.ended']);
+    expect(stream.stopped).toBe(true);
+  });
+
+  it('unmounting before Start emits nothing', async () => {
+    const { events } = render();
+    await act(async () => { root!.unmount(); root = null; });
+    expect(events).toEqual([]);
+  });
+
   it('sends a caption scoped to the current asset and clears the input', async () => {
     const { stream, scheduler, events } = render();
     await click('Start');
