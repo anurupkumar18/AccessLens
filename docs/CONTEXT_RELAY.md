@@ -554,3 +554,19 @@ the same merge it was written to describe — table rows collide silently
 (no git conflict) even when the log entries do conflict. Read `T-24` before
 adding a new thread ID by hand; check the table for the number, not just your
 own memory of what you last used.
+
+### RL-023 — 2026-09-16 — Part 2 — Jacob
+
+**Landed:** three follow-ups from live testing with the HNSW pack in Google
+Slides. `sources/screen/letterbox.ts` crops letterbox and pillarbox bars to
+the 16:9 slide region before fingerprinting (measured: a 4:3 tab pushed
+real slides into the ambiguity margin, a square tab matched the wrong slide;
+after the crop they sit within 4 bits). The student shell resolves the pack
+from the session's `packId`/`packVersion` instead of the instructor dropdown
+in that tab. The join code box is labelled and styled as the first thing a
+student does, and the header offers "Open in a full tab" when running as the
+extension.
+**Threads touched:** none opened or closed.
+**Next agent needs to know:** BroadcastChannel is origin-scoped. A side panel
+(`chrome-extension://`) and the Vite preview (`localhost`) cannot hear each
+other, so test both roles in the same origin until Part 4's relay exists.
