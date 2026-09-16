@@ -32,6 +32,7 @@ export const ALLOWED_EVENT_TYPES = [
   'caption.appended',
   'capture.paused',
   'capture.resumed',
+  'capture.stopped',
   'source.unmatched',
   'session.ended',
 ] as const;
@@ -72,7 +73,7 @@ export const KNOWN_FIELDS: ReadonlySet<string> = new Set([
 /**
  * Every event type is instructor-only. A student connection publishes nothing
  * at all -- mirroring INSTRUCTOR_ONLY_TYPES in the Python reference, which
- * likewise lists all eight.
+ * likewise lists every allowlisted lifecycle and view event.
  */
 export const INSTRUCTOR_ONLY_TYPES: ReadonlySet<string> = new Set(ALLOWED_EVENT_TYPES);
 

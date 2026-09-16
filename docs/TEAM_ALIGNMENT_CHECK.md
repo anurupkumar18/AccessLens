@@ -1,9 +1,8 @@
 # Team alignment check — read before you write another line of code
 
-**Status:** OPEN. Blocks further implementation until every contributor listed
-in section 5 has added a response. See `AGENTS.md` and `CLAUDE.md` for the
-hard-stop instruction that points here, and `docs/CONTEXT_RELAY.md` T-29 for
-the tracked thread.
+**Status:** OPEN. This is a discussion record and agenda for the team's next
+in-person meeting; it does not block scoped implementation against the current
+extension-first MVP. See `docs/CONTEXT_RELAY.md` T-29 for the tracked thread.
 
 **Why this file exists:** two internal critiques of this project were written
 on 2026-09-15 and never shared with anyone but the person who commissioned
@@ -12,15 +11,14 @@ other people who have since built real parts of this system. They contain a
 harsh, honest scorecard against the actual hackathon judging criteria this
 project is trying to win, plus real external research that changes how the
 pitch should be framed. Nobody can be on the same page about a document they
-have never seen. This file makes it visible, adds independent research on
-top of it, and requires everyone to actually engage with it — read it, answer
-the questions, and record an opinion — before the team invests more hours
-building without knowing if it's building the right thing.
+have never seen. This file makes it visible and adds independent research on
+top of it. The team will answer the questions and record a product decision
+together at the next in-person meeting; scoped work may continue in the
+meantime.
 
 If you are an agent (human-directed AI or otherwise) picking this repository
-up cold: **do not start or continue implementation work until you have added
-your own response in section 5.** If your owner's name is not yet filled in
-under Responses, stop and tell them this file exists.
+up cold: read this file for context before changing product direction or demo
+claims. Do not treat an absent individual response as a stop condition.
 
 ---
 
@@ -116,7 +114,7 @@ Everything above is calibrated against this team's own critique document, not
 a confirmed external rubric. **Whoever has the organizer's actual rubric
 should paste it into this file.**
 
-## 5. Questions — answer every one, in your own section below
+## 5. Meeting prompts — discuss each one in the team's own section below
 
 **Timeline & format:**
 1. How much actual time is left before judging, in hours?
@@ -148,25 +146,60 @@ should paste it into this file.**
 
 ## 6. Responses
 
-Copy this template into your own subsection. Sign it — a response with no
-name attached does not close this thread. Answer every question in section 5,
-even briefly, and add your own honest opinion of where the project actually
-stands — agreement with the scorecard above is not required, disagreement is
-useful data.
+Use this template for individual input before or during the meeting. Sign the
+response so the team can distinguish its source, answer the relevant prompts,
+and add an honest opinion of where the project stands — disagreement is useful
+data. The team resolves T-29 by recording its shared product-direction decision
+after the meeting, not by treating an absent individual response as a block.
 
 ### Anurup Kumar (Part 1)
 
-*(filled below)*
+**Signed:** Anurup Kumar — 2026-09-15
 
-**Answers to section 5:** See the questions above — I posed most of them; my
-own answers are context already established across this session's
-conversation, not repeated here to avoid duplicating this document with
-itself. My opinion: the scorecard in section 2 is my honest assessment, not a
-committee compromise. The two items I'd push hardest on before writing more
-code are #3 (measurable impact — cheapest fix, nothing done yet) and #7 (the
-`master`/integration-branch divergence — a real, silent risk that costs
-nothing to fix and could visibly embarrass the team if a judge or teammate
-clones the wrong branch).
+**Answers to section 5:**
+
+1. The working assumption is fewer than 24 hours before judging; I will confirm
+   the organiser's exact deadline rather than treating that assumption as fact.
+2. The team should prepare for both a live demo and a recorded fallback.
+3. There is no confirmed organiser requirement to show AWS, but the current
+   product story should use the deployed relay when available and state plainly
+   when a semantic-event replay is used.
+4. No relevant student or accessibility-professional review is recorded yet.
+5. Yes. Recruiting one reviewer for a short, consented formative session is a
+   priority this week.
+6. No completed, recorded evidence of the two timed rehearsals exists yet.
+7. No recorded fallback is confirmed yet; producing one is required before the
+   live demo is treated as reliable.
+8. Yes. I had seen both the critique and the revision document before this
+   alignment check; the other contributors had not been given the same context.
+9. The current working foundation is the extension-first, real-time MVP with
+   explicit capture, local matching, temporary semantic sync, and equivalent
+   student renderers including AR. The narrowed revision is an alternative to
+   evaluate, not an adopted replacement.
+10. The flagship runbook currently shows the approved `bio-cell-demo` pack,
+    not a visible Bedrock authoring run. The existing Bedrock script is real,
+    but that is insufficient judge evidence by itself.
+11. Do not put an unreliable authoring build into the three-minute core. If the
+    existing script runs reliably, use a separate 20–30 second recorded or
+    rehearsed proof of draft → review; otherwise keep it out of the live path.
+12. Yes. I knew of the critique, revision, and scoring gap; the team-alignment
+    problem was that the rest of the team had not been given the same material.
+13. Presenters are not yet finalized. Before rehearsal, the presenter(s) must
+    see the actual integrated product, fallback, known limits, and approved
+    claims—not only the plan.
+14. The immediate priority is reviewer evidence, real-device rehearsal,
+    recorded fallback, and controlled branch reconciliation. New
+    personalization, authoring, identity, and content-library work remains on
+    hold until the alignment responses are complete and the team explicitly
+    reprioritizes it.
+
+**My assessment:** the product has a materially stronger technical foundation
+than the original critique measured, but it has not yet earned an A-level demo
+or impact claim. The near-term path is to prove the live visual-reference
+moment with one real reviewer, two timed rehearsals, a fallback, and precise
+privacy-safe language. I support retaining the extension-first MVP as the
+default while the team evaluates the narrower revision together; no individual
+should silently choose between them through implementation.
 
 ### Jacob Erard (Part 2)
 

@@ -129,12 +129,12 @@ describe('InstructorPanel', () => {
     expect(events.at(-1)?.type).toBe('capture.resumed');
     expect(buttons()).toEqual(['Pause', 'Stop', 'End Session']);
     await click('Stop');
-    expect(events.at(-1)?.type).toBe('session.ended');
+    expect(events.at(-1)?.type).toBe('capture.stopped');
     expect(stream.stopped).toBe(true);
     expect(buttons()).toEqual(['Start', 'End Session']);
     expect(container!.textContent).toContain('JOIN42');
     await click('End Session');
-    expect(events.map(e => e.type)).toEqual(['session.started', 'capture.paused', 'capture.resumed', 'session.ended']);
+    expect(events.map(e => e.type)).toEqual(['session.started', 'capture.paused', 'capture.resumed', 'capture.stopped', 'session.ended']);
     expect(buttons()).toEqual([]);
     expect(status()).toMatch(/session ended/i);
   });
@@ -143,7 +143,7 @@ describe('InstructorPanel', () => {
     const { stream, events } = render();
     await click('Start');
     act(() => stream.endFromBrowser());
-    expect(events.map(e => e.type)).toEqual(['session.started', 'session.ended']);
+    expect(events.map(e => e.type)).toEqual(['session.started', 'capture.stopped']);
     expect(buttons()).toEqual(['Start', 'End Session']);
   });
 

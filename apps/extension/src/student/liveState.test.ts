@@ -59,6 +59,18 @@ describe('student live state', () => {
     });
   });
 
+  it('freezes the last reviewed state when capture stops without ending the session', () => {
+    const live = applyLiveEvent(initialStudentLiveState, validEvent, validPack);
+    const stopped = applyLiveEvent(live, { ...validEvent, type: 'capture.stopped', sequence: 2 } as LiveEvent, validPack);
+    expect(stopped).toMatchObject({
+      status: 'stopped',
+      assetId: 'cell-slide-03',
+      regionId: 'mitochondrion',
+      message: 'Instructor stopped sharing. Showing the last reviewed moment.',
+    });
+    expect(markLiveStateReconnected(stopped)).toBe(stopped);
+  });
+
   it('returns to live with the last reviewed region once the socket reconnects', () => {
     const live = applyLiveEvent(initialStudentLiveState, validEvent, validPack);
     const stale = markLiveStateStale(live);

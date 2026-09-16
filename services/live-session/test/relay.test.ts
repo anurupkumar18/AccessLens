@@ -203,6 +203,20 @@ describe('relay', () => {
     expect((await h.store.getSession(SESSION))?.status).toBe('closed');
   });
 
+  it('keeps a session open after capture.stopped and catches a late student up to that state', async () => {
+    await h.relay.create('instructor-1', SESSION);
+    await h.relay.publish('instructor-1', happy[0]!);
+    const stopped = { ...happy[0]!, type: 'capture.stopped', sequence: 2 };
+    expect(await h.relay.publish('instructor-1', stopped)).toMatchObject({ status: 'ok' });
+    expect((await h.store.getSession(SESSION))?.status).toBe('open');
+
+    await h.relay.join('late-student', SESSION, 'student');
+    expect(h.inbox.get('late-student')).toEqual([stopped]);
+
+    const resumed = { ...happy[0]!, type: 'session.started', sequence: 3 };
+    expect(await h.relay.publish('instructor-1', resumed)).toMatchObject({ status: 'ok' });
+  });
+
   it('stops delivery once a session has expired, even though the row survives', async () => {
     const start = new Date('2026-09-15T15:00:00Z');
     const afterTtl = new Date(start.getTime() + (SESSION_TTL_SECONDS + 60) * 1000);

@@ -1,19 +1,15 @@
 # AccessLens agent guide
 
-## STOP — mandatory team alignment check (as of 2026-09-16)
+## Team alignment context — review before product-direction work
 
-Before any further implementation work in this repository, read
-[`docs/TEAM_ALIGNMENT_CHECK.md`](docs/TEAM_ALIGNMENT_CHECK.md) in full and add
-a signed response in its Responses section. This is not optional and does
-not expire until every contributor listed there has responded. It contains a
-harsh, honest scorecard of this project against the hackathon's own judging
-criteria, external research that changes how the pitch should be framed, and
-a still-undecided product-direction question everyone needs to actually see.
+Read [`docs/TEAM_ALIGNMENT_CHECK.md`](docs/TEAM_ALIGNMENT_CHECK.md) before
+changing product direction, demo claims, privacy boundaries, or the active MVP
+scope. It is a visible scorecard and agenda for the team's next in-person
+meeting; it is **not an implementation block**. Contributors may keep making
+scoped progress against the current extension-first MVP tonight.
 
-If you are an agent picking this repository up and your owner's name is not
-already filled in under Responses in that file, stop and tell them this gate
-exists before writing code. This applies to every part, every session, human
-or AI.
+Do not silently choose the narrowed MVP revision or make new product claims
+from the document. Record any resulting decision after the team meeting.
 
 ## Read in this order
 

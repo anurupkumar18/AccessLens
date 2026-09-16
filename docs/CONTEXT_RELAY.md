@@ -57,7 +57,7 @@ during the build.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
+| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0050-stop-versus-end-session-lifecycle.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
@@ -112,10 +112,11 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-26 | The deployed endpoint has no authorizer on `$connect`: anyone who can reach the URL can create a session, and the session id is the only secret. Acceptable for a reviewed demo pack with no student data, and stated in `services/live-session/README.md`, but it must not be described as secure, and it is not a shape to carry into anything holding real course content. | Part 4 | Claims made about the demo | ACCEPTED | Deliberate scope call for the hackathon; `services/live-session/README.md` "What is not built" |
 | T-27 | `.github/workflows/check.yml` ran `npm ci` at the repo root only. `services/live-session` is its own package with its own lockfile (Part 4's `live-session-check` Makefile target says so explicitly), so CI has failed on every push since Part 4 merged (`0fba221` onward) with `Cannot find module '@aws-sdk/client-dynamodb'` -- the same shape of gap as T-08, in a new directory nobody updated the workflow for. | Part 1 | Everyone | CLOSED | Added `npm ci --prefix services/live-session` to the workflow; reproduced the failure locally first (`rm -rf services/live-session/node_modules && make check`), confirmed the fix the same way |
 | T-28 | `StudentExperience.tsx` marked the view "stale" after 15 seconds with no new event -- a content-silence guess standing in for a connection check. An instructor explaining one region for more than 15 seconds (normal pacing) produced a false "Connection interrupted," which is exactly what the team hit live-testing the real extension against the real relay. | Part 1 + Part 3 + Part 4 | Trust in the demo's own status indicator | CLOSED | `WebSocketSessionClient.onConnectionChange` (real socket open/close, additive to the frozen interface) threaded through `liveRelayClient.ts` to `StudentExperience.tsx`, replacing the timer. `markLiveStateReconnected` added as the stale->live counterpart. +9 tests across the four files (`services/live-session` 52 total, extension 259 total) |
-| T-29 | Two internal critiques of this project (a harsh criterion-by-criterion scorecard, and a proposed scope-narrowing revision responding to it) existed only on one person's machine, uncommitted, since 2026-09-15, and were never seen by any of the other four contributors. Nobody can be aligned on a decision they have never seen. Compounding it: the scorecard is now 24h stale against what's actually built, and needs updating with real external research before anyone acts on it. | All five parts | Any further implementation the team invests hours in | OPEN | `docs/TEAM_ALIGNMENT_CHECK.md` (now committed, with an updated scorecard, research citations, and a required response from every contributor); `AGENTS.md` and `CLAUDE.md` both hard-stop on it. Closes when every part listed in its Responses section has answered. |
+| T-29 | Two internal critiques of this project (a harsh criterion-by-criterion scorecard, and a proposed scope-narrowing revision responding to it) existed only on one person's machine, uncommitted, since 2026-09-15, and were never seen by any of the other four contributors. Nobody can be aligned on a decision they have never seen. Compounding it: the scorecard is now 24h stale against what's actually built, and needs updating with real external research before anyone acts on it. | All five parts | Tomorrow's in-person product-direction meeting | OPEN | `docs/TEAM_ALIGNMENT_CHECK.md` is now a non-blocking meeting agenda. Anurup has responded; Jacob, Kunj, Omar, and Prachi are invited to respond before or during the meeting. Scoped implementation against the current extension-first MVP may continue. |
+| T-30 | The agent-first delivery system is additive: ticket files, claims, immutable updates, generated context, and validation must not become a second mutable product or risk register. Its initial portfolio intentionally keeps current-MVP proof P0 and durable identity/content work deferred behind human decisions. | Part 1 | Agent handoffs and release evidence | OPEN | `docs/AGENT_OPERATING_CONTEXT.md`; `docs/work/`; `make work-board-check`; AL-090 is in review |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
-| T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
+| T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. Shared-contract second review and deployed-relay update remain before closure. |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | CLOSED | Pinned to 1 by the relay, matching Part 5's reference: `sequence: 0` is refused as `sequence-not-a-positive-integer` (`services/live-session/src/rules.ts`, asserted by the parity test). The shared Zod contract still permits 0, so a client can construct one — the relay is what refuses it |
 
 ---
@@ -736,3 +737,63 @@ work discussed this session (T-29 question 14) until this thread closes;
 it's real design but unbuilt, and the cheaper, higher-leverage fixes (one
 real user interview, the two rehearsals, the `master`/integration divergence)
 haven't happened yet either.
+
+### RL-029 — 2026-09-15 — Part 1 — Anurup Kumar
+
+**Landed:** Anurup's signed, complete response to the fourteen T-29 alignment
+questions is now recorded in `docs/TEAM_ALIGNMENT_CHECK.md`. It keeps the
+extension-first MVP as the working foundation, states the actual evidence gaps
+without claiming them solved, and explicitly holds new authoring/
+personalization work until the group decides together.
+**Threads touched:** T-29 remains OPEN; only Anurup has responded. Jacob,
+Kunj, Omar, and Prachi still need their own signed responses.
+**Next agent needs to know:** this response is not permission to implement the
+agent-first ticket system or any product feature. The mandatory gate closes
+only after every listed contributor responds.
+
+### RL-030 — 2026-09-15 — Part 1 — Anurup Kumar
+
+**Landed:** at the user's direction, removed the T-29 implementation block
+from `AGENTS.md`, `CLAUDE.md`, and `docs/TEAM_ALIGNMENT_CHECK.md`. The critique
+and signed response remain intact as a non-blocking agenda for tomorrow's
+in-person product-direction meeting.
+**Threads touched:** T-29 remains OPEN as a discussion thread, but no longer
+blocks scoped work on the current extension-first MVP.
+**Next agent needs to know:** read the alignment document before changing
+product direction, demo claims, privacy boundaries, or MVP scope; otherwise
+continue current scoped work and bring unresolved direction questions to the
+meeting.
+
+### RL-031 — 2026-09-16 — Part 1 — Codex
+
+**Landed:** agent-first delivery system for the current extension-first MVP:
+`docs/AGENT_OPERATING_CONTEXT.md`, the live-meaning decision and demo contract,
+canonical ticket files, claims, immutable updates, generated board/context tools,
+and checker tests now live under `docs/work/`, `scripts/`, and `tests/work/`.
+`make check` runs the delivery-board gate. The first workable P0 tickets are
+AL-001 capture matrix, AL-003 stop-versus-end lifecycle, and AL-006 mentor kit;
+durable identity/content tickets remain deferred or dependency-blocked.
+**Threads touched:** T-29 stays OPEN and non-blocking; T-30 opened to keep the
+new system additive and its human decision boundaries visible.
+**Next agent needs to know:** run `make agent-context` after pulling, claim one
+READY ticket with a claim and immutable update, and do not use T-29's open meeting
+agenda to adopt the alternate MVP, change privacy rules, or overstate demo proof.
+
+### RL-032 — 2026-09-16 — cross-cutting — Codex
+
+**Landed:** local AL-003/T-21 implementation now distinguishes stopped capture from an
+ended temporary session. The additive base-only `capture.stopped` event flows
+through the extension contract, JSON Schema, pack reference validator and
+simulator, instructor controller, student state, relay validator, and relay
+latest-state behavior. Stop releases local capture and freezes the student's
+last trusted reviewed state with an explicit non-live message; the same join
+code may later receive `session.started`. Only `session.ended` closes delivery.
+No raw screen/camera media, student preference, identity, or persistent field
+was added.
+**Threads touched:** T-21 is IN PROGRESS, not CLOSED: local checks are green,
+but a second shared-contract review and an authorized relay deployment are still
+required before calling this live-AWS behavior.
+**Next agent needs to know:** review AL-003's contract delta and checkpoint,
+then build and deploy `services/live-session` before running the updated
+real-device capture matrix. `memory/episodic/0050-stop-versus-end-session-lifecycle.md`
+has the precise behavior and verification record.

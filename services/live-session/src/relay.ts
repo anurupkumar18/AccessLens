@@ -21,8 +21,17 @@ import {
 import type { SessionStoreApi } from './records.js';
 import { log, logEvent } from './log.js';
 
-/** Events that carry a view a reconnecting student needs to be caught up to. */
-const VIEW_BEARING = new Set(['asset.changed', 'region.changed', 'source.unmatched']);
+/** Events that establish the current student-visible lifecycle or reviewed view.
+ * The relay holds only one latest event, never capture media or session history. */
+const VIEW_BEARING = new Set([
+  'session.started',
+  'asset.changed',
+  'region.changed',
+  'capture.paused',
+  'capture.resumed',
+  'capture.stopped',
+  'source.unmatched',
+]);
 
 export interface RelayConfig {
   store: SessionStoreApi;
@@ -205,9 +214,9 @@ export class Relay {
 
     logEvent('info', 'event-relayed', event, { delivered });
 
-    // `session.ended` is the instructor saying the lesson is over. Honour it
-    // here rather than waiting for an explicit close message, so that stopping
-    // capture stops delivery even if the client never sends `close`.
+    // `session.ended` is terminal. `capture.stopped` is deliberately not: it
+    // freezes student views while leaving this temporary session available for
+    // a fresh, explicit browser capture on the same join code.
     if (event.type === 'session.ended') await this.config.store.closeSession(sessionId);
 
     return { status: 'ok', delivered };
