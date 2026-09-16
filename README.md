@@ -27,15 +27,35 @@ Students do not need a camera for the core experience. Camera recognition is a
 future, opt-in fallback for content that cannot be screen-shared, such as laboratory
 equipment, specimens, studio work, field observations, and physical demonstrations.
 
-## Current status
+## Current status: live on AWS
 
-The repository has been reset around AccessLens. The product contract, system
-design, technical stack, research basis, implementation plan, and demo runbook are
-documented. The reviewed `bio-cell-demo` Access Pack, its AR cell model, and the event-sequence
-simulator the other workstreams test against are implemented and checked by
-`make check`. The browser extension and AWS session service are the next
-engineering slices; production Canvas integration and camera mode are not
-implemented.
+As of 2026-09-16, on the `ui/blacksmith-revamp` branch, AccessLens runs end to end
+against the hackathon AWS account (stack `AccessLensLiveSession`, `us-east-1`):
+
+- **Live sessions.** The instructor starts a session and students join with a
+  code and follow along in order, over an API Gateway WebSocket relay (Lambda,
+  DynamoDB). Checked against the deployed relay by
+  `services/live-session/scripts/integration-test.mjs`.
+- **Instructor extension.** Shares a tab, a window, or the whole screen,
+  recognizes slides from the reviewed `bio-cell-demo` Access Pack (including
+  inside window and screen shares), and says so instead of guessing when a slide
+  is not in the pack.
+- **Student extension.** Focus, Read, Hear, and AR modes, a light/dark theme, and
+  a dyslexia-friendly text switch.
+- **AI on AWS** (`services/ai-gateway`). Checked against the deployed routes by
+  `services/ai-gateway/scripts/smoke-test.ts`:
+  - *Ask this class:* Claude Sonnet 4.6 on Amazon Bedrock answers only from the
+    reviewed pack, cites the regions it used, and declines anything else.
+  - *Hear:* Amazon Polly reads the reviewed descriptions aloud.
+  - *Live captions:* Amazon Transcribe, off until the instructor opts in beside
+    a consent notice. Students receive text only, and when the instructor names
+    a region, students move to it.
+
+Not yet: packs beyond `bio-cell-demo` (a slide must be in a reviewed pack to be
+recognized), production Canvas integration, and camera mode. Sending instructor
+audio to Transcribe needs a second reviewer before merge (T-31 in
+[the context relay](docs/CONTEXT_RELAY.md)). Endpoints come from the stack
+outputs; see [the AI gateway README](services/ai-gateway/README.md) to run it.
 
 ## Start here
 
