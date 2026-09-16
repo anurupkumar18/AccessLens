@@ -381,7 +381,10 @@ input[type='range'] { accent-color: var(--ink); }
 .student-content { max-width: 72ch; }
 .student-experience.width-narrow .student-content { max-width: 48ch; }
 .student-experience.width-wide .student-content { max-width: none; }
-.student-experience.high-contrast {
+/* Shared by both student-facing surfaces so a preference set in Live lesson
+   has the same effect in Review (`.review-experience.high-contrast` had no
+   rule at all until this pass -- the preference was silently inert there). */
+.student-experience.high-contrast, .review-experience.high-contrast {
   --ink: #000;
   --paper: #fff;
   --card: #fff;
@@ -390,6 +393,18 @@ input[type='range'] { accent-color: var(--ink); }
   --line-strong: #000;
   --focus: #000;
   color-scheme: light;
+  /* `color`/`background` are inherited properties resolved once where they
+     are declared (`:root`/`body`) and passed down as computed pixel values,
+     not as live var() references. Overriding the custom properties here does
+     nothing for a descendant that never redeclares `color: var(--ink)`
+     itself -- it just keeps inheriting whatever :root already resolved to
+     (dark mode's #f2f2f2 on this element's own #fff background: ~1.1:1,
+     found by running axe-core with color-contrast enabled in a real
+     browser, which jsdom cannot compute). Redeclaring both here re-anchors
+     inheritance for every descendant that relies on inheritance rather than
+     its own var(--ink)/var(--paper). */
+  color: var(--ink);
+  background: var(--paper);
 }
 .student-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .student-heading h2 { margin: 0; }

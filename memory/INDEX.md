@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0069-fix-inert-and-inverted-high-contrast.md` (Part 1/accessibility: real-browser axe-core found "Higher contrast" was inverted in dark mode and inert on Review; fixed with a static regression guard)
 - `episodic/0068-end-session-on-instructor-panel-unmount.md` (Part 1/sharing bug: instructor panel unmount now ends the session instead of leaving students silently stale, fixing what RL-016 had only documented)
 - `episodic/0067-server-side-caption-shape-validation.md` (Part 1/security: relay now validates caption shape/bounds server-side, closing a gap security review found in AL-048/AL-049)
 - `episodic/0066-caption-instructor-input-student-display.md` (Part 1/live captions: instructor input and student rolling transcript wired to AL-048's payload; device QA remains open)

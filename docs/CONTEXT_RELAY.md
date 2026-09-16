@@ -57,7 +57,7 @@ during the build.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, AL-049's caption instructor input/student display, AL-050's server-side caption shape validation, and AL-051's honest session-end-on-unmount fix are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
+| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, AL-049's caption instructor input/student display, AL-050's server-side caption shape validation, AL-051's honest session-end-on-unmount fix, and AL-052's high-contrast fix are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
@@ -1120,3 +1120,32 @@ separate `App` instances sharing one client rather than toggling role in a
 single tab, which is also a more faithful stand-in for two real devices.
 `memory/episodic/0068-end-session-on-instructor-panel-unmount.md` has the
 full before/after.
+
+### RL-051 — 2026-09-16 — Part 1 / accessibility — Codex
+
+**Landed:** AL-052. Did what the jsdom-based unit suite structurally cannot:
+loaded the real built `dist/` in the browser preview, injected `axe-core` via
+CDN, and ran it with `color-contrast` enabled (unit tests disable that rule
+since jsdom can't compute real layout/contrast). Found two real bugs in the
+"Higher contrast" preference. In dark mode on Live lesson it produced
+**1.11:1** contrast (`#f2f2f2` on `#fff`) -- worse than off. On Review it had
+**zero effect** -- `.review-experience.high-contrast` had no matching CSS
+rule at all. Root cause for both: `color`/`background` are inherited
+properties resolved once where declared and passed down as computed pixel
+values, not live `var()` references -- overriding the `--ink`/`--paper`
+custom properties alone does nothing for a descendant that relies on
+inheritance rather than its own `color: var(--ink)`. Fixed by combining both
+surfaces under one rule that explicitly redeclares `color`/`background`, and
+added `apps/extension/src/style.test.ts`, a static guard proven able to fail
+via a real mutation (reverted the fix, confirmed both assertions failed with
+the exact bug shape, restored it).
+**Threads touched:** none new.
+**Next agent needs to know:** worth remembering as a general lesson -- the
+existing jsdom test suite deliberately disables `color-contrast` and cannot
+compute real cascade, so this class of bug is invisible to it no matter how
+much coverage is added there; a real-browser pass is the only way to catch
+it. If you add another color-scheme-scoped CSS override
+anywhere, redeclare `color`/`background` explicitly on that scope, not just
+the custom properties -- `style.test.ts` only guards the two instances found
+today. `memory/episodic/0069-fix-inert-and-inverted-high-contrast.md` has
+the full diagnosis.
