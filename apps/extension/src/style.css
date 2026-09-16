@@ -140,11 +140,10 @@ input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--acce
 [role="tabpanel"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .mode-panel { margin-top: .75rem; }
 .active-concept { display: flex; flex-direction: column; gap: .2rem; padding: .75rem; border-radius: .55rem; background: var(--surface-2); }
-.focus-diagram { display: grid; min-height: 230px; place-items: center; overflow: hidden; border-radius: .65rem; background: radial-gradient(circle at 50% 30%, #233a68, #0d1729); }
-.cell-membrane { position: relative; width: 190px; height: 150px; border: 6px solid #73d4c3; border-radius: 50%; background: rgba(115, 212, 195, .18); }
-.cell-nucleus { position: absolute; top: 45px; left: 55px; width: 58px; height: 58px; border-radius: 50%; background: #9d84e8; }
-.cell-mitochondrion { position: absolute; right: 28px; bottom: 30px; width: 55px; height: 26px; border-radius: 50%; background: #f28b50; transform: rotate(-24deg); }
-.cell-mitochondrion.active { outline: 5px solid var(--focus); outline-offset: 4px; }
+.slide-figure { position: relative; margin: 0; border-radius: .65rem; overflow: hidden; background: #000; border: 1px solid var(--border, #2a3550); }
+.slide-image { display: block; width: 100%; height: auto; }
+.region-highlight { position: absolute; box-sizing: border-box; border: 3px solid var(--focus); border-radius: 4px; box-shadow: 0 0 0 200vmax rgba(9, 13, 24, .55); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { .region-highlight { transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; } }
 .ar-view { background: var(--surface); }
 .ar-canvas { min-height: 280px; overflow: hidden; border-radius: .75rem; background: radial-gradient(circle at 50% 25%, #28487a, #091221 70%); }
 .ar-canvas canvas { display: block; width: 100%; height: 280px; cursor: grab; }

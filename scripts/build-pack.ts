@@ -157,7 +157,7 @@ for (const file of slideFiles) {
   }
   const png = PNG.sync.read(readFileSync(join(slidesDir, file)));
   const fingerprint = fingerprintFrame({ width: png.width, height: png.height, data: new Uint8ClampedArray(png.data.buffer, png.data.byteOffset, png.data.length) });
-  assets.push({ assetId, fingerprint, title: draft.title, readingOrder: draft.readingOrder, regions: draft.regions });
+  assets.push({ assetId, mediaUri: `slides/${assetId}.png`, fingerprint, title: draft.title, readingOrder: draft.readingOrder, regions: draft.regions });
   console.error(`  ${fingerprint}  ${draft.title}`);
 }
 
