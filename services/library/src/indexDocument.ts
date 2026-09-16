@@ -29,10 +29,12 @@ export async function indexDocument(input: IndexDocumentInput, deps: IndexDocume
   try {
     await deps.update({ docId: input.docId, status: 'extracting', stage });
     const extracted = await extractStage({ path: input.path }, { extractPages: deps.extractPages });
-    await deps.update({ docId: input.docId, pages: extracted.pageCount, status: 'chunking', stage: 'chunk' });
+    stage = 'chunk';
+    await deps.update({ docId: input.docId, pages: extracted.pageCount, status: 'chunking', stage });
 
     const chunked = await chunkStage({ pages: extracted.pages, docId: input.docId });
-    await deps.update({ docId: input.docId, chunks: chunked.chunks.length, status: 'embedding', stage: 'embed' });
+    stage = 'embed';
+    await deps.update({ docId: input.docId, chunks: chunked.chunks.length, status: 'embedding', stage });
     await embedStage({ ...input, chunks: chunked.chunks }, { embed: deps.embed, vectors: deps.vectors, chunks: deps.chunks });
 
     stage = 'verify';
