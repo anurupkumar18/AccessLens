@@ -196,17 +196,24 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       const openedHere = sessionId === null;
       const id = sessionId ?? ids.sessionId();
       try {
+        // Start the browser picker before awaiting network/session work. Browser
+        // display capture requires this direct causal link to the Start click;
+        // otherwise Chrome can reject window or display capture after the
+        // transient user activation expires.
+        const streamPromise = host.requestStream();
         if (openedHere) {
           try {
             await client.create(id);
           } catch {
+            const granted = await streamPromise.catch(() => null);
+            granted?.stop();
             phase = 'idle';
             message = 'Could not open a session. Check the connection and try Start again.';
             notify();
             return;
           }
         }
-        const granted = await host.requestStream();
+        const granted = await streamPromise;
         sessionId = id;
         stream = granted;
         unsubscribeEnded = granted.onEnded(() => endSharing());

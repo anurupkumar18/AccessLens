@@ -45,6 +45,33 @@ describe('capture controller: start and permission flow (A1, A3)', () => {
     expect(controller.getState()).toMatchObject({ phase: 'sharing', sessionId: 'sess-1' });
   });
 
+  it('opens the browser chooser before awaiting session creation so window and display capture retain user activation', async () => {
+    const host = new FakeCaptureHost();
+    const client = new InMemorySessionClient();
+    const order: string[] = [];
+    const originalCreate = client.create.bind(client);
+    const originalRequest = host.requestStream.bind(host);
+    client.create = async (sessionId: string) => { order.push('create'); return originalCreate(sessionId); };
+    host.requestStream = async () => { order.push('requestStream'); return originalRequest(); };
+    const controller = createCaptureController({ client, pack, host, scheduler: new FakeScheduler(), ids: fixedIds('sess-gesture') });
+
+    await controller.start();
+
+    expect(order).toEqual(['requestStream', 'create']);
+  });
+
+  it('stops an already-granted stream when session creation fails', async () => {
+    const host = new FakeCaptureHost();
+    const client = new InMemorySessionClient();
+    client.create = async () => { throw new Error('relay unavailable'); };
+    const controller = createCaptureController({ client, pack, host, scheduler: new FakeScheduler(), ids: fixedIds('sess-failed-create') });
+
+    await controller.start();
+
+    expect(host.stream.calls).toContain('stop');
+    expect(controller.getState()).toMatchObject({ phase: 'idle', message: 'Could not open a session. Check the connection and try Start again.' });
+  });
+
   it('a denied chooser emits nothing, returns to idle with an explanation, and still called requestStream once', async () => {
     const { controller, host, events } = setup(FakeCaptureHost.denied());
     await controller.start();
