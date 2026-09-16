@@ -34,6 +34,11 @@ export const AccessPackSchema = z.object({
 const LiveEventBase = { schemaVersion:z.literal('1.0'), sessionId:z.string().min(1), packId:z.string().min(1), packVersion:z.number().int().positive(), sequence:z.number().int().nonnegative(), sentAt:z.string().datetime() };
 const Pointer = z.object({x:z.number().min(0).max(1),y:z.number().min(0).max(1)});
 const ArState = z.object({hotspotId:z.string().min(1), action:z.enum(['focus','highlight','clear'])});
+// Bounded instructor speech, scoped to the asset it was said about (T-16).
+// `isFinal` distinguishes a settled line from one a producer may still revise,
+// mirroring how streaming captions are usually produced; this contract does
+// not require streaming, only tolerates a producer that does it.
+const Caption = z.object({ text:z.string().min(1).max(280), isFinal:z.boolean() }).strict();
 
 // Per-type field matrix: only asset.changed and region.changed may name an
 // asset/region. Every other type -- including source.unmatched -- is
@@ -43,7 +48,7 @@ export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ ...LiveEventBase, type:z.literal('asset.changed'), assetId:z.string().min(1) }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('region.changed'), assetId:z.string().min(1), regionId:z.string().min(1), pointer:Pointer.optional(), arState:ArState.optional() }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('session.started') }).strict(),
-  z.object({ ...LiveEventBase, type:z.literal('caption.appended') }).strict(),
+  z.object({ ...LiveEventBase, type:z.literal('caption.appended'), assetId:z.string().min(1), caption:Caption }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.paused') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.resumed') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.stopped') }).strict(),

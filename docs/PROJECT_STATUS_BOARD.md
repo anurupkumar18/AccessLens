@@ -22,6 +22,7 @@ agent has silently claimed it.
 | Explicit tab/window/display capture | Codex (QA integration); Jacob (capture foundation) | **Ready for QA** | `0347ad9` preserves browser activation, waits for instructor grant before session creation, and cleans up failed creation. | Run the Windows matrix; categorize any observed failure as AL-002. |
 | Reviewed matching, correction, pause/stop/restart | Jacob Erard | **Ready for QA** | Part 2 capture/matcher/correction code and fixtures are merged. | Exercise against a clean unpacked extension and real source changes. |
 | Instructor reviewed focus pointer | Codex | **Ready for QA** | AL-041 sends the existing semantic pointer field from reviewed region bounds and Focus renders an explicit marker. | Verify a clean unpacked extension and two-device path; preserve Read/Hear/AR equivalence. |
+| Live caption contract | Codex | **Building** | AL-048 widens `caption.appended` to carry a bounded instructor caption (`assetId` + `caption:{text,isFinal}`), closing T-16. No relay change needed; no UI wired to it yet. | Wire an instructor caption input and a student caption display behind the existing `captionsEnabled` preference. |
 | Two student live experience and AR equivalent | Prachi Aswani | **Ready for QA** | Student/AR route is merged; local reading preferences added in `2427b1d`. | Keyboard, screen-reader, side-panel, and two-device QA. |
 | Student self-paced Review route | Codex | **Ready for QA** | AL-040 renders a distinct non-live reviewed-pack route with Focus/Read/Hear/available AR views and local bookmarks. | Verify unpacked-extension navigation, bookmark reload, and narrow side-panel behavior. |
 | Explicit local Review progress | Codex | **Ready for QA** | AL-043 provides an explicit, pack-scoped local concept marker and a private non-grade count. | Verify reload/keyboard behavior; do not infer activity, score, or send progress. |
@@ -37,8 +38,8 @@ agent has silently claimed it.
 
 ## Build order: features first, integration later
 
-1. **Build now:** AL-040 Review route from the reviewed pack; then independent
-   focus pointer/caption presentation work once it has an owner.
+1. **Build now:** AL-040 Review route from the reviewed pack; focus pointer done
+   (AL-041); caption contract done (AL-048), caption UI presentation next.
 2. **Build after human policy approval:** Canvas provider seam, Bedrock gateway,
    anonymous context export, and camera source adapter.
 3. **Integrate in one or two passes:** Windows capture matrix, deployed lifecycle

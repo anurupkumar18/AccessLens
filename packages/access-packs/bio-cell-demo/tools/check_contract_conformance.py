@@ -48,12 +48,6 @@ EXPECTED_GAPS = {
     "AccessPack:additional-property:matching",
     "AccessPack:additional-property:arCameras",
     "AccessPack:additional-property:reservedReadingOrderIds",
-    # --- Events: caption.appended cannot carry a caption --------------------
-    # The type is base-only in the contract, so neither the caption text nor
-    # the asset it belongs to can be sent. Kept in the fixtures rather than
-    # worked around, because a caption event with no caption is not a design.
-    "LiveEvent:additional-property:caption",
-    "LiveEvent:forbidden-property:assetId",
 }
 
 
@@ -70,7 +64,7 @@ SUPPORTED_KEYWORDS = {
     "$schema", "title", "description",
     "type", "const", "enum", "format",
     "required", "properties", "additionalProperties",
-    "items", "minItems", "minLength", "minimum", "maximum",
+    "items", "minItems", "minLength", "maxLength", "minimum", "maximum",
     "allOf", "if", "then",
 }
 
@@ -140,6 +134,8 @@ def _check(instance: object, schema: object, path: str) -> list[tuple[str, str]]
         gaps.append(("not-in-enum", where))
     if isinstance(instance, str) and len(instance) < schema.get("minLength", 0):
         gaps.append(("too-short", where))
+    if isinstance(instance, str) and "maxLength" in schema and len(instance) > schema["maxLength"]:
+        gaps.append(("too-long", where))
     if isinstance(instance, (int, float)) and not isinstance(instance, bool):
         if "minimum" in schema and instance < schema["minimum"]:
             gaps.append(("below-minimum", where))

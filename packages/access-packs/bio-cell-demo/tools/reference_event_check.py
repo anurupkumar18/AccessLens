@@ -30,10 +30,11 @@ ALLOWED_EVENT_TYPES = (
 
 REQUIRED_FIELDS = ("schemaVersion", "type", "sessionId", "packId", "packVersion", "sequence", "sentAt")
 
-# Mirrors the field matrix in packages/contracts/live-event.schema.json. The one
-# addition is `caption`: `caption.appended` is base-only in the shared contract,
-# so a caption event cannot currently carry a caption. That is tracked as a
-# contract gap rather than worked around -- see docs/PART5_CONTRACT_CONFORMANCE.md.
+# Mirrors the field matrix in packages/contracts/live-event.schema.json. This
+# flat allowlist does not enforce which type may carry which field -- that
+# per-type matrix lives in the JSON Schema/Zod contract and is checked there;
+# this list only decides whether a field name is known at all (T-16, closed:
+# `caption.appended` now carries `assetId` and `caption: {text, isFinal}`).
 KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "assetId",
     "regionId",

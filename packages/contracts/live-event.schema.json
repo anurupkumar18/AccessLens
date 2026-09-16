@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LiveEvent",
-  "description": "Per-type field matrix mirroring apps/extension/src/shared/contracts.ts LiveEventSchema. Only asset.changed and region.changed may name an asset/region; every other type -- including source.unmatched -- is base-only, so an unmatched source can never be reported alongside an invented assetId.",
+  "description": "Per-type field matrix mirroring apps/extension/src/shared/contracts.ts LiveEventSchema. Only asset.changed and region.changed may name a region; asset.changed, region.changed, and caption.appended may name an assetId, and every other type -- including source.unmatched -- is base-only, so an unmatched source can never be reported alongside an invented assetId. caption.appended must carry a bounded, instructor-authored caption object scoped to the current assetId (T-16); it is a semantic aid, never raw audio or an automatic transcript.",
   "type": "object",
   "required": ["schemaVersion", "type", "sessionId", "packId", "packVersion", "sequence", "sentAt"],
   "properties": {
@@ -33,6 +33,15 @@
         "hotspotId": { "type": "string", "minLength": 1 },
         "action": { "enum": ["focus", "highlight", "clear"] }
       }
+    },
+    "caption": {
+      "type": "object",
+      "required": ["text", "isFinal"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 280 },
+        "isFinal": { "type": "boolean" }
+      }
     }
   },
   "allOf": [
@@ -40,23 +49,31 @@
       "if": { "properties": { "type": { "const": "asset.changed" } } },
       "then": {
         "required": ["assetId"],
-        "properties": { "regionId": false, "pointer": false, "arState": false }
+        "properties": { "regionId": false, "pointer": false, "arState": false, "caption": false }
       }
     },
     {
       "if": { "properties": { "type": { "const": "region.changed" } } },
       "then": {
-        "required": ["assetId", "regionId"]
+        "required": ["assetId", "regionId"],
+        "properties": { "caption": false }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "caption.appended" } } },
+      "then": {
+        "required": ["assetId", "caption"],
+        "properties": { "regionId": false, "pointer": false, "arState": false }
       }
     },
     {
       "if": {
         "properties": {
-          "type": { "enum": ["session.started", "caption.appended", "capture.paused", "capture.resumed", "capture.stopped", "source.unmatched", "session.ended"] }
+          "type": { "enum": ["session.started", "capture.paused", "capture.resumed", "capture.stopped", "source.unmatched", "session.ended"] }
         }
       },
       "then": {
-        "properties": { "assetId": false, "regionId": false, "pointer": false, "arState": false }
+        "properties": { "assetId": false, "regionId": false, "pointer": false, "arState": false, "caption": false }
       }
     }
   ],

@@ -39,14 +39,14 @@ describe('AccessLens contracts',()=>{
       expect(LiveEventSchema.safeParse({...base, type:'region.changed', regionId:'mitochondrion'}).success).toBe(false);
     });
 
-    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
+    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
       'accepts base-only fields for %s',
       (type) => {
         expect(LiveEventSchema.safeParse({...base, type}).success).toBe(true);
       }
     );
 
-    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
+    it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
       'rejects %s carrying an assetId',
       (type) => {
         expect(LiveEventSchema.safeParse({...base, type, assetId:'cell-slide-03'}).success).toBe(false);
@@ -56,6 +56,30 @@ describe('AccessLens contracts',()=>{
     it('rejects source.unmatched carrying a regionId or pointer, never inventing a match', () => {
       expect(LiveEventSchema.safeParse({...base, type:'source.unmatched', regionId:'mitochondrion'}).success).toBe(false);
       expect(LiveEventSchema.safeParse({...base, type:'source.unmatched', pointer:{x:.1,y:.1}}).success).toBe(false);
+    });
+
+    it('accepts caption.appended scoped to an assetId with a bounded instructor-authored caption', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'Backside attack on the electrophile.', isFinal:true}}).success).toBe(true);
+    });
+
+    it('rejects caption.appended missing a caption, never a silent empty caption', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03'}).success).toBe(false);
+    });
+
+    it('rejects caption.appended missing an assetId', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{text:'x', isFinal:true}}).success).toBe(false);
+    });
+
+    it('rejects caption.appended carrying a pointer or arState', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x', isFinal:true}, pointer:{x:.1,y:.1}}).success).toBe(false);
+    });
+
+    it('rejects a caption text over 280 characters', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(281), isFinal:true}}).success).toBe(false);
+    });
+
+    it('rejects a non-caption type carrying a caption field', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'session.started', caption:'x'}).success).toBe(false);
     });
   });
 

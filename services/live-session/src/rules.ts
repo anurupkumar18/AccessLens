@@ -50,11 +50,10 @@ export const REQUIRED_FIELDS = [
 /**
  * Mirrors KNOWN_FIELDS in reference_event_check.py, `caption` included.
  *
- * `caption` is accepted here for the same reason Part 5 accepts it:
- * `caption.appended` is base-only in the shared contract, so a caption event
- * cannot yet carry its caption (T-16). Keeping the field known rather than
- * rejecting it means the relay does not become the reason captions are
- * impossible; the day T-16 closes, this list already agrees.
+ * T-16 closed: `caption.appended` now carries `assetId` and a
+ * `caption: {text, isFinal}` object in the shared Zod/JSON Schema contract.
+ * This flat allowlist did not need a code change for that -- it already
+ * accepted `caption` by name in anticipation, same as Part 5's reference.
  *
  * Anything *not* in this set is refused by name. That is what makes
  * `frameData`, `studentId`, and `masteryEstimate` bounce: not a blocklist of
