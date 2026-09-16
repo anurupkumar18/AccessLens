@@ -35,26 +35,17 @@ FIXTURES = PACK_ROOT / "fixtures"
 # Every incompatibility known when this check was written, as
 # "<schema>:<kind>:<detail>". Anything outside this set is a new break and
 # fails. See docs/PART5_CONTRACT_CONFORMANCE.md for why each one is here.
-EXPECTED_GAPS = {
-    # --- Pack: reviewed content the schema does not model yet ---------------
-    # The most serious of these is `arScene`. AR is a required student renderer
-    # (charter A10, task A12) and the pack schema currently forbids the pack
-    # from carrying the AR scene at all.
-    "AccessPack:additional-property:assets[].arScene",
-    "AccessPack:additional-property:assets[].mediaUri",
-    "AccessPack:additional-property:assets[].subtitle",
-    "AccessPack:additional-property:assets[].regions[].label",
-    "AccessPack:additional-property:review",
-    "AccessPack:additional-property:matching",
-    "AccessPack:additional-property:arCameras",
-    "AccessPack:additional-property:reservedReadingOrderIds",
-    # --- Events: caption.appended cannot carry a caption --------------------
-    # The type is base-only in the contract, so neither the caption text nor
-    # the asset it belongs to can be sent. Kept in the fixtures rather than
-    # worked around, because a caption event with no caption is not a design.
-    "LiveEvent:additional-property:caption",
-    "LiveEvent:forbidden-property:assetId",
-}
+EXPECTED_GAPS: set[str] = set()
+# Every gap this file used to track is now closed.
+#
+# The pack-level ones closed when Part 1 widened `access-pack.schema.json`
+# (T-05) -- including `arScene`, which had been the serious one: AR is a
+# required renderer and the schema had made it impossible for a pack to carry
+# the scene. The event-level ones closed with T-16, which gave
+# `caption.appended` the payload it had always lacked.
+#
+# An empty set is the point of this check, not the end of it: anything that
+# appears here now is a new incompatibility and fails.
 
 
 
@@ -70,7 +61,7 @@ SUPPORTED_KEYWORDS = {
     "$schema", "title", "description",
     "type", "const", "enum", "format",
     "required", "properties", "additionalProperties",
-    "items", "minItems", "minLength", "minimum", "maximum",
+    "items", "minItems", "minLength", "maxLength", "minimum", "maximum",
     "allOf", "if", "then",
 }
 
@@ -140,6 +131,8 @@ def _check(instance: object, schema: object, path: str) -> list[tuple[str, str]]
         gaps.append(("not-in-enum", where))
     if isinstance(instance, str) and len(instance) < schema.get("minLength", 0):
         gaps.append(("too-short", where))
+    if isinstance(instance, str) and "maxLength" in schema and len(instance) > schema["maxLength"]:
+        gaps.append(("too-long", where))
     if isinstance(instance, (int, float)) and not isinstance(instance, bool):
         if "minimum" in schema and instance < schema["minimum"]:
             gaps.append(("below-minimum", where))

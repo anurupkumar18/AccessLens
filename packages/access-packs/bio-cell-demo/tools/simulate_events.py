@@ -240,7 +240,10 @@ def scenario_captions(pack: dict) -> tuple[Builder, list[str]]:
         "The mitochondrion is where most of the cell's usable energy is released.",
         "Notice the folded inner membrane; the folds increase the surface area.",
     ):
-        builder.emit("caption.appended", assetId="cell-slide-03", caption={"text": text, "isFinal": True})
+        # No assetId: the contract makes caption.appended base-only plus its
+        # payload, because a caption is speech about the moment, not a claim
+        # about which reviewed asset is on screen.
+        builder.emit("caption.appended", caption={"text": text, "isFinal": True})
     builder.emit("session.ended")
     return builder, [
         "Captions are additive; they never replace the reviewed region description.",

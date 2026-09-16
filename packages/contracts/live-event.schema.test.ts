@@ -30,12 +30,25 @@ describe('live-event.schema.json contract matrix', () => {
     expect(validate({...base, type:'region.changed', assetId:'cell-slide-03'})).toBe(false);
   });
 
-  it.each(['session.started','capture.paused','capture.resumed','caption.appended','session.ended','source.unmatched'])(
+  it.each(['session.started','capture.paused','capture.resumed','session.ended','source.unmatched'])(
     'accepts base-only fields for %s',
     (type) => {
       expect(validate({...base, type})).toBe(true);
     }
   );
+
+  // T-16: caption.appended used to sit in the list above, which is precisely
+  // why a caption event could not carry a caption. It now requires one.
+  it('requires a caption payload on caption.appended', () => {
+    expect(validate({...base, type:'caption.appended'})).toBe(false);
+    expect(validate({...base, type:'caption.appended', caption:{text:'hello', isFinal:true}})).toBe(true);
+    expect(validate({...base, type:'caption.appended', caption:{text:'hi', isFinal:false, lang:'es'}})).toBe(true);
+  });
+
+  it('rejects a caption payload on any other event type', () => {
+    expect(validate({...base, type:'session.started', caption:{text:'x', isFinal:true}})).toBe(false);
+    expect(validate({...base, type:'region.changed', assetId:'a', regionId:'r', caption:{text:'x', isFinal:true}})).toBe(false);
+  });
 
   it.each(['session.started','capture.paused','capture.resumed','caption.appended','session.ended','source.unmatched'])(
     'rejects %s carrying an assetId, never inventing a match',
