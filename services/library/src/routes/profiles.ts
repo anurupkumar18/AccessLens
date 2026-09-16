@@ -88,7 +88,7 @@ export async function searchProfile(input: SearchProfileInput, deps: LibraryRout
     ...(input.kind ? { kind: input.kind } : {}),
     ...(input.docId ? { docId: input.docId } : {}),
   });
-  return { query: input.query, hits: hits as SearchHit[] };
+  return { query: input.query, hits };
 }
 
 async function removeDocumentStorage(document: DocumentRecord, deps: LibraryRouteDeps): Promise<void> {

@@ -7,7 +7,7 @@ describe('TitanEmbedder', () => {
     const transport: EmbeddingTransport = {
       embed: vi.fn(async (texts) => {
         calls.push(texts);
-        return texts.map((_, index) => Array.from({ length: EMBEDDING_DIMENSIONS }, () => index + 1));
+        return texts.map((_: string, index: number) => Array.from({ length: EMBEDDING_DIMENSIONS }, () => index + 1));
       }),
     };
     const embedder = new TitanEmbedder(transport);

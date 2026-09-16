@@ -1,4 +1,5 @@
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { CreateIndexCommand, DataType, DistanceMetric, S3VectorsClient } from '@aws-sdk/client-s3vectors';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import type { DocumentRecord, ProfileRecord } from '../../shared/api';
@@ -66,7 +67,7 @@ export class S3LibraryStore implements LibraryObjectStore {
 }
 
 abstract class DynamoRecordStore<T> implements RecordStore<T> {
-  protected constructor(protected readonly client: Pick<DynamoDBDocumentClient, 'send'>, protected readonly table: string) {}
+  constructor(protected readonly client: Pick<DynamoDBDocumentClient, 'send'>, protected readonly table: string) {}
   abstract key(value: T | string): Record<string, string>;
   abstract indexCondition(profileId: string): Record<string, unknown>;
 
@@ -75,7 +76,7 @@ abstract class DynamoRecordStore<T> implements RecordStore<T> {
     return response.Item as T | undefined;
   }
   async put(value: T): Promise<void> {
-    await this.client.send(new PutCommand({ TableName: this.table, Item: value }));
+    await this.client.send(new PutCommand({ TableName: this.table, Item: value as Record<string, unknown> }));
   }
   async delete(key: string): Promise<void> {
     await this.client.send(new DeleteCommand({ TableName: this.table, Key: this.key(key) }));
@@ -118,12 +119,23 @@ export class AwsVectorAdmin implements LibraryVectorAdmin {
   constructor(config: AwsLibraryConfig, region: string) {
     this.region = region;
     this.vectorBucket = config.vectorBucket;
-    this.client = new (requireS3VectorsClient())({ region }) as VectorClient;
+    this.client = new S3VectorsClient({ region }) as unknown as VectorClient;
   }
 
   async createIndex(profileId: string): Promise<void> {
-    // Profile indexes are created by the custom resource at deployment and
-    // named by profile id. The first write verifies the location lazily.
+    try {
+      await this.client.send(new CreateIndexCommand({
+        vectorBucketName: this.vectorBucket,
+        indexName: profileId,
+        dataType: DataType.FLOAT32,
+        dimension: 1024,
+        distanceMetric: DistanceMetric.COSINE,
+        metadataConfiguration: { nonFilterableMetadataKeys: [] },
+      }));
+    } catch (error) {
+      const name = error && typeof error === 'object' && 'name' in error ? String((error as { name: unknown }).name) : '';
+      if (name !== 'ConflictException' && name !== 'ResourceAlreadyExistsException') throw error;
+    }
     this.stores.set(profileId, awsVectorStore({ bucketName: this.vectorBucket, indexName: profileId }, { region: this.region }));
   }
 
@@ -142,13 +154,6 @@ export class AwsVectorAdmin implements LibraryVectorAdmin {
     this.stores.set(profileId, store);
     return store;
   }
-}
-
-// Avoid making the AWS client a second package-level dependency in tests that
-// only use routes. Runtime Lambda imports this once when an adapter is used.
-function requireS3VectorsClient(): typeof import('@aws-sdk/client-s3vectors').S3VectorsClient {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('@aws-sdk/client-s3vectors').S3VectorsClient;
 }
 
 export class S3ChunkStore {

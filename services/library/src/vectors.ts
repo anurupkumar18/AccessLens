@@ -83,7 +83,7 @@ export class S3VectorStore implements VectorStore {
       ...(this.location.indexArn ? { indexArn: this.location.indexArn } : {}),
       topK: k,
       queryVector: { float32: [...vector] },
-      filter: buildMetadataFilter(filter ?? {}),
+      filter: buildMetadataFilter(filter ?? {}) as unknown as undefined,
       returnMetadata: true,
       returnDistance: true,
     }));
@@ -91,7 +91,7 @@ export class S3VectorStore implements VectorStore {
     return vectors.map(item => ({
       key: item.key,
       distance: item.distance,
-      metadata: item.metadata as Record<string, unknown> | undefined,
+      metadata: item.metadata as unknown as Record<string, unknown> | undefined,
     }));
   }
 
@@ -128,6 +128,7 @@ export interface VectorResourceRequest {
     IndexName?: string;
     Dimension?: number;
   };
+  PhysicalResourceId?: string;
 }
 
 export interface VectorResourceResponse {
