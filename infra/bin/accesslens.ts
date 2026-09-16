@@ -15,6 +15,7 @@ import { AccessibilityServicesStack } from '../lib/accessibility-services-stack.
 import { DistributionStack } from '../lib/distribution-stack.js';
 import { GitHubDeployRoleStack } from '../lib/github-deploy-role-stack.js';
 import { LiveSessionStack } from '../lib/live-session-stack.js';
+import { OrbExplainStack } from '../lib/orb-explain-stack.js';
 
 const app = new App();
 
@@ -53,3 +54,11 @@ if (app.node.tryGetContext('withDeployRole') === 'true') {
     description: 'GitHub Actions OIDC deploy role',
   });
 }
+
+// The orb's explanation endpoint. Separate so the instructor-led live plane
+// above can be deployed and destroyed without it -- and so dropping the orb is
+// deleting a file plus these six lines. See docs/ORB_CHARTER_AMENDMENT.md.
+new OrbExplainStack(app, 'AccessLensOrbExplain', {
+  env,
+  description: 'AccessLens orb: Bedrock-backed page explanation endpoint',
+});
