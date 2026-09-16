@@ -14,6 +14,7 @@ RUN dnf install -y \
       ca-certificates \
       tar \
       gzip \
+      findutils \
       wget \
       xorg-x11-server-Xvfb \
       cups-libs \
@@ -28,13 +29,16 @@ RUN dnf install -y \
       dejavu-sans-fonts \
     && dnf clean all \
     && rm -rf /var/cache/dnf \
-    && mkdir -p /opt/libreoffice \
+    && mkdir -p /tmp/libreoffice \
     && wget --no-verbose --https-only \
       "https://download.documentfoundation.org/libreoffice/stable/${LIBREOFFICE_VERSION}/rpm/${LIBREOFFICE_ARCH}/LibreOffice_${LIBREOFFICE_VERSION}_Linux_x86-64_rpm.tar.gz" \
       -O /tmp/libreoffice.tar.gz \
-    && tar -xzf /tmp/libreoffice.tar.gz -C /opt/libreoffice --strip-components=1 \
-    && rm -f /tmp/libreoffice.tar.gz \
-    && ln -s /opt/libreoffice/program/soffice /usr/local/bin/soffice
+    && tar -xzf /tmp/libreoffice.tar.gz -C /tmp/libreoffice --strip-components=1 \
+    && find /tmp/libreoffice -type f -name '*.rpm' -print0 | xargs -0 dnf install -y \
+    && SOFFICE_PATH="$(find /opt /usr -type f -path '*/program/soffice' -print -quit)" \
+    && test -n "${SOFFICE_PATH}" \
+    && ln -s "${SOFFICE_PATH}" /usr/local/bin/soffice \
+    && rm -rf /tmp/libreoffice /tmp/libreoffice.tar.gz
 
 COPY package.json ${LAMBDA_TASK_ROOT}/package.json
 # pngjs is currently a repository devDependency because the browser build also
@@ -50,7 +54,8 @@ COPY services/ingest/src ${LAMBDA_TASK_ROOT}/services/ingest/src
 COPY services/shared ${LAMBDA_TASK_ROOT}/services/shared
 COPY apps/extension/src/sources/screen ${LAMBDA_TASK_ROOT}/apps/extension/src/sources/screen
 COPY apps/extension/src/shared ${LAMBDA_TASK_ROOT}/apps/extension/src/shared
-RUN npm install --no-save --ignore-scripts --no-audit --no-fund esbuild@0.28.2 \
+RUN npm install --no-save --ignore-scripts --no-audit --no-fund \
+      @aws-sdk/client-s3@3.1133.0 esbuild@0.28.2 \
     && npx esbuild ${LAMBDA_TASK_ROOT}/services/ingest/src/handler.ts \
       --bundle --platform=node --format=esm --target=node22 \
       --outfile=${LAMBDA_TASK_ROOT}/index.mjs \
