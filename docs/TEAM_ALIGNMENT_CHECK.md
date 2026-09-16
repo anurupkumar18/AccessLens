@@ -168,6 +168,101 @@ code are #3 (measurable impact — cheapest fix, nothing done yet) and #7 (the
 nothing to fix and could visibly embarrass the team if a judge or teammate
 clones the wrong branch).
 
+### Kunj Rathod (Part 5 — content, camera, demo QA; plus cross-cutting)
+
+**1–3. Timeline, format, infra requirement.** I don't know. Nothing in the
+repository records the judging time, whether the demo is live or recorded, or
+whether working AWS infra is required. That is worth someone answering in
+writing, because #14's tradeoff cannot be evaluated without it.
+
+**4. Has anyone with a relevant access need looked at this?** No. That is T-09
+and it is the honest gap. What changed is that there is now something to look
+at: `packages/access-packs/bio-cell-demo/review/content-review-sheet.html`
+draws every region on its slide beside the exact words a student is given, so
+a reviewer no longer has to read `pack.json`. The blocker was never effort, it
+was that nothing was reviewable.
+
+**5. Can we get one person, timed, this week?** Nothing in my part blocks it.
+It needs a person to ask a person, which no amount of tooling replaces.
+
+**6. Have the two timed rehearsals happened?** Not to my knowledge, and there
+is no record of one in the relay log or memory. I would treat that as "no".
+
+**7. Recorded backup?** No recording exists. There is a working *live* fallback,
+which is not the same thing: `simulate_events.py --scenario <name> --stream`
+replays every rehearsed beat through the real student renderers, so the demo
+survives capture or relay failure. It does not survive a laptop failure. A
+recording is still needed.
+
+**8. Had I seen the revision doc?** No. First saw it in `fd63b67`.
+
+**9. Which story is being pitched?** I don't know, and I think that is the most
+expensive unanswered question on this list. Part 5's pack, the AR camera
+framing checks, and the twelve region-to-hotspot mappings were all built for
+the AR-required story. If the narrowed story wins, that work is not wasted —
+the pack still drives Focus and structured text — but the AR renderer and its
+guardrails become dead weight in the pitch.
+
+**10–11. Does a judge see Bedrock run?** As the demo stands, no. The flagship
+pack is hand-authored; the Bedrock authoring pipeline is a script nobody runs
+on stage. Section 2 is right that this reads as zero AI to a judge.
+
+There is now a second option, and it is unmerged pending a decision that is
+not mine: the orb (`feature/orb-explainer`). It puts Bedrock in the live demo
+path rather than in a build step — a student presses a button on any page and
+Claude Sonnet 4.6 on Bedrock returns an explanation, simpler wording, or a
+labelled SVG diagram, in front of the judge. It is built, deployed, and
+verified end to end against the live endpoint.
+
+I am deliberately not arguing it is therefore the right call. **It contradicts
+charter A9** — "unknown content produces an unmatched state, never an invented
+description" — which is the exact promise that makes the Unmatched beat
+persuasive. `docs/ORB_CHARTER_AMENDMENT.md` proposes changing that to "never
+invents *silently*" and enforces the label in code rather than in prose. If the
+team does not want that amendment, the orb should be dropped, not merged
+half-agreed. But the scoring reality is worth stating plainly: criterion 4 is
+the weakest, and this is the only thing built that puts visible Bedrock in
+front of a judge.
+
+**12. Did I know about the critique or the scoring gap?** No.
+
+**13. Who is presenting?** Unknown to me.
+
+**14. Is building more worth it versus rehearsal, one user interview, and
+fixing the branch divergence?** Mostly agree, with one correction of fact: **the
+`master`/integration divergence is already fixed** — `release/aws-distribution`
+merges it, and it is pushed but unmerged because I cannot open PRs from this
+environment. It was real: neither branch had the whole product. `master` had
+`packMedia` and the pack-driven renderers, the integration branch had all of
+Part 4. Whichever you built the demo from was missing something. Two conflicts
+needed genuine resolution rather than picking a side.
+
+Where I would disagree with a strict "stop building" reading: two of the things
+I have built in the last hours were not features but *risk removal*, and I would
+do them again.
+
+- The interface rebuild (`9d894ae`) silently dropped `.region-highlight`, the
+  box drawn over the instructor's selected region. Every test still passed. The
+  demo would have shown the slide but not the thing being pointed at, and nobody
+  would have known until it was on a screen in front of judges. Restored and
+  restyled in the new design language.
+- `scripts/deploy_preflight.py` now answers "is this deployable" per part in one
+  command, and CDK is bootstrapped, so the deploy is no longer a thing anyone
+  discovers is broken at hour 46.
+
+**My honest read of where this stands.** The engineering is in better shape than
+the scorecard implies and the *evidence* is in worse shape than the engineering.
+Five parts integrate, the relay is deployed, the extension is downloadable from
+CloudFront, and `make check` is green across five suites. Against that: nobody
+outside this team has used it, no rehearsal has happened, no recording exists,
+and no judge has yet been shown AI running. Those four are all people-shaped,
+not code-shaped, and I cannot close any of them by writing more code — which is
+the strongest argument for section 14's position that I can make.
+
+The one thing I would spend an hour on regardless of the story chosen is #4.
+One person with a real access need, fifteen minutes, timed. It is the only item
+on this list that changes what the project *is* rather than how it is described.
+
 ### Jacob Erard (Part 2)
 
 *(awaiting response)*
