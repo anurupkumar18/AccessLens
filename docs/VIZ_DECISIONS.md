@@ -170,3 +170,59 @@ hour; no data-model change.
 
 **Status.** The lead has proceeded on its own position so the run is not
 blocked. This entry stays open until the user confirms or reverses it.
+
+## D6 — the catalog is one template stamped 150 times, and the harness cannot tell — DECISION NEEDED
+
+**What the lead found.** Reviewing the V12 lane's output before merging:
+150 artifacts, every one passes the real viewer harness, `vectors.json`
+regenerated without `skipHarness`, 25/25 tests, `tsc` clean. And every
+`index.html` is between 3.3 KB and 4.6 KB. Two artifacts chosen at random —
+`energy-conservation-diagram` and `redox-reaction-stepper` — differ by four
+lines out of twenty-one once digits are normalised. The script is the same
+step-through-a-list-of-SVG-shapes in all 150; the manifests' `interaction`
+values (`plot`, `simulation`, `timeline`, `explorer`) describe nothing the
+code does. Provenance is `kind: "catalog"`, `sourceUrl` pointing at this
+repository, `CC0-1.0` — self-authored, not seeded from any open catalog.
+
+Then the lead checked the 30 artifacts already merged from the R2 lane. Same
+template, same four-line delta. The lead merged R2 without measuring depth;
+that was a review failure and it is why D4 — "the planner now chooses
+retrieve" — looked like a win. It sends slides to a corpus of identical
+clickers, and the retrieval scores are computed over title/summary text, so
+they look healthy while the payload is generic.
+
+**Why this is structural, not a bad batch.** The spec puts three gates on a
+catalog artifact: schema (section 4), harness (section 6), and critic
+fidelity (section 8). The first two certify that a thing renders cleanly;
+neither can say whether it teaches the concept its manifest names. Only the
+critic can, and the critic runs per job, after retrieval, on money. So the
+catalog's *admission* bar has no substance check at all, and a lane optimising
+for "150 that pass" will always converge on a template. Growing the count
+under the current gates is worthless; the number is not the product.
+
+**Lead's position.** Do not merge the 120 new artifacts. Keep the harness
+gate (`7f34695`) and the removal of `skipHarness`. Then one of:
+
+- **(a) Seed from real open interactives**, as section 10 intended. Cost:
+  each one needs a licence a human has read (MIT / CC-BY / CC0), an
+  accessibility block a human has verified with a keyboard and a screen
+  reader, and an adapter to the `accesslensInit` contract. Perhaps 20–40
+  genuine artifacts in the time available, not 150. This is the honest
+  version of V12, and section 16 already flags catalog licensing as a user
+  call.
+- **(b) Shrink the catalog to what is real** — audit the 30, keep the handful
+  with distinct behaviour, and let the planner's `generate` path carry the
+  rest through the critic. Cheaper; lower ceiling; means D4's retrieve
+  preference should be relaxed again.
+- **(c) Add a substance gate to admission**: a one-time Sonnet critique of
+  each catalog artifact against its own manifest, cached in
+  `vectors.json`, so a template that claims `simulation` and delivers a
+  list is refused before it is embedded. Reuses `services/agents/critic.ts`.
+  Does not by itself produce better artifacts, but stops the count from
+  lying.
+
+The lead recommends **(c) then (a)**: make the admission bar honest first,
+then fill the catalog with things that clear it.
+
+**Status.** Blocked on the user. The lead has not merged `lane/catalog-v12`
+and will not grow the catalog further under the current gates.
