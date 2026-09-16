@@ -3,77 +3,328 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Install AccessLens</title>
+<title>AccessLens — one lecture, every student</title>
+<meta name="description" content="An instructor points at one thing. Every student receives it in the format they can actually use: focused, written, spoken, translated, captioned.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* AccessLens landing page.
+ *
+ * Same tokens as the extension itself: IBM Plex, near-black on off-white,
+ * hairline rules, small radii, one acid accent. A page that looked nothing
+ * like the product it sells would be worse design, and the accent rule is
+ * load-bearing rather than stylistic -- #f0fb29 on white is about 1.2:1 and
+ * invisible, the same yellow *behind* #202020 is ~13.7:1. So it is only ever
+ * a fill, a rule, or a marker. Never small text.
+ */
+:root {
+  --ink: #202020;
+  --paper: #f5f5f5;
+  --card: #ffffff;
+  --muted: #5c5c5c;
+  --line: #e2e2e2;
+  --line-strong: #cfcfcf;
+  --accent: #f0fb29;
+  --focus: #202020;
+  --sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --measure: 62ch;
+}
+@media (prefers-color-scheme: dark) {
   :root {
-    color-scheme: light dark;
-    --bg: #fbfcfe; --panel: #fff; --ink: #14181f; --muted: #5b6676;
-    --line: #dfe4ec; --accent: #2f5fa8; --warn-bg: #fff6e6; --warn-line: #e0a63c;
+    --ink: #f2f2f2; --paper: #161616; --card: #1e1e1e;
+    --muted: #a0a0a0; --line: #2e2e2e; --line-strong: #3d3d3d; --focus: #f0fb29;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#12151a; --panel:#1a1f26; --ink:#e8ecf2; --muted:#9aa5b4;
-            --line:#2b323c; --accent:#7aa7e8; --warn-bg:#2e2617; --warn-line:#c9962f; }
-  }
-  * { box-sizing: border-box; }
-  body { margin:0; padding:2.5rem 1.25rem 5rem; background:var(--bg); color:var(--ink);
-         font:16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
-  main { max-width: 780px; margin: 0 auto; }
-  h1 { font-size:2rem; letter-spacing:-.02em; margin:0 0 .3rem; }
-  .lede { color:var(--muted); margin:0 0 2rem; font-size:1.05rem; }
-  h2 { font-size:1.15rem; margin:2.25rem 0 .6rem; letter-spacing:-.01em; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:1.25rem 1.4rem; }
-  .cta { display:inline-block; background:var(--accent); color:#fff; text-decoration:none;
-         font-weight:600; padding:.75rem 1.35rem; border-radius:10px; }
-  .cta:focus-visible { outline:3px solid #ffb703; outline-offset:3px; }
-  ol { padding-left:1.2rem; }
-  li { margin:.45rem 0; }
-  code { font:.88em ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--accent);
-         background:color-mix(in srgb, var(--accent) 10%, transparent); padding:.12em .4em; border-radius:5px; }
-  .notice { background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:10px;
-            padding:.9rem 1.1rem; margin:1.5rem 0; font-size:.93rem; }
-  .notice strong { display:block; margin-bottom:.25rem; }
-  footer { margin-top:3rem; padding-top:1.25rem; border-top:1px solid var(--line);
-           color:var(--muted); font-size:.87rem; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 clamp(15px, 0.55vw + 13.5px, 17px)/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
+
+.wrap { width: min(1080px, 100% - 2.5rem); margin-inline: auto; }
+
+/* ---------- masthead ---------- */
+.masthead {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1.1rem 0; border-bottom: 1px solid var(--line);
+}
+.wordmark { font-weight: 700; letter-spacing: -0.02em; font-size: 1.05rem; }
+.wordmark span { /* the lens: a filled block, which is the accent's only safe use at small size */
+  display: inline-block; width: .62em; height: .62em; background: var(--accent);
+  border: 1.5px solid var(--ink); border-radius: 50%; margin-right: .45em;
+  vertical-align: baseline;
+}
+.ghost {
+  font-size: .86rem; font-weight: 600; color: var(--ink); text-decoration: none;
+  border-bottom: 2px solid var(--accent); padding-bottom: 2px;
+}
+.ghost:hover { border-bottom-color: var(--ink); }
+
+/* ---------- hero ---------- */
+.hero { padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); }
+h1 {
+  font-size: clamp(2rem, 5.2vw, 3.4rem); line-height: 1.06; letter-spacing: -0.035em;
+  font-weight: 600; margin: 0 0 1rem; max-width: 18ch;
+}
+.standfirst { margin: 0 0 2.5rem; color: var(--muted); max-width: var(--measure); font-size: 1.05rem; }
+
+/* The split is the one bold element on the page: the same instant of a lesson,
+   on the left as the instructor's slide and on the right as the four other
+   channels a student might actually be using. */
+.moment {
+  display: grid; gap: 1.5rem; align-items: start;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+}
+@media (max-width: 760px) { .moment { grid-template-columns: 1fr; } }
+
+.stage { margin: 0; }
+.frame {
+  position: relative; line-height: 0; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: 6px; background: var(--card);
+}
+.frame img { width: 100%; height: auto; display: block; }
+/* Positioned from the pack's real normalised bounds for this region:
+   x .35  y .22  w .18  h .24 — the same numbers a student's renderer uses. */
+.region {
+  position: absolute; left: 35%; top: 22%; width: 18%; height: 24%;
+  border: 3px solid var(--ink); border-radius: 4px;
+  box-shadow: 0 0 0 200vmax color-mix(in srgb, var(--paper) 70%, transparent);
+}
+.region::after {
+  content: ''; position: absolute; inset-block-start: -7px; inset-inline-start: -7px;
+  width: 11px; height: 11px; background: var(--accent);
+  border: 2px solid var(--ink); border-radius: 50%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .region { animation: settle .5s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes settle { from { opacity: 0; transform: scale(1.35); } to { opacity: 1; transform: none; } }
+}
+.stage figcaption { line-height: 1.5; margin-top: .6rem; font-size: .82rem; color: var(--muted); }
+
+.channels { border-top: 2px solid var(--ink); }
+.channel { display: grid; grid-template-columns: 5.6rem 1fr; gap: 1rem; padding: .85rem 0; border-bottom: 1px solid var(--line); }
+.channel dt { font: 500 .72rem/1.5 var(--mono); color: var(--muted); padding-top: .18rem; }
+.channel dd { margin: 0; font-size: .93rem; }
+.channel dd .said { color: var(--muted); }
+.speaker { display: inline-flex; align-items: center; gap: .5rem; }
+.speaker b { font-weight: 600; }
+.bars { display: inline-flex; align-items: flex-end; gap: 2px; height: .8em; }
+.bars i { width: 3px; background: var(--ink); border-radius: 1px; }
+.bars i:nth-child(1) { height: 40% } .bars i:nth-child(2) { height: 100% }
+.bars i:nth-child(3) { height: 65% } .bars i:nth-child(4) { height: 85% }
+
+/* ---------- shared section furniture ---------- */
+section { padding: clamp(2.5rem, 6vw, 4rem) 0; border-top: 1px solid var(--line); }
+h2 { font-size: clamp(1.25rem, 2.4vw, 1.6rem); letter-spacing: -0.02em; margin: 0 0 .5rem; font-weight: 600; }
+.lede { margin: 0 0 2rem; color: var(--muted); max-width: var(--measure); }
+p { max-width: var(--measure); }
+
+/* ---------- audiences: a definition list, because that is what it is ---------- */
+.audiences { display: grid; gap: 0; }
+.audience {
+  display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 1.25rem;
+  padding: 1.15rem 0; border-top: 1px solid var(--line);
+}
+.audience:last-child { border-bottom: 1px solid var(--line); }
+@media (max-width: 680px) { .audience { grid-template-columns: 1fr; gap: .3rem; } }
+.audience h3 { margin: 0; font-size: .97rem; font-weight: 600; }
+.audience p { margin: 0; color: var(--muted); font-size: .93rem; }
+
+/* The shared thread, pulled out because it is the actual product insight. */
+.thread {
+  margin-top: 2rem; padding: 1.15rem 1.35rem; background: var(--card);
+  border: 1px solid var(--line); border-left: 6px solid var(--accent); border-radius: 6px;
+}
+.thread p { margin: 0; max-width: 58ch; }
+
+/* ---------- install ---------- */
+.install { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 2.5rem; align-items: start; }
+@media (max-width: 760px) { .install { grid-template-columns: 1fr; } }
+.cta {
+  display: inline-block; background: var(--accent); color: #202020;
+  font-weight: 700; font-size: .98rem; text-decoration: none;
+  padding: .85rem 1.5rem; border: 2px solid #202020; border-radius: 6px;
+}
+.cta:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .cta { transition: transform .12s ease, box-shadow .12s ease; } }
+.meta { margin-top: .9rem; font-size: .84rem; color: var(--muted); }
+ol { margin: 0; padding-left: 1.3rem; }
+ol li { margin: .45rem 0; }
+kbd {
+  font: 500 .86em var(--mono); background: var(--card); border: 1px solid var(--line-strong);
+  border-bottom-width: 2px; border-radius: 4px; padding: .1em .4em;
+}
+
+/* ---------- limits ---------- */
+.limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0 2.5rem; }
+.limits div { padding: .9rem 0; border-top: 1px solid var(--line); }
+.limits h3 { margin: 0 0 .25rem; font-size: .93rem; font-weight: 600; }
+.limits p { margin: 0; font-size: .89rem; color: var(--muted); }
+
+footer { padding: 2rem 0 3.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .84rem; }
+footer p { max-width: var(--measure); margin: 0 0 .4rem; }
 </style>
 </head>
 <body>
+
+<header class="masthead wrap">
+  <div class="wordmark"><span aria-hidden="true"></span>AccessLens</div>
+  <a class="ghost" href="#install">Install</a>
+</header>
+
 <main>
-  <h1>AccessLens</h1>
-  <p class="lede">An instructor shares a slide. Every student follows it in the format they
-  can actually use — focused view, structured text, speech, or a spatial 3D scene.</p>
+  <div class="wrap hero">
+    <h1>The instructor points at one thing.</h1>
+    <p class="standfirst">
+      Every student receives it in the format they can actually use — at the same
+      moment, from the same lesson, without asking anyone for help.
+    </p>
 
-  <div class="card">
-    <a class="cta" href="accesslens-extension.zip" download>Download the extension</a>
-    <h2>Installing it</h2>
-    <ol>
-      <li>Unzip the download.</li>
-      <li>Open <code>chrome://extensions</code> in Chrome or Edge.</li>
-      <li>Turn on <strong>Developer mode</strong>, top right.</li>
-      <li>Click <strong>Load unpacked</strong> and choose the unzipped folder.</li>
-      <li>Open the side panel from the AccessLens toolbar icon.</li>
-    </ol>
-    <p>It is not on the Chrome Web Store, so load-unpacked is the install route.
-    Firefox and Safari use different extension packaging and are not supported yet.</p>
+    <div class="moment">
+      <figure class="stage">
+        <div class="frame">
+          <img src="packs/bio-cell-demo/slides/cell-slide-03.png"
+               alt="A biology slide titled Mitochondria and Energy, with the mitochondrion outlined.">
+          <div class="region"></div>
+        </div>
+        <figcaption>
+          The instructor indicates the mitochondrion. Everything to the right is
+          that same instant, drawn from content the instructor already reviewed.
+        </figcaption>
+      </figure>
+
+      <dl class="channels">
+        <div class="channel">
+          <dt>focus</dt>
+          <dd>The slide, with everything except the current region dimmed.</dd>
+        </div>
+        <div class="channel">
+          <dt>read</dt>
+          <dd>The mitochondrion releases usable energy from nutrients and stores it as ATP. Its inner membrane is folded to increase surface area.</dd>
+        </div>
+        <div class="channel">
+          <dt>simpler</dt>
+          <dd>This structure helps power the cell.</dd>
+        </div>
+        <div class="channel">
+          <dt>español</dt>
+          <dd lang="es">La mitocondria libera energía utilizable de los nutrientes y la almacena como ATP.</dd>
+        </div>
+        <div class="channel">
+          <dt>hear</dt>
+          <dd><span class="speaker"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span> <b>Spoken aloud</b></span>, on request — never talking over the lecture.</dd>
+        </div>
+        <div class="channel">
+          <dt>captions</dt>
+          <dd class="said">“…folded into cristae, which increases the surface area available for the electron transport chain.”</dd>
+        </div>
+      </dl>
+    </div>
   </div>
 
-  <div class="notice">
-    <strong>This is a prototype, not a product.</strong>
-    Its teaching content has not been reviewed by a subject-matter expert or an
-    accessibility professional. It makes no claim of measured learning benefit and
-    no claim of legal accessibility compliance.
-  </div>
+  <section class="wrap">
+    <h2>Who loses the thread, and how</h2>
+    <p class="lede">
+      These are not four versions of one problem. They fail differently, which is
+      why one accommodation never covers them.
+    </p>
 
-  <h2>What it does not do</h2>
-  <p>It does not record sessions, infer disability, estimate attention or mastery,
-  grade anyone, or read your Canvas account. Accessibility preferences stay on the
-  student's own device and are never transmitted. Screen capture requires the
-  instructor to click Start and pick a source through the browser's own chooser —
-  it cannot begin silently.</p>
+    <div class="audiences">
+      <div class="audience">
+        <h3>Blind and low-vision students</h3>
+        <p>The slide carries its meaning as pixels. A screen reader reaches it and finds nothing to say.</p>
+      </div>
+      <div class="audience">
+        <h3>Deaf and hard-of-hearing students</h3>
+        <p>The instructor’s voice carries meaning no slide contains. That channel is simply absent.</p>
+      </div>
+      <div class="audience">
+        <h3>Students reading in a second language</h3>
+        <p>Comprehension lags delivery. By the time one sentence is parsed, two more have gone by.</p>
+      </div>
+      <div class="audience">
+        <h3>Students with ADHD</h3>
+        <p>Attention lapses, and re-entry is expensive. “What did I miss” has no cheap answer in a live room.</p>
+      </div>
+    </div>
 
-  <footer>
-    Built for the University of Utah AWS Generative AI Hackathon, 2026.
-    The hosted services are temporary and disappear when the event account does.
-  </footer>
+    <div class="thread">
+      <p>
+        What all four share is re-entry. Everyone loses the thread at some point;
+        the difference is whether getting back in costs a whisper to a neighbour,
+        an email after class, or nothing at all. AccessLens makes it cost nothing:
+        one button returns a short summary of what the instructor covered while
+        you were away.
+      </p>
+    </div>
+  </section>
+
+  <section class="wrap" id="install">
+    <h2>Install it</h2>
+    <p class="lede">
+      Not on the Chrome Web Store — this is a prototype, so it loads unpacked.
+      Chrome or Edge. Two minutes.
+    </p>
+
+    <div class="install">
+      <div>
+        <a class="cta" href="accesslens-extension.zip" download>Download AccessLens</a>
+        <p class="meta">A .zip you unpack yourself. No account, no sign-in.</p>
+      </div>
+      <ol>
+        <li>Unzip the download.</li>
+        <li>Open <kbd>chrome://extensions</kbd>.</li>
+        <li>Turn on <strong>Developer mode</strong>, top right.</li>
+        <li>Choose <strong>Load unpacked</strong> and select the unzipped folder.</li>
+        <li>Open the side panel from the AccessLens toolbar icon.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2>What it does not do</h2>
+    <p class="lede">
+      An accessibility tool that quietly collects things is not an accessibility
+      tool. These are commitments, not omissions.
+    </p>
+    <div class="limits">
+      <div>
+        <h3>It cannot start watching by itself</h3>
+        <p>Screen sharing needs the instructor to press Start and pick a source in the browser’s own dialog.</p>
+      </div>
+      <div>
+        <h3>It never records the session</h3>
+        <p>Slides and audio stay on the device they came from. Only the name of the current topic is sent.</p>
+      </div>
+      <div>
+        <h3>It does not judge anyone</h3>
+        <p>No grades, no attention tracking, no guessing at a diagnosis. Your settings stay on your machine.</p>
+      </div>
+      <div>
+        <h3>It says when it is unsure</h3>
+        <p>Shown something it has not been given, it says so rather than inventing a description.</p>
+      </div>
+    </div>
+  </section>
 </main>
+
+<footer class="wrap">
+  <p>
+    A prototype built for the University of Utah AWS Generative AI Hackathon, 2026.
+    Its teaching content has not yet been reviewed by a subject-matter expert or an
+    accessibility professional, and it makes no claim of measured learning benefit
+    or legal compliance.
+  </p>
+  <p>The hosted services are temporary and disappear with the event account.</p>
+</footer>
+
 </body>
 </html>
