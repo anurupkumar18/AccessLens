@@ -5,6 +5,7 @@ import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { AudioView } from '../renderers/AudioView';
 import { applyLiveEvent, initialStudentLiveState, markLiveStateStale, markLiveStateReconnected } from './liveState';
+import { AccessibilityBar } from '../accessibility/AccessibilityBar';
 
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
@@ -30,11 +31,26 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
   const [sessionId, setSessionId] = useState('');
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
+  // Kept so a student can be caught up from where they actually stopped
+  // following, rather than from an arbitrary "last five minutes".
+  const [history, setHistory] = useState<LiveEvent[]>([]);
+  const [lastSeenSequence, setLastSeenSequence] = useState(0);
 
   useEffect(() => {
     if (!event) return;
     setLive((current) => applyLiveEvent(current, event, pack));
+    // Bounded: a long lecture should not grow this without limit, and a recap
+    // only ever needs the recent past.
+    setHistory((current) => [...current, event].slice(-200));
   }, [event, pack]);
+
+  useEffect(() => {
+    // "Seen" means the tab was visible when the event arrived. Coming back to
+    // a backgrounded tab is exactly the moment "what did I miss" is for.
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    const sequence = (event as { sequence?: number } | null)?.sequence;
+    if (typeof sequence === 'number') setLastSeenSequence(sequence);
+  }, [event]);
 
   useEffect(() => {
     // Real socket connectivity, when the transport can report it (Part 4's
@@ -48,6 +64,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       setLive((current) => (connected ? markLiveStateReconnected(current) : markLiveStateStale(current)));
     });
   }, [client]);
+
+  const currentAsset = pack.assets.find((asset) => asset.assetId === live.assetId);
+  const currentRegion = currentAsset?.regions.find((region) => region.regionId === live.regionId);
+  const currentRegionText = currentRegion?.shortDescription ?? '';
+  const captionsActive = history.some((item) => item.type === 'caption.appended');
 
   async function join(): Promise<void> {
     try {
@@ -137,6 +158,16 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
           </Suspense>
         ) : null}
       </div>
+
+      <AccessibilityBar
+        events={history}
+        event={event}
+        pack={pack}
+        currentText={currentRegionText}
+        lastSeenSequence={lastSeenSequence}
+        captionsActive={captionsActive}
+        reducedMotion={preferences.reducedMotion}
+      />
 
       <fieldset className="display-settings">
         <legend>Display preferences</legend>

@@ -540,3 +540,77 @@ input[type='range'] { accent-color: var(--ink); }
   }
   button.primary:active:not(:disabled) { transform: none; }
 }
+
+/* Accessibility supports — captions, catch-up, translation.
+ *
+ * These sit below the mode tabs rather than inside them: the tabs are mutually
+ * exclusive answers to "how do I want to receive this lesson", while these are
+ * things a student reaches for *while* receiving it, often already behind.
+ *
+ * Built from the same tokens as everything else, so the two provenance notices
+ * stay distinguishable without relying on colour: generated content gets the
+ * accent bar and the word "Heads up", reviewed content gets a quiet rule and
+ * names the instructor. Charter A7 — colour never carries meaning alone.
+ */
+.a11y-bar { display: grid; gap: .5rem; margin-top: 1rem; }
+
+.a11y-disclosure {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
+}
+.a11y-disclosure > summary {
+  cursor: pointer;
+  padding: .6rem .8rem;
+  font-weight: 600;
+  font-size: .92rem;
+  border-radius: var(--r);
+}
+.a11y-disclosure > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.a11y-disclosure[open] > summary { border-bottom: 1px solid var(--line); }
+
+.a11y-card { padding: .8rem; display: grid; gap: .5rem; }
+.a11y-card h3 { margin: 0; font-size: .95rem; }
+.a11y-card-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+
+.a11y-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem; }
+.a11y-actions button { margin: 0; }
+.a11y-field { display: grid; gap: .2rem; font-size: .82rem; color: var(--muted); }
+.a11y-field select { padding: .4rem; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--card); color: var(--ink); }
+
+/* Sized to the 20px orb preset so it sits on the text baseline of a button row
+   rather than stretching it. */
+.a11y-orb { display: inline-flex; width: 20px; height: 20px; flex: 0 0 auto; }
+
+.a11y-result { display: grid; gap: .4rem; padding: .6rem; border-radius: var(--r-sm); background: var(--paper); }
+
+.a11y-notice {
+  margin: 0;
+  font-size: .82rem;
+  padding: .4rem .55rem;
+  border-inline-start: 4px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: var(--r-sm);
+}
+.a11y-notice--reviewed {
+  border-inline-start-color: var(--line-strong);
+  background: transparent;
+  color: var(--muted);
+}
+
+.a11y-transcript {
+  max-height: 11rem;
+  overflow-y: auto;
+  padding: .55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+.a11y-transcript p { margin: 0 0 .35rem; }
+.a11y-transcript:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* An interim result is a draft the recogniser is still revising. Dimmed *and*
+   italic, so the distinction survives greyscale. */
+.a11y-interim { color: var(--muted); font-style: italic; }
