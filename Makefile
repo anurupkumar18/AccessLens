@@ -1,4 +1,4 @@
-.PHONY: check memory-check pack-check relay-check extension-check freeze-check
+.PHONY: check memory-check pack-check relay-check extension-check freeze-check deploy-preflight
 
 memory-check:
 	python3 scripts/memory_check.py
@@ -23,3 +23,8 @@ freeze-check:
 
 check: memory-check pack-check relay-check extension-check
 	@echo "AccessLens documentation, Access Pack, relay, and extension checks passed."
+
+# Is the repository ready to deploy the demo? Reports per part; run the script
+# directly with --aws to also probe the account.
+deploy-preflight:
+	python3 scripts/deploy_preflight.py

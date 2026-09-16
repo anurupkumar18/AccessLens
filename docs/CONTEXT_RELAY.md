@@ -100,9 +100,11 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-13 | Nobody owns merging `accesslens-extension-ar-pivot` into `master`, and no moment is defined for it. The build rule forbids merging to `master` during the hackathon, so this must happen deliberately at the end. | UNOWNED | Final handover | UNOWNED | `docs/PARALLEL_WORKSTREAMS.md`, merge and branch rules |
 | T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
-| T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. Hit **four times** across the `c3ddc27` and `38542ad` merges of #4 and #5. Proposal: let the pointer be a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | Four conflicts on the same line in one afternoon |
+| T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. It has now bitten **five times**, and `19770f6` is a teammate hitting it independently and fixing it by hand. The proposal stands: make the pointer a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | `19770f6` plus four conflicts across PRs #4, #5, #7, and #9 |
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
 | T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
+| T-23 | CDK was not bootstrapped in the hackathon AWS account, so no `cdk deploy` would have worked. | Part 5 | — | CLOSED | Bootstrapped 2026-09-15: `CDKToolkit` version 32, staging bucket `cdk-hnb659fds-assets-087328706621-us-east-1`. `deploy_preflight.py --aws` now reports it ready |
+| T-24 | This file is itself a conflict magnet. Every part is asked to append a log entry and edit the same tables, so parallel branches collide in section 8 — PR #8 conflicts on exactly `CONTEXT_RELAY.md` and `memory/INDEX.md` and nothing else. Same structural problem as T-18, caused by the fix for it. Proposal: split the relay log into one file per entry under `docs/relay/NNN-*.md` (the pattern `memory/episodic/` already uses successfully) and have `relay_check.py` assemble and validate them, leaving only the tables shared. | Part 5 | Everyone appending | OPEN | PR #8's conflict set; this file's own growth; renumbered from a collision with T-21/T-22 during PR #9's merge, proving the point a third time |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. Proposed: instructor key on `create`, relay enforcement in Part 4, and a shell gate. Not built — waiting on a go from the owner. | Part 2 + Part 4 | Demo integrity | OPEN | `apps/extension/src/shell/App.tsx` role switch; `docs/PART2_HANDOFF.md` open items |
 | T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
@@ -483,3 +485,72 @@ SessionClient` is the only working transport today; there is still no
 already knows two hard constraints worth reading before you design anything:
 only `us.anthropic.claude-sonnet-4-6` is invokable on this AWS account, and
 the write path for Lambda/DynamoDB/API Gateway/S3 is unverified.
+
+### RL-018 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** `scripts/deploy_preflight.py`, `make deploy-preflight`, and
+`docs/DEPLOYMENT.md`. The AWS account was probed rather than assumed: every
+create the planned stack needs succeeded and was cleaned up afterwards, so the
+`SYSTEM_DESIGN.md` §7 architecture is deployable in this account.
+**Threads touched:** T-23 opened.
+**Next agent needs to know:** the account expires when the event does, and the
+credentials expire sooner. Nothing deployed survives the demo, which makes the
+recorded fallback load-bearing rather than a nicety. Also `npx cdk bootstrap`
+has never been run here — that is T-23, it takes thirty seconds, and nothing
+deploys until someone does it.
+
+### RL-019 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** ran `cdk bootstrap` against the hackathon account. `CDKToolkit` is
+at version 32 with an S3 staging bucket and five IAM roles, so Part 4 can `cdk
+deploy` without any setup of its own.
+**Threads touched:** T-23 closed.
+**Next agent needs to know:** it was bootstrapped with CDK's default
+`AdministratorAccess` execution policy. That is normal for a throwaway event
+account and wrong for anything that outlives it — scope it with
+`--cloudformation-execution-policies` if this architecture is ever rebuilt
+somewhere permanent.
+
+### RL-020 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** nothing new; synced all three open branches onto `19770f6`.
+**Threads touched:** T-18 strengthened — that commit is a teammate hitting the
+same conflict independently and fixing it by hand, which is the fifth
+occurrence.
+**Next agent needs to know:** T-18 is now costing other people time, not just
+mine, and the commit message for `19770f6` cites the thread by name — so the
+register is being read. That is the argument for spending ten minutes on the
+fix rather than continuing to pay the toll.
+
+### RL-021 — 2026-09-15 — Part 5 — Kunj Rathod
+
+**Landed:** nothing. Opening a thread against this document.
+**Threads touched:** T-24 opened (renumbered from a collision with T-21/T-22
+found while merging this into the integration branch, RL-022).
+**Next agent needs to know:** PR #8 conflicts on exactly two files —
+`CONTEXT_RELAY.md` and `memory/INDEX.md` — and nothing else in 91 changed files.
+Both are things I added or lean on heavily. The relay was built to stop context
+being lost between parallel workstreams, and the way it asks for that (everyone
+appends to one file) reproduces the very problem it documents in T-18. Worth
+fixing before three more people start appending, not after.
+
+### RL-022 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** merged PR #9 (`docs/deployment-readiness`) onto
+`accesslens-extension-ar-pivot`. Same shape of conflict as PR #8: only
+`docs/CONTEXT_RELAY.md` and `memory/INDEX.md`, no application code. This time
+also found a filename collision (`memory/episodic/0042-deployment-readiness.md`
+renamed to `0043-...`, since `0042` was already this session's merge record)
+and two more thread-ID collisions in the table that auto-merged without a git
+conflict at all: Kunj's `T-21` (CDK bootstrap) collided with Jacob's existing
+`T-21` (`capture.stopped`), and Kunj's `T-22` (this file is a conflict magnet)
+collided with Jacob's existing `T-22` (student-can-be-instructor). Both of
+Kunj's are renumbered to `T-23`/`T-24` here and in RL-018/019/021 above.
+Verified with `make check` after resolving: still green.
+**Threads touched:** none closed. T-21/T-22 disambiguated a second time; T-23,
+T-24 assigned.
+**Next agent needs to know:** RL-021/T-24's point proved itself twice more in
+the same merge it was written to describe — table rows collide silently
+(no git conflict) even when the log entries do conflict. Read `T-24` before
+adding a new thread ID by hand; check the table for the number, not just your
+own memory of what you last used.
