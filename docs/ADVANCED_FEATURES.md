@@ -107,9 +107,13 @@ Imagine a professor demonstrating an SN2 reaction at a lab bench:
    permission for the shared instructor device.
 2. The local camera view recognizes the reviewed reaction setup or a known visual
    marker on the model. Continuous video remains local.
-3. The professor uses a small set of deliberate actions—point to the nucleophile,
-   rotate the model, or press a confirmation button after a hand gesture.
-4. AccessLens converts the confirmed action into a semantic event, for example:
+3. The professor signs or gestures a reviewed chemistry concept with their hands—
+   for example, showing the direction of backside attack, rotating a molecular
+   model, or indicating bond formation. The first version uses a bounded,
+   instructor-configured sign vocabulary rather than pretending to understand
+   every possible sign or conversation.
+4. AccessLens converts the recognized and confirmed sign into a semantic event,
+   for example:
 
    ```json
    {
@@ -132,11 +136,17 @@ Imagine a professor demonstrating an SN2 reaction at a lab bench:
    uncertain. AccessLens never invents a chemical explanation from an uncertain
    frame.
 
-### Safe gesture design
+### Sign-language and hand-interaction design
 
-- Start with two or three explicit, teachable gestures rather than unrestricted
-  sign-language interpretation.
-- Require a visible confirmation state for consequential events.
+- Start with a small, reviewed sign vocabulary for the target lesson (such as
+  nucleophile, electrophile, attack direction, bond break, and bond form). Expand
+  toward broader sign-language support only after testing with Deaf signers and
+  accessibility experts.
+- Do not claim full ASL interpretation from a few chemistry gestures. Signs vary
+  by language, community, instructor, and context; the interface must show what
+  it recognized and allow the professor to correct it.
+- Require a visible confirmation state for consequential events and show the
+  recognized concept before broadcasting it to students.
 - Use a physical marker, pointer, or on-screen button as a fallback.
 - Do not perform face recognition, gaze tracking, emotion inference, or movement
   scoring.
