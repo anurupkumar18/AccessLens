@@ -1,0 +1,26 @@
+{
+  "name": "@accesslens/live-session",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AccessLens Part 4 \u2014 temporary session service and ordered WebSocket relay.",
+  "scripts": {
+    "build:pack": "node scripts/build-pack-index.mjs",
+    "pretest": "npm run build:pack",
+    "test": "vitest run",
+    "typecheck": "npm run build:pack && tsc --noEmit",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "build": "npm run build:pack && esbuild src/handler.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.mjs --external:@aws-sdk/* --loader:.json=json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.699.0",
+    "@aws-sdk/client-dynamodb": "^3.699.0",
+    "@aws-sdk/lib-dynamodb": "^3.699.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -60,14 +60,17 @@ during the build.
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
-| 4. AWS live service | UNOWNED | `docs/aws-access-verification` (unmerged) | Not started as a service. Recon only: the hackathon AWS account allows exactly one Bedrock model (`us.anthropic.claude-sonnet-4-6`), Polly/Translate respond, and the write path for Lambda/DynamoDB/API Gateway/S3 is unverified. No `infra/` or `services/live-session/`. | `git log origin/docs/aws-access-verification` |
+| 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
 
-**The single largest risk moved again.** Parts 1, 2, 3, and 5 are all on the
-integration branch now with `make check` green (181 extension tests, 61 pack
-tests, 24 relay tests). Nobody owns Part 4, and Part 4 is the one thing that
-turns this from "one browser profile, `BroadcastChannel`" into an actual
-multi-device demo. The other new risk is process, not code: three independent
+**The largest risk moved again, and it is no longer Part 4.** Parts 1, 2, 3, and
+5 are on the integration branch, and Part 4 now is too: the relay is built,
+deployed, and verified against real AWS, so the thing that turns this from "one
+browser profile, `BroadcastChannel`" into an actual multi-device demo exists.
+**What has not happened is the two meeting.** Nothing in the extension points at
+the deployed endpoint yet — `WebSocketSessionClient` is written and tested but
+not wired in, and `VITE_ACCESSLENS_WS_URL` is still unset. That integration, and
+a rehearsal across two real devices, is now the top risk (T-25). The other new risk is process, not code: three independent
 ID collisions (two episodic `0040`/`0041` filenames, one `T-20` thread ID) were
 found and fixed only because someone merging noticed — see T-17/T-18, still
 open.
@@ -101,14 +104,16 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
 | T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. It has now bitten **five times**, and `19770f6` is a teammate hitting it independently and fixing it by hand. The proposal stands: make the pointer a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | `19770f6` plus four conflicts across PRs #4, #5, #7, and #9 |
-| T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
+| T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | CLOSED | The session records `packId` and `packVersion` at create time and every event is compared against them; a mismatch is refused as `pack-version-mismatch`. Part 3 does not need to hold the version itself |
 | T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
 | T-23 | CDK was not bootstrapped in the hackathon AWS account, so no `cdk deploy` would have worked. | Part 5 | — | CLOSED | Bootstrapped 2026-09-15: `CDKToolkit` version 32, staging bucket `cdk-hnb659fds-assets-087328706621-us-east-1`. `deploy_preflight.py --aws` now reports it ready |
 | T-24 | This file is itself a conflict magnet. Every part is asked to append a log entry and edit the same tables, so parallel branches collide in section 8 — PR #8 conflicts on exactly `CONTEXT_RELAY.md` and `memory/INDEX.md` and nothing else. Same structural problem as T-18, caused by the fix for it. Proposal: split the relay log into one file per entry under `docs/relay/NNN-*.md` (the pattern `memory/episodic/` already uses successfully) and have `relay_check.py` assemble and validate them, leaving only the tables shared. | Part 5 | Everyone appending | OPEN | PR #8's conflict set; this file's own growth; renumbered from a collision with T-21/T-22 during PR #9's merge, proving the point a third time |
+| T-25 | **The relay is deployed and the extension does not use it.** `WebSocketSessionClient` implements Part 1's frozen interface and is tested, but nothing constructs it: the extension still runs on `BroadcastChannel`, which is one browser profile on one machine. `VITE_ACCESSLENS_WS_URL` is unset. Until someone swaps the transport at its construction site and rehearses across two real devices, "multi-device demo" is an untested claim — and the swap is the cheap part, while discovering a problem during the rehearsal is not. | Part 1 + Part 3 | The demo | OPEN | `services/live-session/src/client/webSocketSessionClient.ts` exists; `git grep -l BroadcastChannel apps/` still matches |
+| T-26 | The deployed endpoint has no authorizer on `$connect`: anyone who can reach the URL can create a session, and the session id is the only secret. Acceptable for a reviewed demo pack with no student data, and stated in `services/live-session/README.md`, but it must not be described as secure, and it is not a shape to carry into anything holding real course content. | Part 4 | Claims made about the demo | ACCEPTED | Deliberate scope call for the hackathon; `services/live-session/README.md` "What is not built" |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
-| T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. Proposed: instructor key on `create`, relay enforcement in Part 4, and a shell gate. Not built — waiting on a go from the owner. | Part 2 + Part 4 | Demo integrity | OPEN | `apps/extension/src/shell/App.tsx` role switch; `docs/PART2_HANDOFF.md` open items |
+| T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
-| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts`. Part 2's controller also starts at 1 (`captureController.test.ts`), so 1 is now the de facto answer; Part 1 still has to pin it in the schema. |
+| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | CLOSED | Pinned to 1 by the relay, matching Part 5's reference: `sequence: 0` is refused as `sequence-not-a-positive-integer` (`services/live-session/src/rules.ts`, asserted by the parity test). The shared Zod contract still permits 0, so a client can construct one — the relay is what refuses it |
 
 ---
 
@@ -570,3 +575,44 @@ extension.
 **Next agent needs to know:** BroadcastChannel is origin-scoped. A side panel
 (`chrome-extension://`) and the Vite preview (`localhost`) cannot hear each
 other, so test both roles in the same origin until Part 4's relay exists.
+
+### RL-024 — 2026-09-16 — Part 4 — Omar Rizwan
+
+**Landed:** Part 4, built and deployed. `services/live-session/` is the relay —
+server-side validation, HMAC role capabilities, DynamoDB state with TTL enforced
+on read, the WebSocket handler, redacted logging, and the real `SessionClient`.
+`infra/` is the CDK stack. Verified against real AWS at
+`wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`: one instructor
+drove two students through all 19 happy-path events in order, and five refusals
+held, 12/12. 49 unit tests. `make live-session-check` added to `check`.
+**Threads touched:** T-15, T-19 closed. T-22's relay half is built (the shell
+half is still open). T-25 and T-26 opened. T-20, T-21, T-23, T-24 untouched.
+**Next agent needs to know:** five things.
+
+*The relay exists and nothing uses it (T-25).* This is the gap that matters now.
+The extension is still on `BroadcastChannel`; swapping in
+`WebSocketSessionClient` is a construction-site change plus
+`VITE_ACCESSLENS_WS_URL`. Do it early enough to rehearse on two devices.
+
+*The endpoint is disposable.* It lives in the Workshop Studio account, whose
+credentials expire before the account itself is reclaimed. If it stops
+answering, redeploy rather than debug.
+
+*Deploy is two steps and the second ships stale code silently.* `npm run build`
+in `services/live-session`, then `cdk deploy` in `infra`. The stack deploys a
+prebuilt `dist/` because CDK's implicit bundling shells out to esbuild from the
+repository root, where adding it would mean editing Part 1's `package.json`.
+
+*Validator parity is enforced, not hoped for.* `reference_event_check.py` asked
+for its rule names to be kept stable server-side; `test/rules.parity.test.ts`
+runs both implementations over every reviewed fixture and fails on any
+disagreement, order included.
+
+*I collided with this file exactly as T-17 and T-22 predict.* I branched at
+`1d1c72b` and wrote T-20/T-21/T-22 and RL-014/RL-015; by the time I merged, all
+five ids were taken by other people's work. I renumbered mine and rewrote my
+rows against the current file rather than resolving the conflict mechanically,
+which is the only reason the register still means anything. The Makefile
+conflict was the same story in miniature: my side had dropped `relay-check`,
+`freeze-check`, and `deploy-preflight`, and taking either side wholesale would
+have deleted someone's work. **If you are merging this file, read both sides.**
