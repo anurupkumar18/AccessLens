@@ -30,12 +30,18 @@ export class TokenParameter extends Construct {
           const name = event.ResourceProperties.ParameterName;
           try {
             if (event.RequestType === 'Delete') {
-              await ssm.send(new DeleteParameterCommand({ Name: name }));
+              try {
+                await ssm.send(new DeleteParameterCommand({ Name: name }));
+              } catch (error) {
+                // CloudFormation retries deletes; a missing parameter is already
+                // in the desired state and must not strand the stack.
+                if (error?.name !== 'ParameterNotFound') throw error;
+              }
               await send('SUCCESS', { PhysicalResourceId: name });
               return;
             }
             const value = crypto.randomBytes(32).toString('base64url');
-            await ssm.send(new PutParameterCommand({ Name: name, Type: 'SecureString', Value: value, Overwrite: true, Tags: [{ Key: 'accesslens:temporary', Value: 'true' }] }));
+            await ssm.send(new PutParameterCommand({ Name: name, Type: 'SecureString', Value: value, Overwrite: true }));
             await send('SUCCESS', { PhysicalResourceId: name, Data: { ParameterName: name, Token: value } });
           } catch (error) {
             console.error('token_parameter_failure', error);
