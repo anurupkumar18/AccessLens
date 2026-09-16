@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
+import { defaultAiClient, type AiClient } from '../shared/aiClient';
 import { createCaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import { LiveCaptions, type CaptionDeps } from './LiveCaptions';
 
 interface Props {
   client: SessionClient;
@@ -10,19 +12,32 @@ interface Props {
   scheduler?: Scheduler;
   clock?: Clock;
   ids?: IdGenerator;
+  /** AI gateway client; defaults to the one configured by VITE_ACCESSLENS_AI_URL. */
+  ai?: AiClient | null;
+  captionDeps?: CaptionDeps;
 }
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
 
 interface Banner { glyph: string; label: string; tone: Tone; sentence: string }
 
+const SURFACE_NAMES = { browser: 'a tab', window: 'a window', monitor: 'your screen' } as const;
+
 /** One banner per state: glyph and label carry the meaning, colour only reinforces it. */
 function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
+  // Windows and whole screens carry toolbars and other windows around the
+  // slide, so when nothing matches there, say what usually fixes it.
+  const unmatchedHint = state.surface === 'window' || state.surface === 'monitor'
+    ? ' Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow.'
+    : '';
   const where = state.current.kind === 'matched'
     ? ` Current slide: ${state.current.title}. Region: ${state.current.regionId ?? 'none'}.`
     : state.current.kind === 'unmatched'
-      ? ' Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below.'
-      : ' Looking for a reviewed slide.';
+      ? ` Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below.${unmatchedHint}`
+      : state.surface === 'window' || state.surface === 'monitor'
+        ? ' Looking for a reviewed slide anywhere in what you shared.'
+        : ' Looking for a reviewed slide.';
+  const sharing = state.surface ? `Sharing ${SURFACE_NAMES[state.surface]}.` : 'Sharing.';
   switch (state.phase) {
     case 'idle':
       return {
@@ -36,7 +51,7 @@ function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
         glyph: state.current.kind === 'unmatched' ? '⚠' : state.current.kind === 'matched' ? '●' : '◉',
         label: state.current.kind === 'unmatched' ? 'Sharing · Unmatched' : state.current.kind === 'matched' ? 'Sharing · Synced' : 'Sharing',
         tone: state.current.kind === 'unmatched' ? 'warn' : state.current.kind === 'matched' ? 'ok' : 'live',
-        sentence: `Sharing.${where}`,
+        sentence: `${sharing}${where}`,
       };
     case 'paused':
       return { glyph: '❙❙', label: 'Paused', tone: 'warn', sentence: `Paused. Students see the last shared moment.${where}` };
@@ -56,7 +71,7 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: Props): React.ReactElement {
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai = defaultAiClient, captionDeps }: Props): React.ReactElement {
   const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
@@ -97,17 +112,21 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
   }
 
   const steps = [
-    'Click Start and pick the window or tab showing your slides.',
+    'Click Start and pick the tab, window, or screen showing your slides.',
     'Read the join code to students. They enter it in their AccessLens.',
     'Present. Reviewed slides are recognised on this device and synced; fix a wrong match below.',
   ];
 
   return (
-    <section aria-labelledby="instructor-heading">
+    <section className="instructor" aria-labelledby="instructor-heading">
+      <div className="section-rule">
+        <p className="eyebrow"><span aria-hidden="true">/ </span>Instructor console</p>
+        <span className="rule-mark" aria-hidden="true" />
+      </div>
       <h2 id="instructor-heading">Instructor</h2>
-      <p className="muted">Pack: {pack.title} · v{pack.version}</p>
+      <p className="muted">Pack: <mark>{pack.title}</mark> · v{pack.version}</p>
       <div className="panel-grid">
-      <div>
+      <div className="console">
       <div className="status" data-tone={b.tone}>
         <span className="glyph" aria-hidden="true">{b.glyph}</span>
         <span className="label">{b.label}</span>
@@ -131,8 +150,10 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
         )}
       </div>
 
+      <LiveCaptions controller={controller} state={state} pack={pack} ai={ai} deps={captionDeps} />
+
       </div>
-      <div>
+      <div className="guide">
       <h3>How this works</h3>
       <ol className="steps" aria-label="Session steps">
         {steps.map((text, i) => {

@@ -102,7 +102,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-11 | End-to-end suite. First slice landed now that `SessionClient` is frozen: `tests/e2e/fixture-replay.test.ts` covers fixture replay, reconnect idempotence, and session close. The rest — failure paths through a real UI, axe, screen-reader, rehearsals — still needs the student renderers. | Part 5 | Demo readiness | IN PROGRESS | `tests/e2e/fixture-replay.test.ts`, 7 tests |
 | T-12 | `codex/live-workspace-foundation` is 3 commits ahead and 64 behind, last touched 2026-08-28, from the superseded Evidence Engine product. Salvage or delete before the repo is handed over. | UNOWNED | Nothing | UNOWNED | `git log origin/codex/live-workspace-foundation` |
 | T-13 | Nobody owns merging `accesslens-extension-ar-pivot` into `master`, and no moment is defined for it. The build rule forbids merging to `master` during the hackathon, so this must happen deliberately at the end. | UNOWNED | Final handover | UNOWNED | `docs/PARALLEL_WORKSTREAMS.md`, merge and branch rules |
-| T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
+| T-16 | `caption.appended` was base-only in the discriminated union, so a caption event could not carry a caption or name its asset. | Part 1 | Captions | CLOSED | Closed 2026-09-16 in the conformance doc's suggested shape: `caption: {text, isFinal}` (text <= 500) plus optional `assetId`, in Zod, the JSON schema, the Python reference, and the relay, with the new `caption-invalid` rule and `fixtures/invalid/caption-with-audio-payload.json`; the captions scenario now validates end to end (`tests/e2e/fixture-replay.test.ts`, `KNOWN_REJECTED` empty) |
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
 | T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. It has now bitten **five times**, and `19770f6` is a teammate hitting it independently and fixing it by hand. The proposal stands: make the pointer a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | `19770f6` plus four conflicts across PRs #4, #5, #7, and #9 |
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | CLOSED | The session records `packId` and `packVersion` at create time and every event is compared against them; a mismatch is refused as `pack-version-mismatch`. Part 3 does not need to hold the version itself |
@@ -115,6 +115,8 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-28 | `StudentExperience.tsx` marked the view "stale" after 15 seconds with no new event -- a content-silence guess standing in for a connection check. An instructor explaining one region for more than 15 seconds (normal pacing) produced a false "Connection interrupted," which is exactly what the team hit live-testing the real extension against the real relay. | Part 1 + Part 3 + Part 4 | Trust in the demo's own status indicator | CLOSED | `WebSocketSessionClient.onConnectionChange` (real socket open/close, additive to the frozen interface) threaded through `liveRelayClient.ts` to `StudentExperience.tsx`, replacing the timer. `markLiveStateReconnected` added as the stale->live counterpart. +9 tests across the four files (`services/live-session` 52 total, extension 259 total) |
 | T-29 | Two internal critiques of this project (a harsh criterion-by-criterion scorecard, and a proposed scope-narrowing revision responding to it) existed only on one person's machine, uncommitted, since 2026-09-15, and were never seen by any of the other four contributors. Nobody can be aligned on a decision they have never seen. Compounding it: the scorecard is now 24h stale against what's actually built, and needs updating with real external research before anyone acts on it. | All five parts | Tomorrow's in-person product-direction meeting | OPEN | `docs/TEAM_ALIGNMENT_CHECK.md` is now a non-blocking meeting agenda. Anurup has responded; Jacob, Kunj, Omar, and Prachi are invited to respond before or during the meeting. Scoped implementation against the current extension-first MVP may continue. |
 | T-30 | The agent-first delivery system is additive: ticket files, claims, immutable updates, generated context, and validation must not become a second mutable product or risk register. Its initial portfolio intentionally keeps current-MVP proof P0 and durable identity/content work deferred behind human decisions. | Part 1 | Agent handoffs and release evidence | OPEN | `docs/AGENT_OPERATING_CONTEXT.md`; `docs/work/`; `make work-board-check`; AL-090 is in review |
+| T-39 | **Remote audio needs a second human reviewer.** Instructor live captions stream microphone audio to Amazon Transcribe (charter A2 exception, off by default, consent text at the control). The charter's human review gate requires a second reviewer for remote media before merge. | Omar Rizwan | Merging `ui/blacksmith-revamp` | OPEN | `docs/work/decisions/2026-09-16-transcribe-live-captions.md`; `services/ai-gateway/README.md` |
+| T-40 | **AI routes are built but not deployed.** `services/ai-gateway` (Bedrock Ask, Polly speech, Transcribe caption URLs) is in the CDK stack and passes its tests with fakes, but the hackathon credentials had expired, so nothing has been called against real AWS and `VITE_ACCESSLENS_AI_URL` is unset. | Omar Rizwan | Captions, Ask, Polly in the demo | CLOSED | Deployed 2026-09-16 (`AccessLensLiveSession.AiApiUrl`); `smoke-test.ts` all checks passed against the deployed routes (Ask answered with citation in 3.3 s, off-topic and injection declined, Polly mp3, Transcribe returned the spoken words); relay `integration-test.mjs` passed; deployed relay accepts text captions and rejects `caption-invalid` |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. Shared-contract second review and deployed-relay update remain before closure. |
@@ -933,3 +935,85 @@ picking this up; `docs/DEPLOY.md` §5 has the measured timings; every user
 decision is in `docs/VIZ_DECISIONS.md`. The stack is `RemovalPolicy.DESTROY`
 throughout and `make destroy` removes it (the authoring stack only; the
 live-session stack is Part 4's to destroy).
+
+### RL-038 — 2026-09-16 — Part 1 + Part 3 — Omar Rizwan
+
+**Landed:** the extension UI now follows Blacksmith's site layout, not just its
+tokens: yellow masthead with a pixel wordmark (`shell/Wordmark.tsx`, drawn from a
+5x5 bitmap, not their logo), `/ LABEL ■` section rules, pill buttons, window cards
+with hard shadows, bento mode tabs, halftone fields. `shell/ThemeToggle.tsx` adds a
+light/dark switch that pins `<html data-theme>`; dark-only values are now tokens.
+WCAG AA text contrast measured in a real browser: zero failures in both themes.
+No button text, id, or role that tests query changed; `make check` green.
+**Threads touched:** none opened or closed. T-25 note: `VITE_ACCESSLENS_WS_URL` in
+a local `.env.local` is enough to put the dev server on the deployed relay
+(integration test 12/12 on 2026-09-16); committed `dist/` is still built without it.
+**Next agent needs to know:** the HNSW draft pack's slides 04 and 05 are 16 bits
+apart, under the 2x-margin (28) rule `validate_pack.py` enforces for the bio pack,
+so it would show Unmatched between those two on a real capture. Demo on the bio pack.
+
+### RL-039 — 2026-09-16 — Part 2 + Part 1 — Omar Rizwan
+
+**Landed:** window and whole-screen shares now sync. Reproduced first: on the
+reviewed pack the whole-frame fingerprint of a slide in a viewer window was 31
+bits from itself and a slide in half a screen 47-55, against a threshold of 26,
+so only tab shares ever matched. `sources/screen/locate.ts` searches window and
+screen frames for the slide rectangle when the browser reports those surfaces;
+tabs keep the old path. Measured on synthesized frames: reviewed pack 25/25,
+0 false matches in 117 non-slide frames (guards in the screen README). The host
+now caps sampling at 1280 px wide, excludes AccessLens's own tab from the
+chooser, offers "share this tab instead", and reports the surface, which the
+instructor banner names with a fix-it hint on Unmatched. Also a header switch
+for dyslexia-friendly text (bundled OpenDyslexic, sentence case, wider line
+spacing), stored in localStorage only — the font half of AL-010.
+**Threads touched:** T-25 and AL-001/AL-002 still OPEN: none of this has run
+against a real `getDisplayMedia()` window or screen; the unit tests use
+composed frames.
+**Next agent needs to know:** the synthetic test pack's slides are simple enough
+to be found inside `unknown-01` in a window share, so window-share tests use the
+reviewed pack. The HNSW draft misses 9/40 located cases (pale slides, 04/05
+near-duplicates). Run the AL-001 matrix with Window and Entire Screen before
+claiming this in the demo.
+
+### RL-040 — 2026-09-16 — Part 4 + Part 1 + Part 3 — Omar Rizwan
+
+**Landed:** AWS models in the live product. `services/ai-gateway` (new package,
+deployed by the existing CDK stack as an HTTP API beside the relay) verifies the
+relay's HMAC capabilities and serves: `/ask`, grounded answers from reviewed
+packs only via Claude Sonnet 4.6 on Bedrock (BM25 retrieval, forced strict tool,
+citations checked after the call, declines instead of guessing, nothing logged);
+`/speak`, reviewed region text through Polly (never free text); and
+`/transcribe-url`, instructor-only presigned Transcribe streaming URLs. The
+extension gains instructor live captions with voice-driven region sync
+(`sources/voice/`, `instructor/LiveCaptions.tsx`), student captions, "Ask this
+class", and Polly in Hear mode. T-16 closed: `caption.appended` carries text.
+`make check` green (extension 328, relay 53, gateway 19).
+**Threads touched:** T-16 closed; T-39 opened (remote audio needs a second
+reviewer); T-40 opened (built, not deployed: credentials expired).
+**Next agent needs to know:** Bedrock, Polly and Transcribe have only been
+exercised with fakes and a mocked browser run. Refresh credentials, build both
+services, `cdk deploy`, set `VITE_ACCESSLENS_AI_URL`, then run the smoke test,
+which streams Polly speech through Transcribe with the extension's own framing.
+Chrome does not show a microphone prompt in the side panel; captions must be
+started from "Open in a full tab".
+
+### RL-041 — 2026-09-16 — Part 4 + Part 1 — Omar Rizwan
+
+**Landed:** the AI routes and the caption-carrying relay are deployed to the
+hackathon account (`cdk deploy AccessLensLiveSession`, added only the AI API,
+Lambda, role, and log group; relay code updated in place). Verified against real
+AWS: `services/ai-gateway/scripts/smoke-test.ts` and the relay
+`integration-test.mjs` both pass, and the deployed relay delivers a text
+`caption.appended` to a student while refusing one carrying audio.
+`services/ai-gateway/scripts/local-server.ts` runs the Lambda's handler on
+127.0.0.1 for testing before a deploy. Build fix: Vite inlined the caption audio
+worklet as a `data:` URL, which the extension CSP blocks (confirmed in Chromium
+with the unpacked extension), so `vite.config.ts` now never inlines
+`*.worklet.js`, and the extension-assets plugin honours `--outDir`.
+**Threads touched:** T-40 closed; T-39 still open (second reviewer for remote
+audio before merge).
+**Next agent needs to know:** captions worked on `npx vite` but would have failed
+only inside the installed extension; test voice features from the unpacked
+build, not just the dev server. Build a demo copy with endpoints via
+`npx vite build --outDir .cache/demo-extension` (gitignored) and keep the
+committed `dist/` free of endpoints. Hackathon credentials last a few hours.

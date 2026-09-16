@@ -1,5 +1,8 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import type { AccessPack, LiveEvent, SessionClient } from '../shared/contracts';
+import type { AccessPack, LiveEvent, RoleCapability, SessionClient } from '../shared/contracts';
+import { defaultAiClient, isRelayCapability, type AiClient } from '../shared/aiClient';
+import { AskClass } from './AskClass';
+import { LiveCaptionsView } from './LiveCaptionsView';
 import type { StudentPreferences } from '../shared/preferences';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
@@ -18,6 +21,8 @@ interface Props {
   pack: AccessPack;
   preferences: StudentPreferences;
   onPreferencesChange(preferences: StudentPreferences): void;
+  /** AI gateway client; defaults to the one configured by VITE_ACCESSLENS_AI_URL. */
+  ai?: AiClient | null;
 }
 
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
@@ -34,10 +39,14 @@ function modesFor(pack: AccessPack): typeof allModes {
   return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
 }
 
-export function StudentExperience({ client, event, pack, preferences, onPreferencesChange }: Props): React.ReactElement {
+export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient }: Props): React.ReactElement {
   const [sessionId, setSessionId] = useState('');
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
+  const [capability, setCapability] = useState<RoleCapability | null>(null);
+  const speak = ai && isRelayCapability(capability)
+    ? (assetId: string, regionId: string) => ai.speak(capability, pack.packId, pack.version, assetId, regionId, 'shortDescription')
+    : undefined;
 
   useEffect(() => {
     if (!event) return;
@@ -59,7 +68,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
 
   async function join(): Promise<void> {
     try {
-      await client.join(sessionId.trim());
+      setCapability(await client.join(sessionId.trim()));
       setJoinMessage(`Joined ${sessionId.trim()}. Waiting for the instructor.`);
     } catch {
       setJoinMessage('Could not join this session. Check the code and try again.');
@@ -92,13 +101,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       aria-labelledby="student-title"
       style={{ fontSize: `${preferences.textScale}rem` }}
     >
-      <div className="student-heading">
-        <div>
-          <p className="eyebrow">Student extension</p>
-          <h2 id="student-title">Live lesson</h2>
-        </div>
+      <div className="section-rule">
+        <p className="eyebrow"><span aria-hidden="true">/ </span>Student extension</p>
         <span className={`connection-pill ${live.status}`}>{live.status}</span>
       </div>
+      <h2 id="student-title">Live lesson</h2>
 
       <form className="join-form" onSubmit={(submitEvent) => { submitEvent.preventDefault(); void join(); }}>
         <label htmlFor="session-code">Join code from your instructor</label>
@@ -119,6 +126,8 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       </form>
       <p role="status" className="supporting-text">{joinMessage}</p>
       <p role="status" className="live-message">{live.message}</p>
+
+      <LiveCaptionsView client={client} />
 
       <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson">
         {modes.map((mode, index) => (
@@ -141,7 +150,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       <div id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} speak={speak} /> : null}
         {activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
@@ -149,6 +158,8 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
           </Suspense>
         ) : null}
       </div>
+
+      <AskClass pack={pack} capability={capability} ai={ai} />
 
       <fieldset className="display-settings">
         <legend>Display preferences</legend>

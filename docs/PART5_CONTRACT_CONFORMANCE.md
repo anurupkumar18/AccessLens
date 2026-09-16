@@ -71,7 +71,9 @@ Root-level `.strict()` rejects four blocks.
 | `arCameras` | Named `{position, target, fov}` framings that hotspots reference |
 | `reservedReadingOrderIds` | The structural entries (`title`) a `readingOrder` may contain besides region ids |
 
-## 3. `caption.appended` cannot carry a caption
+## 3. `caption.appended` cannot carry a caption — CLOSED 2026-09-16
+
+Closed in the suggested shape: `caption.appended` now carries `caption: {text, isFinal}` (text at most 500 characters) and may name its `assetId`. Both captions fixture events validate, the gaps below no longer occur, and the relay and Python reference share a `caption-invalid` rule. Kept below as history.
 
 The type is base-only in the discriminated union, so neither the caption text
 nor the asset it belongs to can be sent.

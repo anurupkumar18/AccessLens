@@ -31,4 +31,6 @@ jobs:
       # same Poppler and LibreOffice the ingest Lambda container carries.
       # Without these the [slow] tests fail with "spawnSync pdftoppm ENOENT".
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils libreoffice-impress
+      # services/ai-gateway likewise; the root test run also imports its tests.
+      - run: npm ci --prefix services/ai-gateway
       - run: make check

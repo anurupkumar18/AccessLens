@@ -2,8 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { AccessPackSchema, InMemorySessionClient, LiveEventSchema, type LiveEvent } from '../shared/contracts';
 import { createCaptureController } from './index';
 import {
-  FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, testPack,
+  FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, screenWith, slideInWindow, testPack,
 } from '../sources/screen/fixtures';
+import type { DisplaySurface, Frame } from '../sources/screen';
+import reviewedPackJson from '../../../../packages/access-packs/bio-cell-demo/pack.json';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { PNG } from 'pngjs';
+
+function loadPng(repoPath: string): Frame {
+  const image = PNG.sync.read(readFileSync(join(__dirname, '../../../..', repoPath)));
+  return { width: image.width, height: image.height, data: new Uint8ClampedArray(image.data) };
+}
 
 const pack = AccessPackSchema.parse(testPack);
 
@@ -296,5 +306,86 @@ describe('capture controller: contract and privacy invariants (A2)', () => {
     controller.correct({ assetId: 'slide-02' });
     expect(events[0].sentAt).toBe('2026-09-15T15:00:00.000Z');
     expect(events[1].sentAt).toBe('2026-09-15T15:00:01.500Z');
+  });
+});
+
+describe('capture controller: window and whole-screen shares', () => {
+  // The reviewed pack's second slide shown in a viewer window: toolbar and
+  // margins push the whole-frame fingerprint past the threshold, which is the
+  // failure instructors hit when they picked "Window" or "Entire screen".
+  const reviewedPack = AccessPackSchema.parse(reviewedPackJson);
+  const windowed = () => slideInWindow(loadPng('packages/access-packs/bio-cell-demo/slides/cell-slide-02.png'), 900, 900);
+
+  function setupReviewed(surface: DisplaySurface | undefined) {
+    const host = new FakeCaptureHost();
+    host.stream.surface = surface;
+    const client = new InMemorySessionClient();
+    const scheduler = new FakeScheduler();
+    const events: LiveEvent[] = [];
+    client.subscribe(e => events.push(e));
+    const controller = createCaptureController({ client, pack: reviewedPack, host, scheduler, clock: new FakeClock(), ids: fixedIds('sess-w') });
+    return { controller, scheduler, events, stream: host.stream };
+  }
+
+  it('finds the slide inside a shared window and reports the surface', async () => {
+    const { controller, scheduler, events, stream } = setupReviewed('window');
+    await controller.start();
+    expect(controller.getState().surface).toBe('window');
+    stream.enqueue(windowed(), windowed());
+    scheduler.tick(2);
+    expect(events.filter(e => e.type === 'asset.changed')).toMatchObject([{ assetId: 'cell-slide-02' }]);
+  });
+
+  it('searches a whole-screen share the same way', async () => {
+    const { controller, scheduler, events, stream } = setupReviewed('monitor');
+    await controller.start();
+    const screen = () => screenWith(loadSlideFrame('unknown-01'), windowed(), 40, 80);
+    stream.enqueue(screen(), screen());
+    scheduler.tick(2);
+    expect(events.filter(e => e.type === 'asset.changed')).toMatchObject([{ assetId: 'cell-slide-02' }]);
+  });
+
+  it('keeps a shared tab on the whole-frame path, so a tab showing a window screenshot is still unmatched', async () => {
+    const { controller, scheduler, events, stream } = setupReviewed('browser');
+    await controller.start();
+    stream.enqueue(windowed(), windowed(), windowed());
+    scheduler.tick(3);
+    expect(types(events)).toEqual(['session.started', 'source.unmatched']);
+  });
+});
+
+describe('capture controller: live captions', () => {
+  it('sends caption text naming the matched slide, and without an asset when nothing is matched', async () => {
+    const { controller, stream, scheduler, events } = await sharing();
+    expect(controller.caption('Before any slide matches.', true)).toBe(true);
+    expect(events.at(-1)).toMatchObject({ type: 'caption.appended', caption: { text: 'Before any slide matches.', isFinal: true } });
+    expect(events.at(-1)).not.toHaveProperty('assetId');
+
+    stream.enqueue(demo('slide-03'));
+    scheduler.tick(1);
+    controller.caption('the mitochondrion  releases energy', false);
+    expect(events.at(-1)).toMatchObject({ type: 'caption.appended', assetId: 'slide-03', caption: { text: 'the mitochondrion releases energy', isFinal: false } });
+    for (const event of events) expect(LiveEventSchema.safeParse(event).success).toBe(true);
+  });
+
+  it('keeps the most recent words of an over-long caption, within the contract limit', async () => {
+    const { controller, events } = await sharing();
+    controller.caption(`${'early words '.repeat(60)}the end`, true);
+    const text = (events.at(-1) as { caption: { text: string } }).caption.text;
+    expect(text.length).toBeLessThanOrEqual(500);
+    expect(text.endsWith('the end')).toBe(true);
+    expect(text.startsWith('early') || text.startsWith('words')).toBe(true);
+  });
+
+  it('sends nothing without an open session, and hands out the instructor capability once one opens', async () => {
+    const { controller, events } = setup();
+    expect(controller.caption('hello', true)).toBe(false);
+    expect(controller.getCapability()).toBeNull();
+    expect(events).toEqual([]);
+    await controller.start();
+    expect(controller.getCapability()).toMatchObject({ role: 'instructor', sessionId: 'sess-1' });
+    controller.endSession();
+    expect(controller.getCapability()).toBeNull();
+    expect(controller.caption('after the end', true)).toBe(false);
   });
 });

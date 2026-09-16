@@ -48,12 +48,8 @@ EXPECTED_GAPS = {
     "AccessPack:additional-property:matching",
     "AccessPack:additional-property:arCameras",
     "AccessPack:additional-property:reservedReadingOrderIds",
-    # --- Events: caption.appended cannot carry a caption --------------------
-    # The type is base-only in the contract, so neither the caption text nor
-    # the asset it belongs to can be sent. Kept in the fixtures rather than
-    # worked around, because a caption event with no caption is not a design.
-    "LiveEvent:additional-property:caption",
-    "LiveEvent:forbidden-property:assetId",
+    # The caption gap (T-16) closed on 2026-09-16: caption.appended now carries
+    # `caption: {text, isFinal}` and may name its asset, in the suggested shape.
 }
 
 

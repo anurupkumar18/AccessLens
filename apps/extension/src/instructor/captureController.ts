@@ -1,8 +1,8 @@
-import type { AccessPack, LiveEvent, SessionClient } from '../shared/contracts';
+import { CAPTION_MAX_LENGTH, type AccessPack, type LiveEvent, type RoleCapability, type SessionClient } from '../shared/contracts';
 import {
-  assertPackFingerprints, createSampler, hammingDistance, matchFingerprint, timeoutScheduler,
+  assertPackFingerprints, createSampler, createSlideLocator, hammingDistance, matchFingerprint, timeoutScheduler, wholeFrameFingerprint,
   DEFAULT_MATCH_OPTIONS, DEFAULT_SAMPLE_INTERVAL_MS,
-  type CaptureHost, type CaptureStream, type MatchOptions, type Sampler, type Scheduler,
+  type CaptureHost, type CaptureStream, type DisplaySurface, type MatchOptions, type Sampler, type Scheduler,
 } from '../sources/screen';
 
 /** Injected time source; production uses the system clock. */
@@ -36,6 +36,8 @@ export interface ControllerSnapshot {
   message: string | null;
   current: CurrentState;
   sequence: number;
+  /** Tab, window, or whole screen while sharing; null when not sharing or unreported. */
+  surface: DisplaySurface | null;
 }
 
 export interface Correction { assetId: string; regionId?: string }
@@ -51,6 +53,14 @@ export interface CaptureController {
   endSession(): void;
   correct(correction: Correction): void;
   indicateRegion(regionId: string): void;
+  /**
+   * Sends a live caption of the instructor's speech (text only) while a
+   * session is open, naming the matched slide when there is one. Longer text
+   * keeps its most recent words. Returns false when no session is open.
+   */
+  caption(text: string, isFinal: boolean): boolean;
+  /** The relay-signed instructor capability for the open session, for the AI gateway. Null before a session opens. */
+  getCapability(): RoleCapability | null;
   /** Halts sampling without emitting anything; for unmount. */
   dispose(): void;
 }
@@ -73,6 +83,7 @@ export const SHARING_REQUIRED_MESSAGE =
   'Sharing is required for live sync. Click Start and choose a tab, window, or screen.';
 
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
+  | { type: 'caption.appended'; assetId?: string; caption: { text: string; isFinal: boolean } }
   | { type: 'asset.changed'; assetId: string }
   | { type: 'region.changed'; assetId: string; regionId: string };
 
@@ -84,10 +95,12 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   const intervalMs = options.sampleIntervalMs ?? DEFAULT_SAMPLE_INTERVAL_MS;
   const matchOptions = options.match ?? DEFAULT_MATCH_OPTIONS;
   assertPackFingerprints(pack);
+  const locator = createSlideLocator(pack, matchOptions);
 
   const listeners = new Set<(state: ControllerSnapshot) => void>();
   let phase: CapturePhase = 'idle';
   let sessionId: string | null = null;
+  let capability: RoleCapability | null = null;
   let message: string | null = null;
   let current: CurrentState = { kind: 'fresh' };
   let sequence = 0;
@@ -102,7 +115,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   let correctionAnchor: string | null = null;
 
   function snapshot(): ControllerSnapshot {
-    return { phase, sessionId, message, current: { ...current }, sequence };
+    return { phase, sessionId, message, current: { ...current }, sequence, surface: stream?.surface ?? null };
   }
   function notify(): void {
     const state = snapshot();
@@ -206,7 +219,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
         const streamPromise = host.requestStream();
         if (openedHere) {
           try {
-            await client.create(id);
+            capability = await client.create(id);
           } catch {
             const granted = await streamPromise.catch(() => null);
             granted?.stop();
@@ -224,10 +237,12 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
         message = null;
         resetRecognition();
         emit({ type: 'session.started' });
-        sampler = createSampler(granted, scheduler, onSample, intervalMs);
+        // A tab is the slide itself; a window or screen has other things around it to search past.
+        const searchable = granted.surface === 'window' || granted.surface === 'monitor';
+        sampler = createSampler(granted, scheduler, onSample, intervalMs, searchable ? frame => locator.fingerprint(frame) : wholeFrameFingerprint);
         sampler.start();
       } catch {
-        if (openedHere) sessionId = null;
+        if (openedHere) { sessionId = null; capability = null; }
         phase = 'idle';
         message = SHARING_REQUIRED_MESSAGE;
       }
@@ -261,6 +276,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       if (sessionId !== null) emit({ type: 'session.ended' });
       client.close();
       sessionId = null;
+      capability = null;
       phase = 'closed';
       message = 'Session ended.';
       notify();
@@ -296,6 +312,21 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       emit({ type: 'region.changed', assetId: current.assetId, regionId });
       notify();
     },
+
+    caption(text, isFinal) {
+      if (sessionId === null || phase === 'closed') return false;
+      const trimmed = text.trim().replace(/\s+/g, ' ');
+      if (!trimmed) return false;
+      const bounded = trimmed.length > CAPTION_MAX_LENGTH ? trimmed.slice(trimmed.length - CAPTION_MAX_LENGTH).replace(/^\S*\s/, '') : trimmed;
+      emit({
+        type: 'caption.appended',
+        ...(current.kind === 'matched' ? { assetId: current.assetId } : {}),
+        caption: { text: bounded, isFinal },
+      });
+      return true;
+    },
+
+    getCapability: () => capability,
 
     dispose() {
       releaseStream();
