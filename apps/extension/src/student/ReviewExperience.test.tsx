@@ -3,6 +3,7 @@ import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import axe from 'axe-core';
 import { validPack } from '../shared/fixtures';
 import { defaultPreferences } from '../shared/preferences';
 import { ReviewExperience } from './ReviewExperience';
@@ -73,5 +74,13 @@ describe('ReviewExperience', () => {
     await act(async () => tab('Focus').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })));
     expect(tab('Hear').getAttribute('aria-selected')).toBe('true');
     expect(container!.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe('review-mode-tab-hear');
+  });
+
+  it('has no automatically detectable accessibility violations', async () => {
+    render(multiConceptPack);
+    const result = await axe.run(container!, {
+      rules: { region: { enabled: false }, 'color-contrast': { enabled: false } },
+    });
+    expect(result.violations).toEqual([]);
   });
 });

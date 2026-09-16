@@ -3,6 +3,7 @@ import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import axe from 'axe-core';
 import type { CaptureHost, CaptureStream } from '../sources/screen';
 import { CameraControl } from './CameraControl';
 
@@ -61,5 +62,15 @@ describe('CameraControl', () => {
     await act(async () => button('Start local camera').click());
     act(() => stream.end());
     expect(container!.textContent).toContain('The browser ended the camera. No camera stream is active.');
+  });
+
+  it('has no automatically detectable accessibility violations while on', async () => {
+    const stream = fakeStream();
+    render({ requestStream: vi.fn(async () => stream) });
+    await act(async () => button('Start local camera').click());
+    const result = await axe.run(container!, {
+      rules: { region: { enabled: false }, 'color-contrast': { enabled: false } },
+    });
+    expect(result.violations).toEqual([]);
   });
 });

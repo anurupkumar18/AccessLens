@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0064-automated-accessibility-coverage.md` (Part 1/accessibility QA: axe-core coverage extended to the instructor panel, camera control, and Review route; human review remains open)
 - `episodic/0063-local-camera-consent-lifecycle.md` (Part 1/camera foundation: explicit local start/stop exists; recognition and physical QA remain review-gated)
 - `episodic/0062-disabled-course-material-provider.md` (Part 1/course boundary: strict no-network Canvas/RAG placeholder is review-ready; no provider is enabled)
 - `episodic/0061-review-keyboard-format-navigation.md` (Part 1/Review accessibility: keyboard-equivalent format tabs are review-ready; physical QA remains open)

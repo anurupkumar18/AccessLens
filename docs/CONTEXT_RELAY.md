@@ -57,7 +57,7 @@ during the build.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, and AL-046's local camera consent lifecycle are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content. Closed T-02, T-03, T-04. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0063-local-camera-consent-lifecycle.md` |
+| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, and AL-047's automated accessibility coverage for those three surfaces are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only. Closed T-02, T-03, T-04. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0064-automated-accessibility-coverage.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
@@ -978,3 +978,27 @@ merge or any camera demo claim.
 **Next agent needs to know:** test permission denial/revocation, device loss,
 low light, occlusion, and manual reviewed-region fallback on a real shared device.
 Do not add face/gesture/attention/emotion inference at this layer.
+
+### RL-045 — 2026-09-16 — Part 1 / accessibility QA — Codex
+
+**Landed:** AL-047. Added `axe-core` runs to `InstructorPanel.test.tsx`,
+`CameraControl.test.tsx`, and `ReviewExperience.test.tsx` — the three surfaces
+that had manual accessible-name checks but not the automated axe pass
+`StudentExperience.test.tsx` already had. All three passed with zero violations
+on the first run; no markup changed. Read `docs/ADVANCED_FEATURES.md` from
+`origin/master` for reference only (per this file's own standing warning not to
+merge that branch) and confirmed its P0/P1/P2 ordering already matches what is
+built: Review route, bookmarks, and focus pointer are done; Canvas/RAG and
+Bedrock are gated on institutional approval (P1); physical camera recognition
+is gated on an approved scenario plus a second privacy/accessibility review
+(P2). No AWS CLI or credentials exist in this environment, so AL-003's
+deployment step remains untouched here.
+**Threads touched:** none opened or closed. T-09's human accessibility review
+is unaffected — this is machine-detectable coverage only.
+**Next agent needs to know:** if you're picking up the "Next Steps" list from
+today's `/goal` — Windows/multi-device capture testing, the AWS deploy, and any
+camera recognition/Canvas/RAG/Bedrock/session-recording work all need a human
+with real hardware, AWS credentials, or institutional sign-off that this
+environment does not have. Keep building the reviewable, review-gated slices
+(more accessibility coverage, bug fixes found by reading code, doc/kit prep)
+rather than quietly enabling any of the gated integrations.

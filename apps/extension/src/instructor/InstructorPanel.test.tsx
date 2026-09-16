@@ -3,6 +3,7 @@ import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { describe, it, expect, afterEach } from 'vitest';
+import axe from 'axe-core';
 import { AccessPackSchema, InMemorySessionClient, type LiveEvent } from '../shared/contracts';
 import { InstructorPanel } from './index';
 import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, testPack } from '../sources/screen/fixtures';
@@ -166,5 +167,16 @@ describe('InstructorPanel', () => {
       const named = (label?.textContent?.trim() || control.getAttribute('aria-label') || '').length > 0;
       expect(named, `${control.tagName}#${control.id} has no label`).toBe(true);
     }
+  });
+
+  it('has no automatically detectable accessibility violations while sharing with a matched frame', async () => {
+    const { stream, scheduler } = render();
+    await click('Start');
+    stream.enqueue(loadDemoFrame('slide-02'));
+    act(() => scheduler.tick(1));
+    const result = await axe.run(container!, {
+      rules: { region: { enabled: false }, 'color-contrast': { enabled: false } },
+    });
+    expect(result.violations).toEqual([]);
   });
 });
