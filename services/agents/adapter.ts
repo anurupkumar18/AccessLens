@@ -3,6 +3,7 @@ import {
   ArtifactDirectorySchema,
   artifactDirectoryWithVerifiedReferences,
   assertAdaptedProvenance,
+  writeArtifactDirectory,
   type ArtifactAgentResult,
   type ArtifactDirectory,
   type ArtifactSource,
@@ -19,6 +20,8 @@ export interface AdapterInput {
   excerpts: readonly Excerpt[];
   /** Concrete repair notes from the critic, if this is a repair attempt. */
   repairProblems?: readonly string[];
+  /** Optional staging path where the complete artifact directory is materialized. */
+  outputDir?: string;
 }
 
 export interface AdapterDependencies {
@@ -96,7 +99,9 @@ export async function adaptArtifact(input: AdapterInput, dependencies: AdapterDe
     userText: adapterUserText(input),
     logId: `${input.jobId}/${input.slideId}`,
   }, dependencies.client, dependencies.promptDirectory);
-  return outputResult(result.value, input, result.attempts);
+  const output = outputResult(result.value, input, result.attempts);
+  if (input.outputDir) await writeArtifactDirectory(output.artifact, input.outputDir);
+  return output;
 }
 
 /** Stage 7a Lambda-shaped handler. */

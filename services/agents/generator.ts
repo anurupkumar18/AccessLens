@@ -4,6 +4,7 @@ import {
   ArtifactDirectorySchema,
   artifactDirectoryWithVerifiedReferences,
   assertGeneratedProvenance,
+  writeArtifactDirectory,
   type ArtifactAgentResult,
 } from './artifact';
 import { runAgentStage, type MessagesClient } from '../shared/agentStage';
@@ -17,6 +18,8 @@ export interface GeneratorInput {
   excerpts: readonly Excerpt[];
   /** Concrete changes supplied by the critic during a repair loop. */
   repairProblems?: readonly string[];
+  /** Optional staging path where the complete artifact directory is materialized. */
+  outputDir?: string;
 }
 
 export interface GeneratorDependencies {
@@ -89,11 +92,13 @@ export async function generateArtifact(input: GeneratorInput, dependencies: Gene
   // the job id invariant at the stage boundary as well.
   assertGeneratedProvenance(result.value.manifest, input.jobId);
   const references = verifyReferences(result.value.references, input.excerpts);
-  return {
+  const output: ArtifactAgentResult = {
     artifact: artifactDirectoryWithVerifiedReferences(result.value, references.kept),
     verifiedReferences: references.kept,
     attempts: result.attempts,
   };
+  if (input.outputDir) await writeArtifactDirectory(output.artifact, input.outputDir);
+  return output;
 }
 
 /** Stage 7b Lambda-shaped handler. */

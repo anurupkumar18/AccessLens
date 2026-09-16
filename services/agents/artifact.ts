@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { relative, resolve } from 'node:path';
 import { z } from 'zod';
 import { ArtifactManifestSchema, type ArtifactManifest } from '../../apps/extension/src/shared/contracts';
 import { ClaimedReferencesField } from '../shared/references';
@@ -27,6 +29,24 @@ export interface ArtifactAgentResult {
   /** References after deterministic verification against the excerpts supplied to the agent. */
   verifiedReferences: import('../shared/references').VerifiedReference[];
   attempts: number;
+}
+
+export async function writeArtifactDirectory(artifact: ArtifactDirectory, directory: string): Promise<void> {
+  const parsed = ArtifactDirectorySchema.parse(artifact);
+  const root = resolve(directory);
+  await mkdir(root, { recursive: true });
+  await writeFile(resolve(root, 'manifest.json'), `${JSON.stringify(parsed.manifest, null, 2)}\n`, 'utf8');
+  await writeFile(resolve(root, 'index.html'), parsed.indexHtml, 'utf8');
+  for (const [assetPath, contents] of Object.entries(parsed.assets)) {
+    const relativeAsset = assetPath.startsWith('assets/') ? assetPath.slice('assets/'.length) : assetPath;
+    const destination = resolve(root, 'assets', relativeAsset);
+    const rel = relative(root, destination);
+    if (!relativeAsset || relativeAsset.split('/').includes('..') || rel.split('/').includes('..') || rel.startsWith('/')) {
+      throw new Error(`asset path ${assetPath} escapes the artifact path`);
+    }
+    await mkdir(resolve(destination, '..'), { recursive: true });
+    await writeFile(destination, contents, 'utf8');
+  }
 }
 
 export function artifactDirectoryWithVerifiedReferences(
