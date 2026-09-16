@@ -95,6 +95,40 @@ describe('AudioView', () => {
     expect(container!.querySelector('[role="status"]')!.textContent).toContain('join a live session to hear the Amazon Polly voice');
   });
 
+  it("sends the description to the student's own screen reader instead of playing audio", async () => {
+    vi.useFakeTimers();
+    const audio = fakeAudio();
+    const speak = vi.fn();
+    const utterances: unknown[] = [];
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { cancel: vi.fn(), speak: (u: unknown) => utterances.push(u) } });
+    render(<AudioView pack={publishedPack} assetId={asset.assetId} regionId={region.regionId} speak={speak} createAudio={audio.create} readAloudWith="screen-reader" />);
+    const button = container!.querySelector('button')!;
+    expect(button.textContent).toBe('Read with my screen reader');
+    await clickPlay();
+    await act(async () => { vi.advanceTimersByTime(60); });
+    const live = container!.querySelector('[aria-live="assertive"]')!;
+    expect(live.textContent).toContain(region.shortDescription);
+    expect(audio.play).not.toHaveBeenCalled();
+    expect(speak).not.toHaveBeenCalled();
+    expect(utterances).toHaveLength(0);
+    vi.useRealTimers();
+  });
+
+  it('uses the browser voice directly when the student chooses it, and offers the choice in place', async () => {
+    const utterances: unknown[] = [];
+    vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; constructor(readonly text: string) {} });
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { cancel: vi.fn(), speak: (u: unknown) => utterances.push(u) } });
+    const audio = fakeAudio();
+    const onChange = vi.fn();
+    render(<AudioView pack={publishedPack} assetId={asset.assetId} regionId={region.regionId} speak={vi.fn()} createAudio={audio.create} readAloudWith="browser-voice" onReadAloudWithChange={onChange} />);
+    await clickPlay();
+    expect(utterances).toHaveLength(1);
+    expect(audio.play).not.toHaveBeenCalled();
+    const select = container!.querySelector<HTMLSelectElement>('#read-aloud-with')!;
+    act(() => { select.value = 'screen-reader'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(onChange).toHaveBeenCalledWith('screen-reader');
+  });
+
   it('says when Amazon Polly failed and the browser voice took over', async () => {
     const utterances: SpeechSynthesisUtterance[] = [];
     vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; constructor(readonly text: string) {} });

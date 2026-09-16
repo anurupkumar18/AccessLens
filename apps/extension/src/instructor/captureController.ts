@@ -1,8 +1,8 @@
 import { CAPTION_MAX_LENGTH, type AccessPack, type LiveEvent, type RoleCapability, type SessionClient } from '../shared/contracts';
 import {
-  assertPackFingerprints, createSampler, createSlideLocator, hammingDistance, matchFingerprint, timeoutScheduler, wholeFrameFingerprint,
+  assertPackFingerprints, createPointerTracker, createSampler, createSlideLocator, hammingDistance, matchFingerprint, timeoutScheduler, wholeFrameFingerprint,
   DEFAULT_MATCH_OPTIONS, DEFAULT_SAMPLE_INTERVAL_MS,
-  type CaptureHost, type CaptureStream, type DisplaySurface, type MatchOptions, type Sampler, type Scheduler,
+  type CaptureHost, type CaptureStream, type DisplaySurface, type Frame, type MatchOptions, type PointerPosition, type Sampler, type Scheduler,
 } from '../sources/screen';
 
 /** Injected time source; production uses the system clock. */
@@ -38,6 +38,8 @@ export interface ControllerSnapshot {
   sequence: number;
   /** Tab, window, or whole screen while sharing; null when not sharing or unreported. */
   surface: DisplaySurface | null;
+  /** Whether students follow the reviewed region under the instructor's mouse pointer (window and screen shares). */
+  followPointer: boolean;
 }
 
 export interface Correction { assetId: string; regionId?: string }
@@ -53,6 +55,12 @@ export interface CaptureController {
   endSession(): void;
   correct(correction: Correction): void;
   indicateRegion(regionId: string): void;
+  /**
+   * Turns pointer following on or off. On a window or whole-screen share the
+   * mouse pointer is found in the shared frames on this device, and students
+   * move to the reviewed region under it; only that region's id is sent.
+   */
+  setFollowPointer(on: boolean): void;
   /** Sends a bounded, instructor-authored caption line scoped to the current asset. */
   sendCaption(text: string): void;
   /**
@@ -76,6 +84,17 @@ export interface ControllerOptions {
   ids?: IdGenerator;
   sampleIntervalMs?: number;
   match?: MatchOptions;
+}
+
+/** Smallest reviewed region whose bounds contain a point on the slide. */
+function regionAt<R extends { regionId: string; bounds: { x: number; y: number; width: number; height: number } }>(regions: readonly R[], point: PointerPosition): R | null {
+  let best: R | null = null;
+  for (const region of regions) {
+    const { x, y, width, height } = region.bounds;
+    if (point.x < x || point.x > x + width || point.y < y || point.y > y + height) continue;
+    if (!best || width * height < best.bounds.width * best.bounds.height) best = region;
+  }
+  return best;
 }
 
 /** Consecutive unmatched samples before source.unmatched fires. */
@@ -115,9 +134,15 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   let lastFingerprint: string | null = null;
   /** Sticky manual correction: automatic emission resumes only once the screen moves away from this. */
   let correctionAnchor: string | null = null;
+  let followPointer = true;
+  const pointer = createPointerTracker();
+  /** Where the pointer was in the latest sample, if it moved; a position, never a frame. */
+  let pointerSample: PointerPosition | null = null;
+  /** Region the pointer entered on the previous sample, awaiting a second sample before students move. */
+  let pointerCandidate: string | null = null;
 
   function snapshot(): ControllerSnapshot {
-    return { phase, sessionId, message, current: { ...current }, sequence, surface: stream?.surface ?? null };
+    return { phase, sessionId, message, current: { ...current }, sequence, surface: stream?.surface ?? null, followPointer };
   }
   function notify(): void {
     const state = snapshot();
@@ -166,6 +191,35 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     unmatchedStreak = 0;
     lastFingerprint = null;
     correctionAnchor = null;
+    resetPointer();
+  }
+
+  function resetPointer(): void {
+    pointer.reset();
+    pointerSample = null;
+    pointerCandidate = null;
+  }
+
+  /**
+   * Moves students to the reviewed region under the instructor's pointer. The
+   * pointer has to be in the same region on two consecutive samples, so a
+   * pointer crossing a region on its way somewhere else does not move anyone.
+   */
+  function followPointerTo(position: PointerPosition | null): void {
+    if (!followPointer || !position || current.kind !== 'matched') return;
+    const region = regionAt(findAsset(current.assetId).regions, position);
+    if (!region || region.regionId === current.regionId) {
+      pointerCandidate = null;
+      return;
+    }
+    if (pointerCandidate !== region.regionId) {
+      pointerCandidate = region.regionId;
+      return;
+    }
+    pointerCandidate = null;
+    current = { ...current, regionId: region.regionId };
+    emit({ type: 'region.changed', assetId: current.assetId, regionId: region.regionId, pointer: reviewedRegionCenter(region) });
+    notify();
   }
 
   /** Halts sampling synchronously and releases the stream. Emits nothing. */
@@ -188,13 +242,19 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     const decision = matchFingerprint(fingerprint, pack, matchOptions);
     if (decision.kind === 'matched') {
       unmatchedStreak = 0;
-      if (current.kind === 'matched' && current.assetId === decision.assetId) return;
+      if (current.kind === 'matched' && current.assetId === decision.assetId) {
+        followPointerTo(pointerSample);
+        return;
+      }
+      // The tracker keeps its background: it restarts by itself when the slide moves or its content changes.
+      pointerCandidate = null;
       current = { kind: 'matched', assetId: decision.assetId, title: findAsset(decision.assetId).title, regionId: null };
       emit({ type: 'asset.changed', assetId: decision.assetId });
       notify();
       return;
     }
     unmatchedStreak += 1;
+    pointerCandidate = null;
     if (unmatchedStreak >= UNMATCHED_DEBOUNCE && current.kind !== 'unmatched') {
       current = { kind: 'unmatched' };
       emit({ type: 'source.unmatched' });
@@ -257,7 +317,14 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
         emit({ type: 'session.started' });
         // A tab is the slide itself; a window or screen has other things around it to search past.
         const searchable = granted.surface === 'window' || granted.surface === 'monitor';
-        sampler = createSampler(granted, scheduler, onSample, intervalMs, searchable ? frame => locator.fingerprint(frame) : wholeFrameFingerprint);
+        // A tab capture never includes the mouse pointer, so only window and screen shares track it.
+        const locateAndTrack = (frame: Frame): string => {
+          const fingerprint = locator.fingerprint(frame);
+          const slide = locator.lastRect();
+          pointerSample = followPointer && slide ? pointer.observe(frame, slide) : null;
+          return fingerprint;
+        };
+        sampler = createSampler(granted, scheduler, onSample, intervalMs, searchable ? locateAndTrack : wholeFrameFingerprint);
         sampler.start();
       } catch {
         if (openedHere) { sessionId = null; capability = null; }
@@ -316,6 +383,12 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       }
       unmatchedStreak = 0;
       correctionAnchor = lastFingerprint;
+      notify();
+    },
+
+    setFollowPointer(on) {
+      followPointer = on;
+      if (!on) resetPointer();
       notify();
     },
 

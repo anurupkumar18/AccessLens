@@ -1630,3 +1630,29 @@ closer to shipping; (2) T-39 (remote-audio second reviewer) is still open;
 an actual product decision, not two widgets left running side by side;
 (4) `AccessLensWhisper` is unreviewed, undeployed CDK — do not `cdk deploy`
 it without the same review any other AWS spend would get.
+
+### RL-068 — 2026-09-16 — Part 2 + Part 3 — Omar Rizwan
+
+**Landed:** students follow the instructor's mouse, and students' own screen
+readers are first-class. On a window or entire-screen share,
+`sources/screen/pointer.ts` finds the mouse pointer in the captured frames (a
+background of the recognised slide; the pointer is what moves) and the
+controller moves students to the reviewed region under it once it stays for
+two samples; only that region, with its reviewed centre, is sent, never the
+mouse position (the semantic-pointer rule in `captureController.ts` holds).
+Instructor toggle: "Move students to the part of the slide under my mouse".
+Focus view: the highlight is a fixed yellow band edged in ink so it shows on
+dark slides, and the pointer marker sits outside the region instead of covering
+its text. Screen readers: a polite live region announces slide and region
+changes (VoiceOver, NVDA, JAWS, Narrator, ChromeVox), a "Screen reader"
+settings group, "Read descriptions with" AI voice / my screen reader / browser
+voice (also in Hear), and a skip link. Also: the relay's capabilities now carry
+`streamToken`, which the strict schemas refused (every session failed); it is
+an optional pass-through field. Extension tests 413 pass; end to end against the
+deployed relay, pointing at each HNSW region moved the student and announced it.
+**Threads touched:** none opened.
+**Next agent needs to know:** tab shares never include the mouse pointer, so
+following needs a window or screen share. The tracker was measured on rendered
+HNSW slides with a drawn Retina arrow (240/240 located, 0 false reports), not
+yet on a real macOS capture; if a slide animates, the >1% changed-cells guard
+treats it as content, not a pointer.

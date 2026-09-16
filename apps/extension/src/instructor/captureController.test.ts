@@ -3,7 +3,7 @@ import { AccessPackSchema, InMemorySessionClient, LiveEventSchema, type LiveEven
 import type { CaptureStream } from '../sources/screen/captureHost';
 import { createCaptureController } from './index';
 import {
-  FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, screenWith, slideInWindow, testPack,
+  FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, screenWith, slideInWindow, testPack, withPointer,
 } from '../sources/screen/fixtures';
 import type { DisplaySurface, Frame } from '../sources/screen';
 import reviewedPackJson from '../../../../packages/access-packs/bio-cell-demo/pack.json';
@@ -416,6 +416,47 @@ describe('capture controller: window and whole-screen shares', () => {
     stream.enqueue(screen(), screen());
     scheduler.tick(2);
     expect(events.filter(e => e.type === 'asset.changed')).toMatchObject([{ assetId: 'cell-slide-02' }]);
+  });
+
+  describe('following the mouse pointer', () => {
+    // slideInWindow(…, 900, 900) puts the 860x484 slide at (20, 235) in the window.
+    const at = (x: number, y: number) => withPointer(windowed(), Math.round(20 + x * 860), Math.round(235 + y * 484));
+    const regionEvents = (events: LiveEvent[]) => events.filter(e => e.type === 'region.changed').map(e => (e as { regionId: string }).regionId);
+
+    it('moves students to the reviewed region under the pointer once it stays for two samples, and sends only the region', async () => {
+      const { controller, scheduler, events, stream } = setupReviewed('window');
+      await controller.start();
+      expect(controller.getState().followPointer).toBe(true);
+      stream.enqueue(windowed(), windowed(), at(0.43, 0.53));
+      scheduler.tick(3);
+      expect(regionEvents(events)).toEqual([]);
+      stream.enqueue(at(0.43, 0.53));
+      scheduler.tick(1);
+      expect(regionEvents(events)).toEqual(['nucleolus']);
+      // The reviewed region's centre is sent, never where the mouse was.
+      const nucleolus = reviewedPack.assets[1].regions.find(r => r.regionId === 'nucleolus')!.bounds;
+      expect(events.at(-1)).toMatchObject({ pointer: { x: nucleolus.x + nucleolus.width / 2, y: nucleolus.y + nucleolus.height / 2 } });
+
+      stream.enqueue(at(0.27, 0.3), at(0.27, 0.3));
+      scheduler.tick(2);
+      expect(regionEvents(events)).toEqual(['nucleolus', 'nucleus']);
+    });
+
+    it('does not move anyone when the instructor turns it off, or on a tab share', async () => {
+      const off = setupReviewed('window');
+      await off.controller.start();
+      off.controller.setFollowPointer(false);
+      off.stream.enqueue(windowed(), windowed(), at(0.43, 0.53), at(0.43, 0.53));
+      off.scheduler.tick(4);
+      expect(regionEvents(off.events)).toEqual([]);
+
+      const tab = setupReviewed('browser');
+      await tab.controller.start();
+      const slideOnly = () => loadPng('packages/access-packs/bio-cell-demo/slides/cell-slide-02.png');
+      tab.stream.enqueue(slideOnly(), slideOnly(), withPointer(slideOnly(), 400, 300), withPointer(slideOnly(), 400, 300));
+      tab.scheduler.tick(4);
+      expect(regionEvents(tab.events)).toEqual([]);
+    });
   });
 
   it('keeps a shared tab on the whole-frame path, so a tab showing a window screenshot is still unmatched', async () => {

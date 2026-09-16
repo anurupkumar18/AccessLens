@@ -46,14 +46,16 @@ describe('FocusView', () => {
     expect(container!.querySelector('.cell-membrane')).toBeNull();
   });
 
-  it('renders an explicit semantic focus pointer only when the reviewed event includes one', () => {
+  it('marks the region with a pointer outside its outline, only when the reviewed event includes one', () => {
     const pack = AccessPackSchema.parse(reviewedBioPack);
     const asset = pack.assets[1];
     const region = asset.regions[0];
     render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} pointer={{ x: 0.42, y: 0.31 }} />);
-    const pointer = container!.querySelector<HTMLElement>('.focus-pointer')!;
-    expect(pointer.style.left).toBe('42%');
-    expect(pointer.style.top).toBe('31%');
+    // At the region's top-left corner, so it never covers what it points at.
+    const pointer = container!.querySelector<SVGElement>('.focus-pointer')!;
+    expect(pointer.classList.contains('start')).toBe(true);
+    expect(pointer.style.left).toBe(`${region.bounds.x * 100}%`);
+    expect(pointer.style.top).toBe(`${region.bounds.y * 100}%`);
 
     act(() => root!.unmount());
     render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} />);

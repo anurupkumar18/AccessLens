@@ -10,3 +10,5 @@ export { createSlideLocator } from './locate';
 export type { SlideLocator } from './locate';
 export type { Scheduler, SchedulerHandle, Sampler } from './sampler';
 export { createDisplayMediaHost } from './displayMediaHost';
+export { createPointerTracker } from './pointer';
+export type { PointerTracker, PointerPosition, SlideRect } from './pointer';

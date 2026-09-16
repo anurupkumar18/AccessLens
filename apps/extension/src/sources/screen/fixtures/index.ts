@@ -100,6 +100,35 @@ export function screenWith(wallpaper: Frame, window: Frame, left: number, top: n
   return pasteFrame(screen, solidFrame(Math.round(width * 0.45), 54, 70), Math.round(width * 0.27), height - 54);
 }
 
+/** A macOS-style arrow pointer: black body, white outline. `scale` 2 is its size on a Retina display. */
+const ARROW = [
+  'W...........', 'WW..........', 'WBW.........', 'WBBW........', 'WBBBW.......', 'WBBBBW......', 'WBBBBBW.....', 'WBBBBBBW....',
+  'WBBBBBBBW...', 'WBBBBBBBBW..', 'WBBBBBBBBBW.', 'WBBBBBBWWWWW', 'WBBBWBBW....', 'WBBWWBBW....', 'WBW..WBBW...', 'WW...WBBW...',
+  'W.....WBBW..', '......WBBW..', '.......WW...',
+];
+
+/** Copy of `frame` with the mouse pointer's tip at (x, y). */
+export function withPointer(frame: Frame, x: number, y: number, scale = 2): Frame {
+  const out: Frame = { width: frame.width, height: frame.height, data: new Uint8ClampedArray(frame.data) };
+  for (let row = 0; row < ARROW.length; row++) {
+    for (let col = 0; col < ARROW[row].length; col++) {
+      const cell = ARROW[row][col];
+      if (cell === '.') continue;
+      const value = cell === 'W' ? 255 : 0;
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const px = x + col * scale + dx;
+          const py = y + row * scale + dy;
+          if (px < 0 || py < 0 || px >= out.width || py >= out.height) continue;
+          const offset = (py * out.width + px) * 4;
+          out.data[offset] = value; out.data[offset + 1] = value; out.data[offset + 2] = value; out.data[offset + 3] = 255;
+        }
+      }
+    }
+  }
+  return out;
+}
+
 // ---- Test doubles -------------------------------------------------------
 
 export class FakeCaptureStream implements CaptureStream {

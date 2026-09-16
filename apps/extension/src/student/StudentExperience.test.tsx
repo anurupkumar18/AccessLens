@@ -75,6 +75,20 @@ describe('StudentExperience', () => {
   });
 
 
+  it("announces the instructor's slide and region to the student's own screen reader, unless they turn it off", () => {
+    const { rerender } = renderExperience();
+    const announcer = () => container!.querySelector('[data-testid="screen-reader-announcer"]')!;
+    expect(announcer().getAttribute('aria-live')).toBe('polite');
+    const region = validPack.assets[0].regions.find((r) => r.regionId === 'mitochondrion')!;
+    expect(announcer().textContent).toContain(`Slide: ${validPack.assets[0].title}.`);
+    expect(announcer().textContent).toContain(region.shortDescription);
+
+    const toggle = container!.querySelector<HTMLInputElement>('#announce-changes-toggle')!;
+    act(() => toggle.click());
+    rerender();
+    expect(announcer().textContent).toBe('');
+  });
+
   it('renders capture stopped as a non-live state', () => {
     const stoppedEvent = {
       schemaVersion: '1.0' as const,

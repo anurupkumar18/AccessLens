@@ -15,6 +15,11 @@ export const StudentPreferencesSchema = z.object({
   contentWidth: z.enum(['standard', 'narrow', 'wide']).default('standard'),
   highContrast: z.boolean().default(false),
   speechRate: z.number().min(0.75).max(1.5).default(1),
+  // Students who use their own screen reader (VoiceOver, NVDA, JAWS, ChromeVox,
+  // Narrator) hear lesson changes in their own voice and speed, and can have
+  // descriptions read by it instead of the AI voice.
+  announceChanges: z.boolean().default(true),
+  readAloudWith: z.enum(['ai-voice', 'screen-reader', 'browser-voice']).default('ai-voice'),
   reducedMotion: z.boolean(),
   captionsEnabled: z.boolean(),
 }).strict();
@@ -30,6 +35,8 @@ export const defaultPreferences: StudentPreferences = {
   contentWidth: 'standard',
   highContrast: false,
   speechRate: 1,
+  announceChanges: true,
+  readAloudWith: 'ai-voice',
   reducedMotion: false,
   captionsEnabled: true,
 };

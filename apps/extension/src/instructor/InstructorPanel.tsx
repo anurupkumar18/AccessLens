@@ -167,6 +167,16 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
         )}
       </div>
 
+      {state.sessionId && state.phase !== 'closed' && (
+        <p className="caption-option">
+          <input id="follow-pointer" type="checkbox" checked={state.followPointer} onChange={() => controller.setFollowPointer(!state.followPointer)} />
+          <label htmlFor="follow-pointer">
+            Move students to the part of the slide under my mouse
+            <span className="muted"> (sharing a window or your entire screen; a tab share has no mouse pointer)</span>
+          </label>
+        </p>
+      )}
+
       <LiveCaptions controller={controller} state={state} pack={pack} ai={ai} deps={captionDeps} />
 
       </div>

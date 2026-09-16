@@ -1,7 +1,8 @@
 import type { AccessPack } from '../../shared/contracts';
 import type { Frame } from './captureHost';
 import { fingerprintFrame, FINGERPRINT_PREFIX, GRID, TIE_EPSILON } from './fingerprint';
-import { cropToAspect, SLIDE_ASPECT } from './letterbox';
+import { aspectRect, cropToAspect, SLIDE_ASPECT } from './letterbox';
+import type { SlideRect } from './pointer';
 import { matchFingerprint, type MatchOptions } from './matcher';
 
 /**
@@ -138,6 +139,8 @@ function edges(size: number): Int32Array {
 export interface SlideLocator {
   /** Fingerprint of the slide in this frame: the whole frame when that matches, else the best located rectangle, else the whole frame. */
   fingerprint(frame: Frame): string;
+  /** Where in the last frame the fingerprinted slide was, in frame pixels. Geometry only. */
+  lastRect(): SlideRect | null;
 }
 
 export function createSlideLocator(pack: AccessPack, options: MatchOptions): SlideLocator {
@@ -149,6 +152,7 @@ export function createSlideLocator(pack: AccessPack, options: MatchOptions): Sli
   let remembered: { x: number; y: number; w: number; h: number } | null = null;
   /** Slide a fresh search found on the previous sample, awaiting confirmation. */
   let candidate: string | null = null;
+  let last: SlideRect | null = null;
 
   /** 1 - the best set-bit overlap with any slide for a rectangle of the table, or null when it is too flat. */
   function score(table: ReturnType<typeof luminanceTable>, rect: Rect): number | null {
@@ -260,9 +264,18 @@ export function createSlideLocator(pack: AccessPack, options: MatchOptions): Sli
     return overlap(toWords(fingerprint), slide) >= MIN_OVERLAP ? decision.assetId : null;
   }
 
+  /** The frame-pixel rectangle under a rectangle of the table, clipped to the frame as `cropFingerprint` clips it. */
+  function frameRect(frame: Frame, scale: number, rect: Rect): SlideRect {
+    const x = rect.x * scale;
+    const y = rect.y * scale;
+    return { x, y, width: Math.min(rect.w * scale, frame.width - x), height: Math.min(rect.h * scale, frame.height - y) };
+  }
+
   return {
+    lastRect: () => last,
     fingerprint(frame) {
       const whole = fingerprintFrame(cropToAspect(frame));
+      last = aspectRect(frame.width, frame.height);
       if (matchFingerprint(whole, pack, options).kind === 'matched' || frame.width === 0 || frame.height === 0) {
         remembered = null;
         candidate = null;
@@ -280,7 +293,10 @@ export function createSlideLocator(pack: AccessPack, options: MatchOptions): Sli
         };
         if (rect.x + rect.w <= table.width && rect.y + rect.h <= table.height && score(table, rect) !== null) {
           const fingerprint = cropFingerprint(frame, table.scale, rect);
-          if (accepts(fingerprint)) return fingerprint;
+          if (accepts(fingerprint)) {
+            last = frameRect(frame, table.scale, rect);
+            return fingerprint;
+          }
         }
         remembered = null;
       }
@@ -295,6 +311,7 @@ export function createSlideLocator(pack: AccessPack, options: MatchOptions): Sli
           if (confirmed) {
             candidate = null;
             remembered = { x: found.x / table.width, y: found.y / table.height, w: found.w / table.width, h: found.h / table.height };
+            last = frameRect(frame, table.scale, found);
             return fingerprint;
           }
           return whole;

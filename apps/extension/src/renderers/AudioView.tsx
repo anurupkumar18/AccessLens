@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { AccessPack } from '../shared/contracts';
+import type { StudentPreferences } from '../shared/preferences';
 import { regionAudioUrl } from '../shared/packMedia';
 
 interface Props {
@@ -12,9 +13,18 @@ interface Props {
   speak?: (assetId: string, regionId: string) => Promise<Blob>;
   /** Injected in tests; otherwise the browser's Audio element. */
   createAudio?: (url: string) => HTMLAudioElement;
+  /** What reads the description: the AI voice, the student's own screen reader, or the browser voice. */
+  readAloudWith?: StudentPreferences['readAloudWith'];
+  onReadAloudWithChange?: (value: StudentPreferences['readAloudWith']) => void;
 }
 
-type FallbackReason = 'not-in-session' | 'polly-failed' | 'recording-failed';
+const READERS: Array<{ value: StudentPreferences['readAloudWith']; label: string }> = [
+  { value: 'ai-voice', label: 'AI voice (Amazon Polly)' },
+  { value: 'screen-reader', label: 'My screen reader' },
+  { value: 'browser-voice', label: 'Browser voice' },
+];
+
+type FallbackReason = 'not-in-session' | 'polly-failed' | 'recording-failed' | 'chosen';
 
 /**
  * Why the browser voice is reading instead of the AI voice. Amazon Polly is
@@ -26,19 +36,34 @@ const FALLBACK_MESSAGES: Record<FallbackReason, string> = {
   'not-in-session': "Browser voice: join a live session to hear the Amazon Polly voice.",
   'polly-failed': 'Browser voice: Amazon Polly did not answer.',
   'recording-failed': 'Browser voice: the recorded audio did not load.',
+  chosen: 'Browser voice.',
 };
 
 function defaultCreateAudio(url: string): HTMLAudioElement {
   return new Audio(url);
 }
 
-export function AudioView({ pack, assetId, regionId, speechRate = 1, speak, createAudio = defaultCreateAudio }: Props): React.ReactElement {
+export function AudioView({ pack, assetId, regionId, speechRate = 1, speak, createAudio = defaultCreateAudio, readAloudWith = 'ai-voice', onReadAloudWithChange }: Props): React.ReactElement {
   const [message, setMessage] = useState('Audio is ready and will play only when requested.');
+  const [forScreenReader, setForScreenReader] = useState('');
   const asset = pack.assets.find((candidate) => candidate.assetId === assetId) ?? pack.assets[0];
   const region = asset?.regions.find((candidate) => candidate.regionId === regionId) ?? asset?.regions[0];
 
   async function play(): Promise<void> {
     if (!region || !asset) return;
+    if (readAloudWith === 'screen-reader') {
+      // An assertive live region: the student's own screen reader reads it now,
+      // in its own voice and speed. Cleared first so pressing again repeats it.
+      const text = `${region.label ?? region.regionId}. ${region.shortDescription}`;
+      setForScreenReader('');
+      window.setTimeout(() => setForScreenReader(text), 50);
+      setMessage('Sent to your screen reader.');
+      return;
+    }
+    if (readAloudWith === 'browser-voice') {
+      speakWithBrowser('chosen');
+      return;
+    }
     // The pack's own reviewed audio comes first: the publish route wrote one
     // MP3 per region next to the pack, so a published pack never needs live
     // synthesis. Speech is only for packs that ship no audio.
@@ -89,8 +114,17 @@ export function AudioView({ pack, assetId, regionId, speechRate = 1, speak, crea
       <p className="eyebrow">Requested audio</p>
       <h3 id="audio-title">{region.regionId}</h3>
       <p>{region.shortDescription}</p>
-      <button type="button" onClick={() => { void play(); }}>Play description</button>
+      {onReadAloudWithChange && (
+        <p>
+          <label htmlFor="read-aloud-with">Read descriptions with</label>{' '}
+          <select id="read-aloud-with" value={readAloudWith} onChange={(changeEvent) => onReadAloudWithChange(changeEvent.target.value as StudentPreferences['readAloudWith'])}>
+            {READERS.map((reader) => <option key={reader.value} value={reader.value}>{reader.label}</option>)}
+          </select>
+        </p>
+      )}
+      <button type="button" onClick={() => { void play(); }}>{readAloudWith === 'screen-reader' ? 'Read with my screen reader' : 'Play description'}</button>
       <p role="status" className="supporting-text">{message}</p>
+      <p className="visually-hidden" aria-live="assertive" aria-atomic="true">{forScreenReader}</p>
     </section>
   );
 }

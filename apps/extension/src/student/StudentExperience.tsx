@@ -3,6 +3,7 @@ import type { AccessPack, LiveEvent, RoleCapability, SessionClient } from '../sh
 import { defaultAiClient, isRelayCapability, type AiClient } from '../shared/aiClient';
 import { AskClass } from './AskClass';
 import { LiveCaptionsView } from './LiveCaptionsView';
+import { ScreenReaderAnnouncer } from './ScreenReaderAnnouncer';
 import type { StudentPreferences } from '../shared/preferences';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
@@ -117,6 +118,8 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       aria-labelledby="student-title"
       style={{ fontSize: `${preferences.textScale}rem` }}
     >
+      <a className="skip-link" href={`#${panelId}`}>Skip to the lesson</a>
+      <ScreenReaderAnnouncer pack={pack} assetId={live.assetId} regionId={live.regionId} enabled={preferences.announceChanges} />
       <div className="section-rule">
         <p className="eyebrow"><span aria-hidden="true">/ </span>Student extension</p>
         <span className={`connection-pill ${live.status}`}>{live.status}</span>
@@ -179,7 +182,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       <div className="student-content" id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} pointer={live.pointer} /> : null}
         {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} speechRate={preferences.speechRate} speak={speak} /> : null}
+        {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} speechRate={preferences.speechRate} speak={speak} readAloudWith={preferences.readAloudWith} onReadAloudWithChange={(readAloudWith) => updatePreferences({ readAloudWith })} /> : null}
         {activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
@@ -189,6 +192,28 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       </div>
 
       <AskClass pack={pack} capability={capability} ai={ai} />
+
+      <fieldset className="display-settings">
+        <legend>Screen reader</legend>
+        <label htmlFor="announce-changes-toggle">
+          <input
+            id="announce-changes-toggle"
+            type="checkbox"
+            checked={preferences.announceChanges}
+            onChange={() => updatePreferences({ announceChanges: !preferences.announceChanges })}
+          />
+          Announce slide changes to my screen reader
+        </label>
+        <label htmlFor="read-aloud-setting">
+          Read descriptions with
+          <select id="read-aloud-setting" value={preferences.readAloudWith} onChange={(changeEvent) => updatePreferences({ readAloudWith: changeEvent.target.value as StudentPreferences['readAloudWith'] })}>
+            <option value="ai-voice">AI voice (Amazon Polly)</option>
+            <option value="screen-reader">My screen reader</option>
+            <option value="browser-voice">Browser voice</option>
+          </select>
+        </label>
+        <p className="supporting-text">Works with VoiceOver, NVDA, JAWS, Narrator, and ChromeVox. These settings stay on this device.</p>
+      </fieldset>
 
       <fieldset className="display-settings">
         <legend>Display preferences</legend>

@@ -142,6 +142,10 @@
    browser-tab dist preview. Inheriting keeps :root's font applied. */
 body { margin: 0; background: var(--paper); font: inherit; }
 
+/* Hidden until a keyboard or screen-reader user reaches it, then shown in place. */
+.skip-link { position: absolute; left: -9999px; top: 0; }
+.skip-link:focus { position: static; display: inline-block; margin: .5rem 0; padding: .4rem .7rem; background: var(--accent); color: var(--on-accent); outline: 3px solid var(--on-accent); }
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;
@@ -664,9 +668,13 @@ input[type='range'] { accent-color: var(--ink); }
 
 .slide-figure { position: relative; margin: 0; border: 1px solid var(--rule); overflow: hidden; background: var(--ink); }
 .slide-image { display: block; width: 100%; height: auto; }
-.region-highlight { position: absolute; box-sizing: border-box; border: 3px solid var(--focus); border-radius: 4px; box-shadow: 0 0 0 200vmax rgb(32 32 32 / 55%); pointer-events: none; }
-.focus-pointer { position: absolute; width: 1rem; height: 1rem; box-sizing: border-box; border: 3px solid white; border-radius: 50%; background: var(--focus); box-shadow: 0 0 0 3px rgb(0 0 0 / 60%); pointer-events: none; transform: translate(-50%, -50%); }
-@media (prefers-reduced-motion: no-preference) { .region-highlight { transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; } }
+/* Slides can be dark or light whatever the theme, so the outline is a fixed
+   yellow band edged in ink on both sides: it reads on either. */
+.region-highlight { position: absolute; box-sizing: border-box; border: 3px solid #f0fb29; border-radius: 4px; box-shadow: inset 0 0 0 2px #202020, 0 0 0 2px #202020, 0 0 0 200vmax rgb(32 32 32 / 55%); pointer-events: none; }
+.focus-pointer { position: absolute; width: 28px; height: 28px; pointer-events: none; overflow: visible; }
+.focus-pointer.start { transform: translate(-100%, -100%); }
+.focus-pointer path { fill: #f0fb29; stroke: #202020; stroke-width: 2; stroke-linejoin: round; }
+@media (prefers-reduced-motion: no-preference) { .region-highlight, .focus-pointer { transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; } }
 
 .ar-canvas { min-height: 280px; overflow: hidden; margin-top: 1rem; }
 .ar-canvas canvas { display: block; width: 100%; height: 280px; cursor: grab; }
