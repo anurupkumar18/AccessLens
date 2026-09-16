@@ -118,6 +118,7 @@
       window.accesslensHighlight = function (regionId) {
         nodes.forEach(function (node) { if (node.id === regionId || ('layer-' + node.layer) === regionId) node.highlighted = true; });
         announce('Highlighted ' + regionId + '.');
+        render();
       };
       render();
     }());
