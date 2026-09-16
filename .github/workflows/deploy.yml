@@ -38,7 +38,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm ci --prefix services/live-session
+      # Every service is its own package with its own lockfile, as in check.yml.
+      - run: for dir in services/*/; do npm ci --prefix "$dir"; done
       - run: make check
 
   deploy:
@@ -59,8 +60,8 @@ jobs:
         run: |
           if [ -z "${{ vars.AWS_DEPLOY_ROLE_ARN }}" ]; then
             echo "::error::AWS_DEPLOY_ROLE_ARN repository variable is not set."
-            echo "Deploy infra/lib/github-deploy-role-stack.ts and set its output."
-            echo "See docs/DEPLOYMENT.md."
+            echo "A repository admin must do the one-time setup in docs/DEPLOYMENT.md,"
+            echo "section 'One-time setup: GitHub deploy role'."
             exit 1
           fi
 
@@ -70,17 +71,23 @@ jobs:
           aws-region: us-east-1
           role-session-name: accesslens-deploy-${{ github.run_id }}
 
+      # `cdk deploy --all` packages every Lambda from services/*/dist, which is
+      # not committed. Building only some of them fails synth for the
+      # accessibility stack (captions, recap, translate-speak, media-access).
       - name: Build the Lambda bundles
         run: |
           npm ci
-          npm ci --prefix services/live-session && npm run build --prefix services/live-session
-          npm ci --prefix services/orb-explain  && npm run build --prefix services/orb-explain
+          for dir in services/*/; do
+            npm ci --prefix "$dir" && npm run build --prefix "$dir"
+          done
 
+      # From infra/, where cdk.json names the app; run from the repo root, the
+      # CDK CLI finds no app to deploy.
       - name: Deploy the stacks
         run: |
-          npm ci --prefix infra
-          npx --prefix infra cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json
-        working-directory: .
+          npm ci
+          npx cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json
+        working-directory: infra
 
       - name: Rebuild the extension against the deployed endpoints
         run: |
@@ -91,6 +98,10 @@ jobs:
               `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
               `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
               `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl")}`,
+              `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,
+              `VITE_ACCESSLENS_RECAP_ENDPOINT=${find("RecapUrl")}`,
+              `VITE_ACCESSLENS_TRANSLATE_ENDPOINT=${find("TranslateSpeakUrl")}`,
+              `VITE_ACCESSLENS_MEDIA_ENDPOINT=${find("MediaAccessUrl")}`,
             ];
             require("fs").writeFileSync(".env.local", lines.join("\n") + "\n");
             console.log(lines.join("\n"));

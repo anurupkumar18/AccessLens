@@ -144,28 +144,76 @@ Five people and their agents push here, so the workflow is built to be boring:
 - **The packed extension is uploaded as a workflow artifact as well as to S3**,
   so a broken CloudFront does not cost you the build.
 
-### One-time setup, which has not been done
+### One-time setup: GitHub deploy role
+
+**Status on 2026-09-16: not done.** Every Deploy run so far (after PR #14 and
+PR #19) stopped at "Check the deploy role is configured" because
+`AWS_DEPLOY_ROLE_ARN` is unset. Only a repository admin can set it.
 
 The workflow authenticates with GitHub OIDC rather than stored keys, because
 Workshop Studio credentials expire within hours — a secret pasted in at 9am is
 dead by lunchtime, and the failure lands on whoever pushes next rather than
-whoever pasted it.
+whoever pasted it. After this setup nobody needs AWS keys to deploy again.
 
-Someone with repository admin has to do two things:
+Written so an agent can run it top to bottom. The human supplies fresh
+Workshop Studio credentials in the shell (never in a file in the repo, a
+GitHub secret, or a chat message) and a `gh` login with admin on the repo.
 
 ```sh
-# 1. Deploy the role (once, by a human, from the repo root)
-cd infra && npx cdk deploy AccessLensGitHubDeploy \
-  -c withDeployRole=true -c repository=anurupkumar18/Mind-Machine
+# 0. Preconditions. Fresh Workshop Studio credentials exported in this shell:
+#    AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN,
+#    AWS_DEFAULT_REGION=us-east-1.
+aws sts get-caller-identity            # expect account 087328706621 (or the current event account)
+gh api repos/anurupkumar18/Mind-Machine -q .permissions.admin   # must print true
+
+# 1. Build every Lambda bundle. CDK validates all asset paths at synth time,
+#    even when deploying a single stack, and services/*/dist is not committed.
+for dir in services/*/; do npm ci --prefix "$dir" && npm run build --prefix "$dir"; done
+
+# 2. Reuse the account's GitHub OIDC provider if one exists; an account may
+#    hold only one per issuer, and creating a second fails EntityAlreadyExists.
+OIDC_ARN=$(aws iam list-open-id-connect-providers \
+  --query "OpenIDConnectProviderList[?contains(Arn, 'token.actions.githubusercontent.com')].Arn | [0]" \
+  --output text)
+[ "$OIDC_ARN" = "None" ] && OIDC_ARN=""
+
+# 3. Deploy the role (from infra/, where cdk.json lives).
+cd infra && npm ci
+npx cdk deploy AccessLensGitHubDeploy --require-approval never \
+  -c withDeployRole=true -c repository=anurupkumar18/Mind-Machine \
+  ${OIDC_ARN:+-c oidcProviderArn=$OIDC_ARN} \
+  --outputs-file /tmp/deploy-role.json
+cd ..
+
+# 4. Store the role ARN as a repository VARIABLE (not a secret).
+ROLE_ARN=$(node -e 'console.log(require("/tmp/deploy-role.json").AccessLensGitHubDeploy.GitHubDeployRoleArn)')
+gh variable set AWS_DEPLOY_ROLE_ARN --repo anurupkumar18/Mind-Machine --body "$ROLE_ARN"
+
+# 5. Deploy the latest integration commit and watch it.
+gh workflow run deploy.yml --repo anurupkumar18/Mind-Machine --ref accesslens-extension-ar-pivot
+sleep 5
+gh run watch --repo anurupkumar18/Mind-Machine \
+  "$(gh run list --repo anurupkumar18/Mind-Machine --workflow deploy.yml --limit 1 --json databaseId -q '.[0].databaseId')"
 ```
 
-2. Copy the `GitHubDeployRoleArn` output into the repository as a **variable**
-   (not a secret) named `AWS_DEPLOY_ROLE_ARN`, under Settings → Secrets and
-   variables → Actions → Variables.
+**Done when:** the run is green, its summary lists `WebSocketUrl`,
+`OrbExplainUrl`, `CaptionsUrl`, `RecapUrl`, `TranslateSpeakUrl`,
+`MediaAccessUrl` and `DistributionUrl`, and the `accesslens-extension` artifact
+is attached. Every later push to `accesslens-extension-ar-pivot` deploys on its
+own.
 
-Until that is done the deploy job fails fast with an explanatory message rather
-than half-deploying. The trust policy is scoped to the repository but open on
-ref, because every agent works on its own branch and pinning to `main` would
-mean nothing deploys until the final merge — exactly when nobody wants to
-discover the deploy is broken. **Narrow the ref condition before this outlives
-the event.**
+If it fails:
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `ExpiredToken` / `InvalidClientTokenId` in steps 0–3 | Workshop Studio credentials expired. Export fresh ones and rerun. |
+| `EntityAlreadyExists` for the OIDC provider | Step 2 found nothing but a provider exists; pass its ARN with `-c oidcProviderArn=...`. |
+| `AccessDenied` creating the OIDC provider or role | The workshop role cannot create IAM identity providers. Deploy by hand instead: `cd infra && npx cdk deploy --all --require-approval never` after step 1, then `npm run build` with the stack outputs in `.env.local`. |
+| Workflow: `Not authorized to perform sts:AssumeRoleWithWebIdentity` | The trust policy's `repo:` does not match. Redeploy step 3 with the exact `owner/repo`. |
+| Workflow waits at "deploy" | The `aws` environment has required reviewers; approve the run in the Actions tab. |
+| Workflow: `SSM parameter /cdk-bootstrap/hnb659fds/version not found` | The account was reset; bootstrap again (`npx cdk bootstrap aws://<account>/us-east-1`). |
+
+The trust policy is scoped to the repository but open on ref, because every
+agent works on its own branch and pinning to `main` would mean nothing deploys
+until the final merge — exactly when nobody wants to discover the deploy is
+broken. **Narrow the ref condition before this outlives the event.**
