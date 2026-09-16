@@ -14,6 +14,7 @@ are intentionally not evidence. Do not replace them with a claim.
 | Second review of `capture.stopped` | **OPEN** — required before deployment evidence can be claimed |
 | Real browser/device evidence | **OPEN** — operator-only; browser permission cannot be granted by an unattended tool |
 | Existing deployed relay probe | `integration-test.mjs` passed its 19-event path and refusal checks; the 30-event bench measured 139.3/186.2 ms p50/p95 same-process receive latency and 2.4/11.7 ms skew, but the endpoint rejected `capture.stopped` as `event-type-not-allowlisted` |
+| Extension false-live safeguard | `2d04fad` locally handles a relay payload that fails `LiveEventSchema`: the student freezes the last trusted state as non-live without retaining the payload. Unit coverage is green; deployed and real-device evidence remains open. |
 
 ## AL-003 — contract review and deployment gate
 
@@ -81,6 +82,11 @@ the latest `capture.stopped` lifecycle state. It is relay-wiring evidence only.
 Repeat the same sequence on two physical student devices with a single
 time-synchronized recording or other redacted timing record before describing live
 multi-device latency or reliability.
+
+T-33 adds local fail-closed coverage for an inbound event the extension rejects:
+the UI must say that the next update could not be verified and retain the last
+reviewed state. This does not prove the deployed relay's behavior; record the
+physical malformed-event or version-skew exercise in the false-live column.
 
 | Run | Release / endpoint | 30/30 A | 30/30 B | p50 / p95 latency | p50 / p95 skew | Reconnect | False-live state | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
