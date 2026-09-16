@@ -69,7 +69,41 @@ accounts, and the eventual AWS endpoint.
 follow the same instructor event stream; no raw media appears in network payloads;
 the failure fallback is recorded and honest about which side is simulated.
 
-## 3. Connect AWS models and Bedrock agents (placeholder)
+## 3. Integrate camera input for embodied and accessible learning (later phase)
+
+**Goal:** let students use a camera as an additional source of interaction for
+AR, object/gesture activities, demonstrations, and real-world examples while
+preserving a camera-free path for every activity.
+
+**Plan:**
+
+- Request camera access only after an explicit student action, show an always-
+  visible camera-on indicator, and provide an immediate stop control.
+- Keep camera frames and vision processing on the student device wherever
+  practical. Do not upload continuous video; emit only the minimum semantic event
+  needed by the active activity (for example, `object-selected`, `gesture-done`,
+  or `diagram-aligned`).
+- Feed those semantic events into the same real-time event contract used by
+  screen capture so Focus, Read, Hear, Dyslexic, and AR stay synchronized.
+- Support AR anchoring and spatial overlays from camera input, with equivalent
+  text, keyboard, voice, and reduced-movement alternatives when a camera or
+  precise movement is unavailable.
+- Never use facial recognition, emotion inference, identity matching, gaze
+  tracking, or camera behavior to diagnose disability, attention, effort, or
+  mastery.
+- Make camera permission revocation, device loss, low light, occlusion, and
+  recognition uncertainty explicit; fall back to a manual semantic action rather
+  than pretending the camera understood.
+- Add a short-lived local session record only when the student opts in; raw
+  frames are never included in research exports.
+
+**Acceptance:** a camera-enabled AR activity produces semantic events in real
+time; disabling or denying the camera leaves an equivalent accessible activity;
+network inspection shows no continuous video upload; every camera-derived event
+has an explicit confidence/fallback state; privacy copy and permission controls
+are visible and tested.
+
+## 4. Connect AWS models and Bedrock agents (placeholder)
 
 **Goal:** add model-backed capabilities such as approved descriptions, voice,
 translation, and course-grounded explanations without putting an LLM in the live
@@ -101,7 +135,7 @@ interface BedrockAgentGateway {
   model output has provenance and review state; no student identity, preference,
   raw frame, or private conversation is sent to Bedrock by default.
 
-## 4. Record useful context from each session
+## 5. Record useful context from each session
 
 **Goal:** improve AccessLens over time without building a student surveillance
 database.
@@ -126,7 +160,7 @@ database.
   records; no names, IDs, emails, diagnoses, grades, raw media, or private chats are
   present in the export; the privacy statement and retention period are visible.
 
-## 5. Add an asynchronous student view
+## 6. Add an asynchronous student view
 
 **Goal:** support students who review the lesson later, not only students attending
   the live session.
@@ -156,4 +190,5 @@ database.
 4. Complete Canvas approval and the read-only CourseMaterialProvider adapter.
 5. Add opt-in anonymous research export with privacy review.
 6. Build Review mode after the live demo is stable.
-7. Start the camera feasibility spike only after all of the above is reliable.
+7. Implement the camera integration only after the live pipeline is reliable,
+   beginning with one AR/object-interaction activity and its camera-free fallback.
