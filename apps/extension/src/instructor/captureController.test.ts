@@ -285,3 +285,26 @@ describe('capture controller: contract and privacy invariants (A2)', () => {
     expect(events[1].sentAt).toBe('2026-09-15T15:00:01.500Z');
   });
 });
+
+describe('capture controller: live captions', () => {
+  it('publishes contract-valid captions on the same sequence as every other event', async () => {
+    const { controller, events } = await sharing();
+    controller.appendCaption({ text: '  The nucleus holds DNA.  ', isFinal: true, lang: 'en-US' });
+    controller.pause();
+    controller.appendCaption({ text: 'Still captioning while paused.', isFinal: true });
+    expect(types(events)).toEqual(['session.started', 'caption.appended', 'capture.paused', 'caption.appended']);
+    expect(events.map(e => e.sequence)).toEqual([1, 2, 3, 4]);
+    expect(events[1]).toMatchObject({ caption: { text: 'The nucleus holds DNA.', isFinal: true, lang: 'en-US' } });
+    for (const event of events) expect(LiveEventSchema.safeParse(event).success).toBe(true);
+  });
+
+  it('refuses captions with no active capture, and drops empty or invalid fields', async () => {
+    const { controller, events } = setup();
+    expect(() => controller.appendCaption({ text: 'Too early.', isFinal: true })).toThrow(/Cannot caption/);
+    await controller.start();
+    controller.appendCaption({ text: '   ', isFinal: true });
+    controller.appendCaption({ text: 'x'.repeat(2500), isFinal: true, lang: 'e' });
+    expect(types(events)).toEqual(['session.started', 'caption.appended']);
+    expect(LiveEventSchema.safeParse(events[1]).success).toBe(true);
+  });
+});
