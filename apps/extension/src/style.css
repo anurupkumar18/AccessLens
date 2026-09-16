@@ -732,3 +732,17 @@ input[type='range'] { accent-color: var(--ink); }
     transition-duration: .01ms !important;
   }
 }
+
+/* Authoring: upload a deck, review the draft, publish. */
+.authoring { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+.authoring form { display: grid; gap: .75rem; max-width: 36rem; }
+.authoring label { display: grid; gap: .25rem; }
+.authoring input[type='password'], .authoring input[type='text'] { font: inherit; padding: .5rem .6rem; border: 1px solid var(--rule); background: var(--field); color: var(--ink); }
+.authoring-slides { padding-left: 1.25rem; display: grid; gap: 1rem; }
+.authoring-slides h3 { margin: 0 0 .25rem; font-size: 1rem; }
+.authoring-slides ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+.authoring-slides label { display: grid; grid-template-columns: auto 1fr; gap: .25rem .6rem; align-items: start; }
+.authoring-slides input { margin-top: .2rem; }
+.authoring-short { grid-column: 2; }
+.authoring-plain { grid-column: 2; color: var(--muted); font-size: .92em; }
+.authoring-review > button, .authoring-published button { margin-right: .5rem; }

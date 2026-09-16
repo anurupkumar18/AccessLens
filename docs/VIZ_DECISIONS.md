@@ -363,3 +363,23 @@ pack (hundreds of slides with audio) could approach the API Lambda's
 timeout. The decks this product targets are tens of slides; if that
 changes, the answer is a publish job the route starts and the client
 polls, still with the route as the single gate.
+
+## D11 — an upload screen in the instructor panel, one shared token, no professor accounts yet — DECIDED (user, 2026-09-16: "we need to add somewhere to upload slides")
+
+**What exists.** The authoring API takes a deck through `POST /v1/uploads`,
+a presigned `PUT`, `POST /v1/jobs`, review and publish, guarded by the one
+bearer token the stack issues at deploy. There are no per-instructor
+accounts; whoever holds the token is the instructor.
+
+**What changed.** `AuthoringPanel` (`apps/extension/src/instructor/`) in
+the instructor role: paste the token once (kept in this browser's
+localStorage, sent only to the API), pick a PDF/PPTX, name the lesson, watch
+the stages, untick any description to leave it out, publish, open the
+result in the student view. `authoringClient.ts` is the browser client. The
+decks bucket gained a CORS rule for the presigned `PUT`, and the manifest
+gained host permissions for the API and S3 hosts.
+
+**Not done, on purpose.** Professor accounts. Cognito or a token-issuing
+admin route are each a day of work and the demo does not need them; the
+charter forbids server-side *student* profiles (A4), not instructor
+accounts, so the door stays open. The shared token is the hackathon shape.

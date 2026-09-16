@@ -59,7 +59,12 @@ export class AccessLensAuthoringStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, { env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'us-east-1' }, ...props });
 
-    this.decks = this.bucket('Decks', { lifecycleRules: [{ expiration: Duration.days(7) }] });
+    this.decks = this.bucket('Decks', {
+      lifecycleRules: [{ expiration: Duration.days(7) }],
+      // The instructor's browser PUTs the deck straight to the presigned URL
+      // (extension origin or a local dev tab), so the bucket must answer CORS.
+      cors: [{ allowedMethods: [s3.HttpMethods.PUT], allowedOrigins: ['*'], allowedHeaders: ['content-type'], maxAge: 300 }],
+    });
     this.catalog = this.bucket('Catalog');
     this.packs = this.bucket('Packs');
     this.artifacts = this.bucket('Artifacts');
@@ -183,7 +188,7 @@ export class AccessLensAuthoringStack extends Stack {
     this.output('ViewerBucketName', this.viewer.bucketName);
   }
 
-  private bucket(id: string, props: Pick<s3.BucketProps, 'lifecycleRules'> = {}): s3.Bucket {
+  private bucket(id: string, props: Pick<s3.BucketProps, 'lifecycleRules' | 'cors'> = {}): s3.Bucket {
     const bucket = new s3.Bucket(this, id, {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
