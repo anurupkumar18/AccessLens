@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "projectile-motion-simulation",
+  "artifactVersion": 1,
+  "title": "Projectile motion simulation",
+  "summary": "Change launch angle and speed to observe a projectile\u2019s parabolic path and landing range.",
+  "subjects": [
+    "physics",
+    "mechanics"
+  ],
+  "tags": [
+    "physics",
+    "motion",
+    "projectile",
+    "simulation"
+  ],
+  "interaction": "simulation",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Change launch angle and speed to observe a projectile\u2019s parabolic path and landing range.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

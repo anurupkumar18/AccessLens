@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "normal-distribution-explorer",
+  "artifactVersion": 1,
+  "title": "Normal distribution explorer",
+  "summary": "Adjust mean and standard deviation to see how a normal distribution shifts and spreads.",
+  "subjects": [
+    "statistics",
+    "mathematics"
+  ],
+  "tags": [
+    "statistics",
+    "normal-distribution",
+    "bell-curve"
+  ],
+  "interaction": "plot",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Adjust mean and standard deviation to see how a normal distribution shifts and spreads.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

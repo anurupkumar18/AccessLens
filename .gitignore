@@ -14,3 +14,7 @@ output/
 .playwright-cli/
 .claude/
 test-results/
+.worktrees/
+node_modules
+cdk.out/
+.cdk-outputs.json

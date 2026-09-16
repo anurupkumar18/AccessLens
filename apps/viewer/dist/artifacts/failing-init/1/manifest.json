@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "failing-init",
+  "artifactVersion": 1,
+  "title": "Failing init fixture",
+  "summary": "A fixture used to prove the render harness catches initialization errors.",
+  "subjects": ["testing"],
+  "tags": ["harness"],
+  "interaction": "diagram",
+  "provenance": { "kind": "generated", "generatedBy": "fixture", "jobId": "fixture-failing-init" },
+  "parameters": { "type": "object", "properties": {} },
+  "defaultParameters": {},
+  "libraries": [],
+  "accessibility": {
+    "description": "This fixture throws while initializing.",
+    "keyboard": "There is no interaction.",
+    "semanticOutline": ["Initialization failure"]
+  },
+  "render": { "entry": "index.html", "minWidth": 480, "minHeight": 320 }
+}

@@ -44,3 +44,13 @@ check: memory-check pack-check relay-check work-board-check extension-check live
 # directly with --aws to also probe the account.
 deploy-preflight:
 	python3 scripts/deploy_preflight.py
+
+# V2 temporary authoring API deployment. The scripts use bounded AWS/CDK calls.
+deploy:
+	./infra/scripts/deploy.sh
+
+smoke:
+	./infra/scripts/smoke.sh
+
+destroy:
+	./infra/scripts/destroy.sh

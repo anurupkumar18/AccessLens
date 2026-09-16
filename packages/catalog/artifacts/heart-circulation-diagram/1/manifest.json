@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "heart-circulation-diagram",
+  "artifactVersion": 1,
+  "title": "Heart circulation diagram",
+  "summary": "Follow blood through the chambers and vessels of a simplified heart circulation diagram.",
+  "subjects": [
+    "biology",
+    "anatomy"
+  ],
+  "tags": [
+    "heart",
+    "circulation",
+    "diagram"
+  ],
+  "interaction": "diagram",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Follow blood through the chambers and vessels of a simplified heart circulation diagram.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

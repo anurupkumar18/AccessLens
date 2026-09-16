@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "recall-vs-ef-plot",
+  "artifactVersion": 1,
+  "title": "Recall against ef",
+  "summary": "Plot recall@10 as the search parameter ef increases, showing where the curve flattens.",
+  "subjects": ["computer-science", "information-retrieval"],
+  "tags": ["plot", "recall", "parameter-sweep"],
+  "interaction": "plot",
+  "provenance": {
+    "kind": "generated",
+    "generatedBy": "us.anthropic.claude-sonnet-4-6",
+    "jobId": "job_01JFIXTUREGENERATED"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "maxEf": { "type": "integer", "minimum": 16, "maximum": 512 }
+    }
+  },
+  "defaultParameters": { "maxEf": 256 },
+  "libraries": ["chartjs@4"],
+  "accessibility": {
+    "description": "A line chart with ef on the horizontal axis from 1 to the chosen maximum, and recall at ten on the vertical axis from zero to one. The curve rises steeply to about ef 64 and then flattens.",
+    "keyboard": "Left and right arrows move a readout cursor along the curve and announce the ef and recall at that point.",
+    "semanticOutline": ["Steep region below ef 64", "Knee near ef 64", "Flat region above ef 128"]
+  },
+  "render": { "entry": "index.html", "minWidth": 480, "minHeight": 320 }
+}

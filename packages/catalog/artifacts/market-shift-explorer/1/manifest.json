@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "market-shift-explorer",
+  "artifactVersion": 1,
+  "title": "Market shift explorer",
+  "summary": "Compare how a demand or supply shift moves equilibrium price and quantity.",
+  "subjects": [
+    "economics",
+    "social-science"
+  ],
+  "tags": [
+    "market",
+    "shift",
+    "equilibrium",
+    "explorer"
+  ],
+  "interaction": "explorer",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Compare how a demand or supply shift moves equilibrium price and quantity.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

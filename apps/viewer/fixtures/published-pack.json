@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.0",
+  "packId": "hnsw-explainer",
+  "version": 2,
+  "title": "HNSW visualizations",
+  "matching": {
+    "algorithm": "dhash-v1",
+    "hashBits": 144,
+    "maxHammingDistance": 12,
+    "minMargin": 4,
+    "onNoMatch": "source.unmatched"
+  },
+  "assets": [
+    {
+      "assetId": "slide-07",
+      "mediaUri": "media/hnsw-explainer/2/slide-07.png",
+      "fingerprint": "dhash-v1:3c1e0f0783c1e0f0",
+      "title": "HNSW search",
+      "readingOrder": ["title", "graph"],
+      "regions": [
+        {
+          "regionId": "graph",
+          "bounds": { "x": 0.1, "y": 0.2, "width": 0.8, "height": 0.7 },
+          "shortDescription": "A three-layer graph; the search enters at the top layer and descends.",
+          "plainLanguage": "A picture of how the search jumps between layers.",
+          "audioUri": "media/hnsw-explainer/2/slide-07.graph.mp3"
+        }
+      ],
+      "visualization": {
+        "artifactId": "hnsw-search-stepper",
+        "artifactVersion": 3,
+        "parameters": { "ef": 32, "M": 16 },
+        "notes": "Ask students to predict which node is visited next.",
+        "regionMap": { "graph": "layer-0" }
+      },
+      "references": [
+        {
+          "docId": "hnsw-paper",
+          "title": "Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs",
+          "page": 4,
+          "quote": "the search starts from the top layer and greedily traverses"
+        }
+      ]
+    },
+    {
+      "assetId": "slide-08",
+      "mediaUri": "media/hnsw-explainer/2/slide-08.png",
+      "fingerprint": "dhash-v1:7e2f1e0f83c1e0f1",
+      "title": "Choosing ef",
+      "readingOrder": ["title", "curve"],
+      "regions": [
+        {
+          "regionId": "curve",
+          "bounds": { "x": 0.08, "y": 0.25, "width": 0.84, "height": 0.6 },
+          "shortDescription": "A curve of recall against ef that rises steeply and then flattens above ef 128.",
+          "plainLanguage": "Searching harder helps a lot at first, then stops helping much."
+        }
+      ]
+    }
+  ]
+}

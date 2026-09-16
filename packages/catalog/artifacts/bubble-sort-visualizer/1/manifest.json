@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "bubble-sort-visualizer",
+  "artifactVersion": 1,
+  "title": "Bubble sort visualizer",
+  "summary": "Step through bubble sort passes and compare adjacent values as the list becomes ordered.",
+  "subjects": [
+    "computer-science",
+    "algorithms"
+  ],
+  "tags": [
+    "sorting",
+    "bubble-sort",
+    "algorithm"
+  ],
+  "interaction": "stepper",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Step through bubble sort passes and compare adjacent values as the list becomes ordered.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

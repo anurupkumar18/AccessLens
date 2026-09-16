@@ -79,6 +79,7 @@ longer one single "latest" file. Each part's newest record:
 - `episodic/0043-deployment-readiness.md` (Part 4 recon: AWS account is deployable, CDK not bootstrapped)
 - `episodic/0042-merge-parts-1-2-3-5.md` (cross-cutting: merged PRs #6/#7/#8 onto the integration branch)
 - `episodic/0041-part2-instructor-capture.md` (Part 2: instructor capture)
+- `episodic/0051-part6-authoring-api-live.md` (Part 6: authoring API live on AWS, proven end to end; handoff in `docs/VIZ_HANDOFF.md`)
 - `episodic/0041-context-relay.md` (cross-cutting: relay log and open threads)
 - `episodic/0040-part3-student-ar.md` (Part 3: student experience and AR, merged into Part 2's branch)
 - `episodic/0040-bio-cell-demo-access-pack.md` (Part 5: reviewed pack)

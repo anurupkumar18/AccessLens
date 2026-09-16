@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "hnsw-search-stepper",
+  "artifactVersion": 1,
+  "title": "HNSW search, step by step",
+  "summary": "Hand-authored layered graph; step through greedy search with adjustable ef and M.",
+  "subjects": ["computer-science", "information-retrieval"],
+  "tags": ["graph", "nearest-neighbor", "algorithm-stepper"],
+  "interaction": "stepper",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "ef": { "type": "integer", "minimum": 1, "maximum": 512 },
+      "M": { "type": "integer", "minimum": 2, "maximum": 64 }
+    }
+  },
+  "defaultParameters": { "ef": 32, "M": 16 },
+  "libraries": [],
+  "accessibility": {
+    "description": "A three-layer graph. Search starts at a sparse upper layer, descends through candidates, and finishes at the nearest result.",
+    "keyboard": "Space steps the search. Arrow keys change ef and M.",
+    "semanticOutline": ["Layer 2 entry point", "Layer 1 candidates", "Layer 0 result set"]
+  },
+  "render": { "entry": "index.html", "minWidth": 480, "minHeight": 320 }
+}

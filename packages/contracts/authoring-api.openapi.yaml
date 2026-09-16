@@ -1,0 +1,2585 @@
+openapi: 3.1.0
+info:
+  title: 'AccessLens Authoring API'
+  version: 1.0.0
+  description: 'HTTP API for instructor uploads, authoring jobs, review, and published Access Packs.'
+servers:
+  -
+    url: 'https://{apiId}.execute-api.{region}.amazonaws.com'
+    description: 'Deployed API Gateway HTTP API'
+security:
+  -
+    bearerAuth: []
+paths:
+  /v1/health:
+    get:
+      operationId: getHealth
+      summary: 'Liveness and deployed version'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getHealthResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/uploads:
+    post:
+      operationId: createUpload
+      summary: 'Get a presigned PUT URL for a deck or a library document'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/createUploadResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createUploadRequest'
+  /v1/jobs:
+    post:
+      operationId: createJob
+      summary: 'Start an authoring job on an uploaded deck'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '202':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/createJobResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createJobRequest'
+  '/v1/jobs/{jobId}':
+    get:
+      operationId: getJob
+      summary: 'Job and per-slide status'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getJobResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/jobs/{jobId}/draft':
+    get:
+      operationId: getJobDraft
+      summary: 'The full draft for review, once status is review'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getJobDraftResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/jobs/{jobId}/review':
+    post:
+      operationId: reviewJob
+      summary: 'Apply instructor edits and decisions'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reviewJobResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reviewJobRequest'
+  '/v1/jobs/{jobId}/publish':
+    post:
+      operationId: publishJob
+      summary: 'Publish the approved draft as the next pack version'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '201':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publishJobResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/packs/{packId}':
+    get:
+      operationId: listPackVersions
+      summary: 'List published versions'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/listPackVersionsResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: packId
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/packs/{packId}/{version}':
+    get:
+      operationId: getPack
+      summary: 'Fetch a published pack'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getPackResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: packId
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          name: version
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/artifacts/{artifactId}/{artifactVersion}/manifest':
+    get:
+      operationId: getArtifactManifest
+      summary: 'Fetch an artifact manifest'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getArtifactManifestResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          name: artifactVersion
+          in: path
+          required: true
+          schema:
+            type: string
+  /v1/profiles:
+    post:
+      operationId: createProfile
+      summary: 'Create a course profile'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '201':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/createProfileResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/createProfileRequest'
+  '/v1/profiles/{profileId}':
+    get:
+      operationId: getProfile
+      summary: 'Profile with document list and index status'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getProfileResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+    delete:
+      operationId: deleteProfile
+      summary: 'Delete the profile, its documents, files, and vectors'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/deleteProfileResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/profiles/{profileId}/documents':
+    post:
+      operationId: registerDocument
+      summary: 'Register an uploaded file and start indexing'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '202':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/registerDocumentResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registerDocumentRequest'
+  '/v1/profiles/{profileId}/documents/{docId}':
+    get:
+      operationId: getDocument
+      summary: 'Document status and page count'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getDocumentResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          name: docId
+          in: path
+          required: true
+          schema:
+            type: string
+    delete:
+      operationId: deleteDocument
+      summary: 'Remove the document and its vectors'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/deleteDocumentResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          name: docId
+          in: path
+          required: true
+          schema:
+            type: string
+  '/v1/profiles/{profileId}/search':
+    post:
+      operationId: searchProfile
+      summary: 'Ranked chunks with citations'
+      security:
+        -
+          bearerAuth: []
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/searchProfileResponse'
+        '400':
+          description: 'Invalid request'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Missing or invalid bearer token'
+        '500':
+          description: 'Pipeline failure'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '501':
+          description: 'Milestone not implemented'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+        -
+          name: profileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/searchProfileRequest'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: 'opaque deployment token'
+  schemas:
+    getHealthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          const: true
+        version:
+          type: string
+          minLength: 1
+        region:
+          type: string
+          minLength: 1
+      required:
+        - ok
+        - version
+        - region
+      additionalProperties: false
+    createUploadResponse:
+      type: object
+      properties:
+        uploadId:
+          type: string
+          minLength: 1
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+          pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+      required:
+        - uploadId
+        - url
+        - expiresAt
+      additionalProperties: false
+    createUploadRequest:
+      type: object
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        contentType:
+          type: string
+          enum:
+            - application/pdf
+            - application/vnd.openxmlformats-officedocument.presentationml.presentation
+            - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+            - text/plain
+      required:
+        - filename
+        - contentType
+      additionalProperties: false
+    createJobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - queued
+            - ingesting
+            - describing
+            - visualizing
+            - review
+            - publishing
+            - published
+            - failed
+            - needs_input
+      required:
+        - jobId
+        - status
+      additionalProperties: false
+    createJobRequest:
+      type: object
+      properties:
+        uploadId:
+          type: string
+          minLength: 1
+        packId:
+          type: string
+          minLength: 1
+          pattern: '^[a-z0-9][a-z0-9-]*$'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 4000
+        profileId:
+          type: string
+          minLength: 1
+        visualHints:
+          maxItems: 100
+          type: array
+          items:
+            type: object
+            properties:
+              slide:
+                type: integer
+                exclusiveMinimum: 0
+                maximum: 9007199254740991
+              hint:
+                type: string
+                minLength: 1
+                maxLength: 500
+            required:
+              - slide
+              - hint
+            additionalProperties: false
+      required:
+        - uploadId
+        - packId
+        - title
+      additionalProperties: false
+    getJobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - queued
+            - ingesting
+            - describing
+            - visualizing
+            - review
+            - publishing
+            - published
+            - failed
+            - needs_input
+        packId:
+          type: string
+          minLength: 1
+        slides:
+          type: array
+          items:
+            type: object
+            properties:
+              assetId:
+                type: string
+                minLength: 1
+              stage:
+                type: string
+                enum:
+                  - ingest
+                  - describe
+                  - audio
+                  - plan
+                  - retrieve
+                  - adapt
+                  - generate
+                  - critique
+                  - done
+              status:
+                type: string
+                enum:
+                  - pending
+                  - running
+                  - ok
+                  - needs_review
+                  - no_visual
+                  - failed
+              error:
+                type: string
+            required:
+              - assetId
+              - stage
+              - status
+            additionalProperties: false
+        error:
+          type: string
+      required:
+        - jobId
+        - status
+        - packId
+        - slides
+      additionalProperties: false
+    getJobDraftResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - queued
+            - ingesting
+            - describing
+            - visualizing
+            - review
+            - publishing
+            - published
+            - failed
+            - needs_input
+        pack:
+          type: object
+          properties:
+            schemaVersion:
+              type: string
+              const: '1.0'
+            packId:
+              type: string
+              minLength: 1
+            version:
+              type: integer
+              exclusiveMinimum: 0
+              maximum: 9007199254740991
+            title:
+              type: string
+              minLength: 1
+            review:
+              type: object
+              properties:
+                status:
+                  type: string
+                  minLength: 1
+                reviewedBy:
+                  type: string
+                  minLength: 1
+                reviewedAt:
+                  type: string
+                  minLength: 1
+                externalSubjectMatterReview:
+                  type: boolean
+                notes:
+                  type: string
+              required:
+                - status
+                - reviewedBy
+                - reviewedAt
+                - externalSubjectMatterReview
+              additionalProperties: false
+            matching:
+              type: object
+              properties:
+                algorithm:
+                  type: string
+                  minLength: 1
+                hashBits:
+                  type: integer
+                  exclusiveMinimum: 0
+                  maximum: 9007199254740991
+                maxHammingDistance:
+                  type: integer
+                  minimum: 0
+                  maximum: 9007199254740991
+                minMargin:
+                  type: integer
+                  minimum: 0
+                  maximum: 9007199254740991
+                onNoMatch:
+                  type: string
+                  const: source.unmatched
+              required:
+                - algorithm
+                - hashBits
+                - maxHammingDistance
+                - minMargin
+                - onNoMatch
+              additionalProperties: false
+            arCameras:
+              type: object
+              propertyNames:
+                type: string
+              additionalProperties:
+                type: object
+                properties:
+                  position:
+                    type: array
+                    prefixItems:
+                      -
+                        type: number
+                      -
+                        type: number
+                      -
+                        type: number
+                    items: false
+                    minItems: 3
+                    maxItems: 3
+                  target:
+                    type: array
+                    prefixItems:
+                      -
+                        type: number
+                      -
+                        type: number
+                      -
+                        type: number
+                    items: false
+                    minItems: 3
+                    maxItems: 3
+                  fov:
+                    type: number
+                    exclusiveMinimum: 0
+                required:
+                  - position
+                  - target
+                  - fov
+                additionalProperties: false
+            reservedReadingOrderIds:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            assets:
+              minItems: 1
+              type: array
+              items:
+                type: object
+                properties:
+                  assetId:
+                    type: string
+                  mediaUri:
+                    type: string
+                    minLength: 1
+                  fingerprint:
+                    type: string
+                  title:
+                    type: string
+                  subtitle:
+                    type: string
+                  readingOrder:
+                    type: array
+                    items:
+                      type: string
+                  regions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        regionId:
+                          type: string
+                        label:
+                          type: string
+                          minLength: 1
+                        bounds:
+                          type: object
+                          properties:
+                            x:
+                              type: number
+                              minimum: 0
+                              maximum: 1
+                            y:
+                              type: number
+                              minimum: 0
+                              maximum: 1
+                            width:
+                              type: number
+                              minimum: 0
+                              maximum: 1
+                            height:
+                              type: number
+                              minimum: 0
+                              maximum: 1
+                          required:
+                            - x
+                            - y
+                            - width
+                            - height
+                          additionalProperties: false
+                        shortDescription:
+                          type: string
+                        plainLanguage:
+                          type: string
+                        audioUri:
+                          type: string
+                          minLength: 1
+                      required:
+                        - regionId
+                        - bounds
+                        - shortDescription
+                        - plainLanguage
+                      additionalProperties: false
+                  arScene:
+                    type: object
+                    properties:
+                      modelUri:
+                        type: string
+                        minLength: 1
+                      defaultCamera:
+                        type: string
+                        minLength: 1
+                      hotspots:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            hotspotId:
+                              type: string
+                              minLength: 1
+                            regionId:
+                              type: string
+                              minLength: 1
+                            nodeName:
+                              type: string
+                              minLength: 1
+                            label:
+                              type: string
+                              minLength: 1
+                            cameraTarget:
+                              type: string
+                              minLength: 1
+                            highlight:
+                              type: string
+                              minLength: 1
+                          required:
+                            - hotspotId
+                            - regionId
+                            - nodeName
+                            - label
+                          additionalProperties: false
+                    required:
+                      - modelUri
+                      - defaultCamera
+                      - hotspots
+                    additionalProperties: false
+                  visualization:
+                    type: object
+                    properties:
+                      artifactId:
+                        type: string
+                        minLength: 1
+                      artifactVersion:
+                        type: integer
+                        exclusiveMinimum: 0
+                        maximum: 9007199254740991
+                      parameters:
+                        default: {}
+                        type: object
+                        propertyNames:
+                          type: string
+                        additionalProperties: {}
+                      notes:
+                        type: string
+                        maxLength: 1000
+                      regionMap:
+                        type: object
+                        propertyNames:
+                          type: string
+                        additionalProperties:
+                          type: string
+                    required:
+                      - artifactId
+                      - artifactVersion
+                      - parameters
+                    additionalProperties: false
+                  references:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        docId:
+                          type: string
+                          minLength: 1
+                        title:
+                          type: string
+                          minLength: 1
+                        page:
+                          type: integer
+                          exclusiveMinimum: 0
+                          maximum: 9007199254740991
+                        quote:
+                          type: string
+                          minLength: 1
+                          maxLength: 300
+                      required:
+                        - docId
+                        - title
+                        - page
+                        - quote
+                      additionalProperties: false
+                required:
+                  - assetId
+                  - fingerprint
+                  - title
+                  - readingOrder
+                  - regions
+                additionalProperties: false
+          required:
+            - schemaVersion
+            - packId
+            - version
+            - title
+            - assets
+          additionalProperties: false
+        visualizations:
+          type: array
+          items:
+            type: object
+            properties:
+              assetId:
+                type: string
+                minLength: 1
+              artifact:
+                type: object
+                properties:
+                  schemaVersion:
+                    type: string
+                    const: '1.0'
+                  artifactId:
+                    type: string
+                    minLength: 1
+                    pattern: '^[a-z0-9][a-z0-9-]*$'
+                  artifactVersion:
+                    type: integer
+                    exclusiveMinimum: 0
+                    maximum: 9007199254740991
+                  title:
+                    type: string
+                    minLength: 1
+                    maxLength: 160
+                  summary:
+                    type: string
+                    minLength: 1
+                    maxLength: 600
+                  subjects:
+                    minItems: 1
+                    type: array
+                    items:
+                      type: string
+                      minLength: 1
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                      minLength: 1
+                  interaction:
+                    type: string
+                    enum:
+                      - stepper
+                      - explorer
+                      - simulation
+                      - plot
+                      - hotspot
+                      - timeline
+                      - diagram
+                  provenance:
+                    oneOf:
+                      -
+                        type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: catalog
+                          sourceUrl:
+                            type: string
+                            minLength: 1
+                          license:
+                            type: string
+                            minLength: 1
+                        required:
+                          - kind
+                          - sourceUrl
+                          - license
+                        additionalProperties: false
+                      -
+                        type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: adapted
+                          parentArtifactId:
+                            type: string
+                            minLength: 1
+                          parentArtifactVersion:
+                            type: integer
+                            exclusiveMinimum: 0
+                            maximum: 9007199254740991
+                          sourceUrl:
+                            type: string
+                            minLength: 1
+                          license:
+                            type: string
+                            minLength: 1
+                          generatedBy:
+                            type: string
+                            minLength: 1
+                          jobId:
+                            type: string
+                            minLength: 1
+                        required:
+                          - kind
+                          - parentArtifactId
+                          - parentArtifactVersion
+                          - license
+                          - generatedBy
+                          - jobId
+                        additionalProperties: false
+                      -
+                        type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: generated
+                          generatedBy:
+                            type: string
+                            minLength: 1
+                          jobId:
+                            type: string
+                            minLength: 1
+                          license:
+                            type: string
+                            minLength: 1
+                        required:
+                          - kind
+                          - generatedBy
+                          - jobId
+                        additionalProperties: false
+                  parameters:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        const: object
+                      properties:
+                        type: object
+                        propertyNames:
+                          type: string
+                        additionalProperties:
+                          type: object
+                          propertyNames:
+                            type: string
+                          additionalProperties: {}
+                      required:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                      - type
+                      - properties
+                    additionalProperties: false
+                  defaultParameters:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  libraries:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - d3@7
+                        - three@0.186
+                        - cytoscape@3
+                        - plotly-basic@2
+                        - animejs@3
+                        - katex@0.16
+                        - chartjs@4
+                  accessibility:
+                    type: object
+                    properties:
+                      description:
+                        type: string
+                        minLength: 1
+                        maxLength: 1200
+                      keyboard:
+                        type: string
+                        minLength: 1
+                        maxLength: 600
+                      semanticOutline:
+                        type: array
+                        items:
+                          type: string
+                          minLength: 1
+                    required:
+                      - description
+                      - keyboard
+                    additionalProperties: false
+                  render:
+                    type: object
+                    properties:
+                      entry:
+                        type: string
+                        const: index.html
+                      minWidth:
+                        type: integer
+                        exclusiveMinimum: 0
+                        maximum: 9007199254740991
+                      minHeight:
+                        type: integer
+                        exclusiveMinimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - entry
+                      - minWidth
+                      - minHeight
+                    additionalProperties: false
+                required:
+                  - schemaVersion
+                  - artifactId
+                  - artifactVersion
+                  - title
+                  - summary
+                  - subjects
+                  - tags
+                  - interaction
+                  - provenance
+                  - parameters
+                  - defaultParameters
+                  - libraries
+                  - accessibility
+                  - render
+                additionalProperties: false
+              screenshotUrl:
+                type: string
+                minLength: 1
+              critique:
+                type: string
+            required:
+              - assetId
+              - artifact
+              - screenshotUrl
+              - critique
+            additionalProperties: false
+      required:
+        - jobId
+        - status
+        - pack
+        - visualizations
+      additionalProperties: false
+    reviewJobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - queued
+            - ingesting
+            - describing
+            - visualizing
+            - review
+            - publishing
+            - published
+            - failed
+            - needs_input
+        reviewedAssetIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+        - jobId
+        - status
+        - reviewedAssetIds
+      additionalProperties: false
+    reviewJobRequest:
+      type: object
+      properties:
+        decisions:
+          minItems: 1
+          type: array
+          items:
+            type: object
+            properties:
+              assetId:
+                type: string
+                minLength: 1
+              regionEdits:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    regionId:
+                      type: string
+                      minLength: 1
+                    shortDescription:
+                      type: string
+                      minLength: 1
+                      maxLength: 700
+                    plainLanguage:
+                      type: string
+                      minLength: 1
+                      maxLength: 500
+                  required:
+                    - regionId
+                  additionalProperties: false
+              rejectRegions:
+                type: array
+                items:
+                  type: string
+                  minLength: 1
+              visualization:
+                type: string
+                enum:
+                  - approve
+                  - reject
+                  - regenerate
+              parameters:
+                type: object
+                propertyNames:
+                  type: string
+                additionalProperties: {}
+            required:
+              - assetId
+            additionalProperties: false
+      required:
+        - decisions
+      additionalProperties: false
+    publishJobResponse:
+      type: object
+      properties:
+        packId:
+          type: string
+          minLength: 1
+        version:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+        packUrl:
+          type: string
+          format: uri
+      required:
+        - packId
+        - version
+        - packUrl
+      additionalProperties: false
+    listPackVersionsResponse:
+      type: object
+      properties:
+        packId:
+          type: string
+          minLength: 1
+        versions:
+          type: array
+          items:
+            type: object
+            properties:
+              version:
+                type: integer
+                exclusiveMinimum: 0
+                maximum: 9007199254740991
+              publishedAt:
+                type: string
+                format: date-time
+                pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+              packUrl:
+                type: string
+                format: uri
+            required:
+              - version
+              - publishedAt
+              - packUrl
+            additionalProperties: false
+      required:
+        - packId
+        - versions
+      additionalProperties: false
+    getPackResponse:
+      type: object
+      properties:
+        schemaVersion:
+          type: string
+          const: '1.0'
+        packId:
+          type: string
+          minLength: 1
+        version:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+        title:
+          type: string
+          minLength: 1
+        review:
+          type: object
+          properties:
+            status:
+              type: string
+              minLength: 1
+            reviewedBy:
+              type: string
+              minLength: 1
+            reviewedAt:
+              type: string
+              minLength: 1
+            externalSubjectMatterReview:
+              type: boolean
+            notes:
+              type: string
+          required:
+            - status
+            - reviewedBy
+            - reviewedAt
+            - externalSubjectMatterReview
+          additionalProperties: false
+        matching:
+          type: object
+          properties:
+            algorithm:
+              type: string
+              minLength: 1
+            hashBits:
+              type: integer
+              exclusiveMinimum: 0
+              maximum: 9007199254740991
+            maxHammingDistance:
+              type: integer
+              minimum: 0
+              maximum: 9007199254740991
+            minMargin:
+              type: integer
+              minimum: 0
+              maximum: 9007199254740991
+            onNoMatch:
+              type: string
+              const: source.unmatched
+          required:
+            - algorithm
+            - hashBits
+            - maxHammingDistance
+            - minMargin
+            - onNoMatch
+          additionalProperties: false
+        arCameras:
+          type: object
+          propertyNames:
+            type: string
+          additionalProperties:
+            type: object
+            properties:
+              position:
+                type: array
+                prefixItems:
+                  -
+                    type: number
+                  -
+                    type: number
+                  -
+                    type: number
+                items: false
+                minItems: 3
+                maxItems: 3
+              target:
+                type: array
+                prefixItems:
+                  -
+                    type: number
+                  -
+                    type: number
+                  -
+                    type: number
+                items: false
+                minItems: 3
+                maxItems: 3
+              fov:
+                type: number
+                exclusiveMinimum: 0
+            required:
+              - position
+              - target
+              - fov
+            additionalProperties: false
+        reservedReadingOrderIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        assets:
+          minItems: 1
+          type: array
+          items:
+            type: object
+            properties:
+              assetId:
+                type: string
+              mediaUri:
+                type: string
+                minLength: 1
+              fingerprint:
+                type: string
+              title:
+                type: string
+              subtitle:
+                type: string
+              readingOrder:
+                type: array
+                items:
+                  type: string
+              regions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    regionId:
+                      type: string
+                    label:
+                      type: string
+                      minLength: 1
+                    bounds:
+                      type: object
+                      properties:
+                        x:
+                          type: number
+                          minimum: 0
+                          maximum: 1
+                        y:
+                          type: number
+                          minimum: 0
+                          maximum: 1
+                        width:
+                          type: number
+                          minimum: 0
+                          maximum: 1
+                        height:
+                          type: number
+                          minimum: 0
+                          maximum: 1
+                      required:
+                        - x
+                        - y
+                        - width
+                        - height
+                      additionalProperties: false
+                    shortDescription:
+                      type: string
+                    plainLanguage:
+                      type: string
+                    audioUri:
+                      type: string
+                      minLength: 1
+                  required:
+                    - regionId
+                    - bounds
+                    - shortDescription
+                    - plainLanguage
+                  additionalProperties: false
+              arScene:
+                type: object
+                properties:
+                  modelUri:
+                    type: string
+                    minLength: 1
+                  defaultCamera:
+                    type: string
+                    minLength: 1
+                  hotspots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        hotspotId:
+                          type: string
+                          minLength: 1
+                        regionId:
+                          type: string
+                          minLength: 1
+                        nodeName:
+                          type: string
+                          minLength: 1
+                        label:
+                          type: string
+                          minLength: 1
+                        cameraTarget:
+                          type: string
+                          minLength: 1
+                        highlight:
+                          type: string
+                          minLength: 1
+                      required:
+                        - hotspotId
+                        - regionId
+                        - nodeName
+                        - label
+                      additionalProperties: false
+                required:
+                  - modelUri
+                  - defaultCamera
+                  - hotspots
+                additionalProperties: false
+              visualization:
+                type: object
+                properties:
+                  artifactId:
+                    type: string
+                    minLength: 1
+                  artifactVersion:
+                    type: integer
+                    exclusiveMinimum: 0
+                    maximum: 9007199254740991
+                  parameters:
+                    default: {}
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties: {}
+                  notes:
+                    type: string
+                    maxLength: 1000
+                  regionMap:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: string
+                required:
+                  - artifactId
+                  - artifactVersion
+                  - parameters
+                additionalProperties: false
+              references:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    docId:
+                      type: string
+                      minLength: 1
+                    title:
+                      type: string
+                      minLength: 1
+                    page:
+                      type: integer
+                      exclusiveMinimum: 0
+                      maximum: 9007199254740991
+                    quote:
+                      type: string
+                      minLength: 1
+                      maxLength: 300
+                  required:
+                    - docId
+                    - title
+                    - page
+                    - quote
+                  additionalProperties: false
+            required:
+              - assetId
+              - fingerprint
+              - title
+              - readingOrder
+              - regions
+            additionalProperties: false
+      required:
+        - schemaVersion
+        - packId
+        - version
+        - title
+        - assets
+      additionalProperties: false
+    getArtifactManifestResponse:
+      type: object
+      properties:
+        schemaVersion:
+          type: string
+          const: '1.0'
+        artifactId:
+          type: string
+          minLength: 1
+          pattern: '^[a-z0-9][a-z0-9-]*$'
+        artifactVersion:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 9007199254740991
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 600
+        subjects:
+          minItems: 1
+          type: array
+          items:
+            type: string
+            minLength: 1
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        interaction:
+          type: string
+          enum:
+            - stepper
+            - explorer
+            - simulation
+            - plot
+            - hotspot
+            - timeline
+            - diagram
+        provenance:
+          oneOf:
+            -
+              type: object
+              properties:
+                kind:
+                  type: string
+                  const: catalog
+                sourceUrl:
+                  type: string
+                  minLength: 1
+                license:
+                  type: string
+                  minLength: 1
+              required:
+                - kind
+                - sourceUrl
+                - license
+              additionalProperties: false
+            -
+              type: object
+              properties:
+                kind:
+                  type: string
+                  const: adapted
+                parentArtifactId:
+                  type: string
+                  minLength: 1
+                parentArtifactVersion:
+                  type: integer
+                  exclusiveMinimum: 0
+                  maximum: 9007199254740991
+                sourceUrl:
+                  type: string
+                  minLength: 1
+                license:
+                  type: string
+                  minLength: 1
+                generatedBy:
+                  type: string
+                  minLength: 1
+                jobId:
+                  type: string
+                  minLength: 1
+              required:
+                - kind
+                - parentArtifactId
+                - parentArtifactVersion
+                - license
+                - generatedBy
+                - jobId
+              additionalProperties: false
+            -
+              type: object
+              properties:
+                kind:
+                  type: string
+                  const: generated
+                generatedBy:
+                  type: string
+                  minLength: 1
+                jobId:
+                  type: string
+                  minLength: 1
+                license:
+                  type: string
+                  minLength: 1
+              required:
+                - kind
+                - generatedBy
+                - jobId
+              additionalProperties: false
+        parameters:
+          type: object
+          properties:
+            type:
+              type: string
+              const: object
+            properties:
+              type: object
+              propertyNames:
+                type: string
+              additionalProperties:
+                type: object
+                propertyNames:
+                  type: string
+                additionalProperties: {}
+            required:
+              type: array
+              items:
+                type: string
+          required:
+            - type
+            - properties
+          additionalProperties: false
+        defaultParameters:
+          type: object
+          propertyNames:
+            type: string
+          additionalProperties: {}
+        libraries:
+          type: array
+          items:
+            type: string
+            enum:
+              - d3@7
+              - three@0.186
+              - cytoscape@3
+              - plotly-basic@2
+              - animejs@3
+              - katex@0.16
+              - chartjs@4
+        accessibility:
+          type: object
+          properties:
+            description:
+              type: string
+              minLength: 1
+              maxLength: 1200
+            keyboard:
+              type: string
+              minLength: 1
+              maxLength: 600
+            semanticOutline:
+              type: array
+              items:
+                type: string
+                minLength: 1
+          required:
+            - description
+            - keyboard
+          additionalProperties: false
+        render:
+          type: object
+          properties:
+            entry:
+              type: string
+              const: index.html
+            minWidth:
+              type: integer
+              exclusiveMinimum: 0
+              maximum: 9007199254740991
+            minHeight:
+              type: integer
+              exclusiveMinimum: 0
+              maximum: 9007199254740991
+          required:
+            - entry
+            - minWidth
+            - minHeight
+          additionalProperties: false
+      required:
+        - schemaVersion
+        - artifactId
+        - artifactVersion
+        - title
+        - summary
+        - subjects
+        - tags
+        - interaction
+        - provenance
+        - parameters
+        - defaultParameters
+        - libraries
+        - accessibility
+        - render
+      additionalProperties: false
+    createProfileResponse:
+      type: object
+      properties:
+        profile:
+          type: object
+          properties:
+            profileId:
+              type: string
+              minLength: 1
+            name:
+              type: string
+              minLength: 1
+            subject:
+              type: string
+              minLength: 1
+            level:
+              type: string
+              minLength: 1
+            createdAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            vectorIndexName:
+              type: string
+              minLength: 1
+          required:
+            - profileId
+            - name
+            - subject
+            - level
+            - createdAt
+            - vectorIndexName
+          additionalProperties: false
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              docId:
+                type: string
+                minLength: 1
+              profileId:
+                type: string
+                minLength: 1
+              kind:
+                type: string
+                enum:
+                  - textbook
+                  - slides
+                  - notes
+                  - problems
+                  - syllabus
+                  - other
+              title:
+                type: string
+                minLength: 1
+                maxLength: 300
+              citation:
+                type: string
+                maxLength: 600
+              pages:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+              chunks:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+              status:
+                type: string
+                enum:
+                  - pending
+                  - extracting
+                  - chunking
+                  - embedding
+                  - verifying
+                  - ready
+                  - failed
+              stage:
+                type: string
+              error:
+                type: string
+              indexedAt:
+                type: string
+                format: date-time
+                pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            required:
+              - docId
+              - profileId
+              - kind
+              - title
+              - pages
+              - chunks
+              - status
+            additionalProperties: false
+      required:
+        - profile
+        - documents
+      additionalProperties: false
+    createProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 120
+        level:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required:
+        - name
+        - subject
+        - level
+      additionalProperties: false
+    getProfileResponse:
+      type: object
+      properties:
+        profile:
+          type: object
+          properties:
+            profileId:
+              type: string
+              minLength: 1
+            name:
+              type: string
+              minLength: 1
+            subject:
+              type: string
+              minLength: 1
+            level:
+              type: string
+              minLength: 1
+            createdAt:
+              type: string
+              format: date-time
+              pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            vectorIndexName:
+              type: string
+              minLength: 1
+          required:
+            - profileId
+            - name
+            - subject
+            - level
+            - createdAt
+            - vectorIndexName
+          additionalProperties: false
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              docId:
+                type: string
+                minLength: 1
+              profileId:
+                type: string
+                minLength: 1
+              kind:
+                type: string
+                enum:
+                  - textbook
+                  - slides
+                  - notes
+                  - problems
+                  - syllabus
+                  - other
+              title:
+                type: string
+                minLength: 1
+                maxLength: 300
+              citation:
+                type: string
+                maxLength: 600
+              pages:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+              chunks:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+              status:
+                type: string
+                enum:
+                  - pending
+                  - extracting
+                  - chunking
+                  - embedding
+                  - verifying
+                  - ready
+                  - failed
+              stage:
+                type: string
+              error:
+                type: string
+              indexedAt:
+                type: string
+                format: date-time
+                pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+            required:
+              - docId
+              - profileId
+              - kind
+              - title
+              - pages
+              - chunks
+              - status
+            additionalProperties: false
+      required:
+        - profile
+        - documents
+      additionalProperties: false
+    deleteProfileResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+          const: true
+        id:
+          type: string
+          minLength: 1
+      required:
+        - deleted
+        - id
+      additionalProperties: false
+    registerDocumentResponse:
+      type: object
+      properties:
+        docId:
+          type: string
+          minLength: 1
+        profileId:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum:
+            - textbook
+            - slides
+            - notes
+            - problems
+            - syllabus
+            - other
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        citation:
+          type: string
+          maxLength: 600
+        pages:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        chunks:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        status:
+          type: string
+          enum:
+            - pending
+            - extracting
+            - chunking
+            - embedding
+            - verifying
+            - ready
+            - failed
+        stage:
+          type: string
+        error:
+          type: string
+        indexedAt:
+          type: string
+          format: date-time
+          pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+      required:
+        - docId
+        - profileId
+        - kind
+        - title
+        - pages
+        - chunks
+        - status
+      additionalProperties: false
+    registerDocumentRequest:
+      type: object
+      properties:
+        uploadId:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum:
+            - textbook
+            - slides
+            - notes
+            - problems
+            - syllabus
+            - other
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        citation:
+          type: string
+          maxLength: 600
+      required:
+        - uploadId
+        - kind
+        - title
+      additionalProperties: false
+    getDocumentResponse:
+      type: object
+      properties:
+        docId:
+          type: string
+          minLength: 1
+        profileId:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum:
+            - textbook
+            - slides
+            - notes
+            - problems
+            - syllabus
+            - other
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        citation:
+          type: string
+          maxLength: 600
+        pages:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        chunks:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        status:
+          type: string
+          enum:
+            - pending
+            - extracting
+            - chunking
+            - embedding
+            - verifying
+            - ready
+            - failed
+        stage:
+          type: string
+        error:
+          type: string
+        indexedAt:
+          type: string
+          format: date-time
+          pattern: '^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$'
+      required:
+        - docId
+        - profileId
+        - kind
+        - title
+        - pages
+        - chunks
+        - status
+      additionalProperties: false
+    deleteDocumentResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+          const: true
+        id:
+          type: string
+          minLength: 1
+      required:
+        - deleted
+        - id
+      additionalProperties: false
+    searchProfileResponse:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+        hits:
+          type: array
+          items:
+            type: object
+            properties:
+              chunkId:
+                type: string
+                minLength: 1
+              docId:
+                type: string
+                minLength: 1
+              title:
+                type: string
+                minLength: 1
+              page:
+                type: integer
+                exclusiveMinimum: 0
+                maximum: 9007199254740991
+              score:
+                type: number
+              text:
+                type: string
+            required:
+              - chunkId
+              - docId
+              - title
+              - page
+              - score
+              - text
+            additionalProperties: false
+      required:
+        - query
+        - hits
+      additionalProperties: false
+    searchProfileRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        k:
+          default: 6
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 20
+        kind:
+          type: string
+          enum:
+            - textbook
+            - slides
+            - notes
+            - problems
+            - syllabus
+            - other
+        docId:
+          type: string
+          minLength: 1
+      required:
+        - query
+      additionalProperties: false
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              minLength: 1
+            message:
+              type: string
+              minLength: 1
+            slideId:
+              type: string
+              minLength: 1
+          required:
+            - code
+            - message
+          additionalProperties: false
+      required:
+        - error
+      additionalProperties: false

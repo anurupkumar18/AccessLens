@@ -1,20 +1,29 @@
 #!/usr/bin/env node
 /**
- * CDK entry point for AccessLens Part 4.
+ * The one CDK app for AccessLens. Two stacks, two owners, one entry point:
  *
- * Region defaults to the account's only accessible one (see
- * `docs/AWS_ACCESS_VERIFICATION.md` §1); the account comes from the ambient
- * credentials, so this deploys wherever the current AWS profile points.
+ *   - `AccessLensLiveSession` (Part 4): the temporary live plane, WebSocket
+ *     relay and session state.
+ *   - `AccessLensAuthoring` (Part 6): the authoring pipeline, its API, the
+ *     Step Functions workflow, packs and the viewer sandbox.
+ *
+ * Deploy them by name (`cdk deploy AccessLensAuthoring`); `make deploy` and
+ * `make destroy` name the authoring stack only. The region defaults to the
+ * account's only accessible one (`docs/AWS_ACCESS_VERIFICATION.md` §1) and
+ * the account comes from the ambient credentials.
  */
 import { App } from 'aws-cdk-lib';
-import { LiveSessionStack } from '../lib/live-session-stack.js';
+import { AccessLensAuthoringStack } from '../lib/access-lens-authoring-stack';
+import { LiveSessionStack } from '../lib/live-session-stack';
 
 const app = new App();
+const env = {
+  account: process.env.CDK_DEFAULT_ACCOUNT,
+  region: process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
+};
 
 new LiveSessionStack(app, 'AccessLensLiveSession', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
-  },
+  env,
   description: 'AccessLens temporary live session service and WebSocket relay',
 });
+new AccessLensAuthoringStack(app, 'AccessLensAuthoring');
