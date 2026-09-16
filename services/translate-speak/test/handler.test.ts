@@ -360,11 +360,12 @@ describe('handler', () => {
     expect(translateCalls).toHaveLength(0);
   });
 
-  it.each([
-    [{ targetLang: 'es' }, 'missing text'],
-    [{ text: '   ', targetLang: 'es' }, 'blank text'],
-    [{ text: 'the cell' }, 'missing targetLang'],
-  ])('400s on %j (%s)', async (body) => {
+  it.each<[string, Record<string, unknown>]>([
+    ['missing text', { targetLang: 'es' }],
+    ['blank text', { text: '   ', targetLang: 'es' }],
+    ['missing targetLang', { text: 'the cell' }],
+    ['non-string text', { text: 42, targetLang: 'es' }],
+  ])('400s on %s', async (_label, body) => {
     expect((await handler(post(body))).statusCode).toBe(400);
   });
 
@@ -460,9 +461,6 @@ describe('handler', () => {
     for (const line of logLines) {
       expect(line).not.toContain('mitochondrion');
       expect(line).not.toContain('célula');
-      expect(Object.keys(JSON.parse(line))).toEqual(
-        expect.arrayContaining([]),
-      );
       for (const key of Object.keys(JSON.parse(line) as object)) {
         expect(REDACTION_ALLOWLIST).toContain(key);
       }
