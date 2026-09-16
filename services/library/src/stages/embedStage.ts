@@ -23,6 +23,6 @@ export async function embedStage(input: EmbedInput, deps: EmbedDeps): Promise<Em
 }
 
 function toStorageRecord(input: EmbedInput, chunk: Chunk): ChunkStorageRecord {
-  const base = `${input.docId}:${chunk.chunkId}`;
-  return { ...chunk, chunkId: base, docId: input.docId, title: input.title };
+  const base = chunk.chunkId.startsWith(`${input.docId}:`) ? chunk.chunkId : `${input.docId}:${chunk.chunkId}`;
+  return { ...chunk, profileId: input.profileId, chunkId: base, docId: input.docId, title: input.title };
 }

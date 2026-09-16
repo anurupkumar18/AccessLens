@@ -22,6 +22,6 @@ describe('retrieve', () => {
       { chunkId: 'good', docId: 'd', title: 'Course Notes', page: 12, score: 0.9, text: 'The page twelve concept.' },
     ]);
     expect(deps.vectors).toMatchObject({ forProfile: expect.any(Function) });
-    expect(deps.chunks.get).toHaveBeenCalledWith('good');
+    expect(deps.chunks.get).toHaveBeenCalledWith('good', 'profile-p', 'd');
   });
 });

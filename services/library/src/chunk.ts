@@ -66,8 +66,12 @@ export function chunkPages(pages: readonly ChunkPage[]): Chunk[] {
     let ordinal = 0;
     while (startToken < spans.length) {
       const endToken = Math.min(startToken + CHUNK_TOKEN_TARGET, spans.length);
-      const charStart = spans[startToken].start;
-      const charEnd = spans[endToken - 1].end;
+      // Keep every source character at the outer edges of the page. This is
+      // important for citation integrity: leading/trailing PDF whitespace is
+      // not silently normalised, while intermediate windows still begin/end
+      // on token boundaries so overlap is deterministic.
+      const charStart = startToken === 0 ? 0 : spans[startToken].start;
+      const charEnd = endToken === spans.length ? page.text.length : spans[endToken - 1].end;
       const text = page.text.slice(charStart, charEnd);
       chunks.push({
         // The page and ordinal make the location obvious; the content hash

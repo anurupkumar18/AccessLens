@@ -1,5 +1,5 @@
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { CreateIndexCommand, DataType, DistanceMetric, S3VectorsClient } from '@aws-sdk/client-s3vectors';
+import { CreateIndexCommand, DataType, DeleteIndexCommand, DistanceMetric, S3VectorsClient } from '@aws-sdk/client-s3vectors';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import type { DocumentRecord, ProfileRecord } from '../../shared/api';
@@ -130,7 +130,7 @@ export class AwsVectorAdmin implements LibraryVectorAdmin {
         dataType: DataType.FLOAT32,
         dimension: 1024,
         distanceMetric: DistanceMetric.COSINE,
-        metadataConfiguration: { nonFilterableMetadataKeys: [] },
+        metadataConfiguration: { nonFilterableMetadataKeys: ['title'] },
       }));
     } catch (error) {
       const name = error && typeof error === 'object' && 'name' in error ? String((error as { name: unknown }).name) : '';
@@ -140,6 +140,12 @@ export class AwsVectorAdmin implements LibraryVectorAdmin {
   }
 
   async deleteIndex(profileId: string): Promise<void> {
+    try {
+      await this.client.send(new DeleteIndexCommand({ vectorBucketName: this.vectorBucket, indexName: profileId }));
+    } catch (error) {
+      const name = error && typeof error === 'object' && 'name' in error ? String((error as { name: unknown }).name) : '';
+      if (name !== 'NotFoundException' && name !== 'ResourceNotFoundException') throw error;
+    }
     this.stores.delete(profileId);
   }
 
@@ -162,15 +168,18 @@ export class S3ChunkStore {
   async put(records: readonly ChunkStorageRecord[]): Promise<void> {
     await Promise.all(records.map(record => this.client.send(new PutObjectCommand({
       Bucket: this.bucket,
-      Key: `chunks/${record.chunkId}.json`,
+      Key: `library/${record.profileId}/${record.docId}/chunks/${record.chunkId}.json`,
       Body: JSON.stringify(record),
       ContentType: 'application/json',
     }))));
   }
 
-  async get(chunkId: string): Promise<ChunkExcerptRecord | undefined> {
+  async get(chunkId: string, profileId?: string, docId?: string): Promise<ChunkExcerptRecord | undefined> {
     try {
-      const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: `chunks/${chunkId}.json` }));
+      const key = profileId && docId
+        ? `library/${profileId}/${docId}/chunks/${chunkId}.json`
+        : `chunks/${chunkId}.json`;
+      const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
       if (!response.Body) return undefined;
       return JSON.parse(await response.Body.transformToString()) as ChunkExcerptRecord;
     } catch (error) {
@@ -179,8 +188,9 @@ export class S3ChunkStore {
     }
   }
 
-  async listForDocument(docId: string): Promise<string[]> {
-    const response = await this.client.send(new ListObjectsV2Command({ Bucket: this.bucket, Prefix: `chunks/${docId}:` }));
-    return (response.Contents ?? []).flatMap(object => object.Key?.replace(/^chunks\//u, '').replace(/\.json$/u, '') ?? []);
+  async listForDocument(docId: string, profileId?: string): Promise<string[]> {
+    const prefix = profileId ? `library/${profileId}/${docId}/chunks/` : `chunks/${docId}:`;
+    const response = await this.client.send(new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix }));
+    return (response.Contents ?? []).flatMap(object => object.Key?.replace(/^.*\/chunks\//u, '').replace(/\.json$/u, '') ?? []);
   }
 }

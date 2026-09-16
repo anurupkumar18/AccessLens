@@ -22,8 +22,9 @@ export interface ChunkExcerptRecord {
 }
 
 export interface ChunkStore {
-  get(chunkId: string): Promise<ChunkExcerptRecord | undefined>;
-  listForDocument?(docId: string): Promise<string[]>;
+  /** profileId/docId let an S3-backed store address its private object prefix. */
+  get(chunkId: string, profileId?: string, docId?: string): Promise<ChunkExcerptRecord | undefined>;
+  listForDocument?(docId: string, profileId?: string): Promise<string[]>;
 }
 
 export interface ProfileVectorQuery {
@@ -55,7 +56,8 @@ export async function retrieve(
     if (!hit.key || hit.distance === undefined) continue;
     const score = 1 - hit.distance;
     if (score < COSINE_SIMILARITY_FLOOR) continue;
-    const record = await deps.chunks.get(hit.key);
+    const metadataDocId = typeof hit.metadata?.docId === 'string' ? hit.metadata.docId : undefined;
+    const record = await deps.chunks.get(hit.key, profileId, metadataDocId);
     if (!record) continue;
     excerpts.push({
       chunkId: record.chunkId,

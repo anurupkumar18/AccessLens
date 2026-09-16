@@ -83,7 +83,7 @@ export class S3VectorStore implements VectorStore {
       ...(this.location.indexArn ? { indexArn: this.location.indexArn } : {}),
       topK: k,
       queryVector: { float32: [...vector] },
-      filter: buildMetadataFilter(filter ?? {}) as unknown as undefined,
+      filter: buildMetadataFilter(filter ?? {}) as unknown as import('@smithy/types').DocumentType | undefined,
       returnMetadata: true,
       returnDistance: true,
     }));
@@ -113,9 +113,9 @@ export class S3VectorStore implements VectorStore {
  */
 export function buildMetadataFilter(filter: { kind?: string; docId?: string }): Record<string, unknown> | undefined {
   const clauses = [
-    filter.kind ? { kind: filter.kind } : undefined,
-    filter.docId ? { docId: filter.docId } : undefined,
-  ].filter((clause): clause is { kind: string } | { docId: string } => clause !== undefined);
+    filter.kind ? { kind: { $eq: filter.kind } } : undefined,
+    filter.docId ? { docId: { $eq: filter.docId } } : undefined,
+  ].filter((clause): clause is NonNullable<typeof clause> => clause !== undefined);
   if (clauses.length === 0) return undefined;
   if (clauses.length === 1) return clauses[0];
   return { $and: clauses };
@@ -148,12 +148,14 @@ export async function createVectorResources(
     dataType: DataType.FLOAT32,
     dimension: properties.Dimension ?? 1024,
     distanceMetric: DistanceMetric.COSINE,
-    metadataConfiguration: { nonFilterableMetadataKeys: [] },
+    // `title` is returned with hits but is not used as a filter; docId, page,
+    // and kind remain filterable for the API's optional constraints.
+    metadataConfiguration: { nonFilterableMetadataKeys: ['title'] },
   })) as { indexArn?: string };
   const indexName = properties.IndexName ?? 'profile-default';
   return {
     PhysicalResourceId: `${properties.BucketName}/${indexName}`,
-    Data: { BucketName: properties.BucketName, IndexName: indexName, IndexArn: index.indexArn ?? bucket.vectorBucketArn },
+    Data: { BucketName: properties.BucketName, IndexName: indexName, ...(index.indexArn ? { IndexArn: index.indexArn } : {}) },
   };
 }
 

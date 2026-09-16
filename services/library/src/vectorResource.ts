@@ -53,7 +53,7 @@ async function createResources(client: VectorClient, bucketName: string, indexNa
     dataType: DataType.FLOAT32,
     dimension,
     distanceMetric: DistanceMetric.COSINE,
-    metadataConfiguration: { nonFilterableMetadataKeys: [] },
+    metadataConfiguration: { nonFilterableMetadataKeys: ['title'] },
   })) as { indexArn?: string };
   return { indexArn: index.indexArn ?? bucket.vectorBucketArn };
 }

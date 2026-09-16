@@ -65,6 +65,7 @@ export interface EmbedDeps {
 }
 
 export interface ChunkStorageRecord {
+  profileId: string;
   chunkId: string;
   docId: string;
   page: number;
