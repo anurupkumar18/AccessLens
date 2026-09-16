@@ -1,7 +1,31 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { ArtifactManifest } from '../../apps/extension/src/shared/contracts';
 import { cosineSimilarity, retrieveCatalog, setEmbeddingProvider, setVectorLoader, type CatalogVector } from './index';
 
-const manifest = (artifactId: string) => ({ artifactId, title: artifactId });
+// A CatalogVector carries the whole manifest, so the fixture has to be a whole
+// manifest. Stubbing it as {artifactId, title} type-checked nowhere until the
+// V2 tsconfig started covering services/, and a partial stub would have hidden
+// any future field the retriever starts reading.
+const manifest = (artifactId: string): ArtifactManifest => ({
+  schemaVersion: '1.0',
+  artifactId,
+  artifactVersion: 1,
+  title: artifactId,
+  summary: `A retrieval fixture standing in for the ${artifactId} artifact.`,
+  subjects: ['computer-science'],
+  tags: ['graph', 'search'],
+  interaction: 'stepper',
+  provenance: { kind: 'catalog', sourceUrl: `https://example.org/${artifactId}`, license: 'MIT' },
+  parameters: { type: 'object', properties: { beamWidth: { type: 'integer', minimum: 1, maximum: 64 } } },
+  defaultParameters: { beamWidth: 8 },
+  libraries: ['d3@7'],
+  accessibility: {
+    description: 'A small undirected graph with the current node outlined.',
+    keyboard: 'Space takes one step. Shift+Space steps back.',
+    semanticOutline: ['Start node', 'Frontier', 'Visited set'],
+  },
+  render: { entry: 'index.html', minWidth: 480, minHeight: 320 },
+});
 const vectors: CatalogVector[] = [
   { artifactId: 'same', artifactVersion: 1, vector: [1, 0], manifest: manifest('same') },
   { artifactId: 'orthogonal', artifactVersion: 1, vector: [0, 1], manifest: manifest('orthogonal') },
