@@ -217,7 +217,7 @@ export class LiveSessionStack extends Stack {
       },
     });
     const aiIntegration = new HttpLambdaIntegration('AiIntegration', aiHandler);
-    for (const path of ['/ask', '/speak', '/transcribe-url']) {
+    for (const path of ['/ask', '/speak', '/transcribe-url', '/transcribe-chunk']) {
       aiApi.addRoutes({ path, methods: [HttpMethod.POST], integration: aiIntegration });
     }
 
