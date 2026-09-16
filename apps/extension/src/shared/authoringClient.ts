@@ -11,13 +11,29 @@ export interface JobState { jobId: string; status: JobStatus; packId: string; sl
 export interface ReviewDecision { assetId: string; rejectRegions?: string[]; regionEdits?: Array<{ regionId: string; shortDescription?: string; plainLanguage?: string }> }
 export interface Published { packId: string; version: number; packUrl: string }
 
+/** The signed-in instructor's account (D13) and course profiles. */
+export interface Instructor { sub: string; email: string; name?: string; createdAt: string; lastSeenAt: string }
+export interface CourseProfile { profileId: string; name: string; subject: string; level: string; createdAt: string }
+export type DocumentKind = 'textbook' | 'slides' | 'notes' | 'problems' | 'syllabus' | 'other';
+export type DocumentStatus = 'pending' | 'extracting' | 'chunking' | 'embedding' | 'verifying' | 'ready' | 'failed';
+export interface CourseDocument { docId: string; profileId: string; kind: DocumentKind; title: string; citation?: string; pages: number; chunks: number; status: DocumentStatus; stage?: string; error?: string }
+export interface ProfileWithDocuments { profile: CourseProfile; documents: CourseDocument[] }
+
 export interface AuthoringClient {
   /** Presigned upload then job start; resolves with the new job id. */
-  submitDeck(file: { name: string; type: string; body: Blob }, job: { packId: string; title: string; description?: string }): Promise<string>;
+  submitDeck(file: { name: string; type: string; body: Blob }, job: { packId: string; title: string; description?: string; profileId?: string }): Promise<string>;
   getJob(jobId: string): Promise<JobState>;
   getDraft(jobId: string): Promise<AccessPack>;
   review(jobId: string, decisions: ReviewDecision[]): Promise<void>;
   publish(jobId: string): Promise<Published>;
+  /** Creates the account on first call (D13) and lists the instructor's course profiles. */
+  me(): Promise<{ instructor: Instructor; profiles: CourseProfile[] }>;
+  createProfile(input: { name: string; subject: string; level: string }): Promise<ProfileWithDocuments>;
+  getProfile(profileId: string): Promise<ProfileWithDocuments>;
+  deleteProfile(profileId: string): Promise<void>;
+  /** Presigned upload then registration; indexing starts on the server. */
+  addDocument(profileId: string, file: { name: string; type: string; body: Blob }, document: { kind: DocumentKind; title: string; citation?: string }): Promise<CourseDocument>;
+  deleteDocument(profileId: string, docId: string): Promise<void>;
 }
 
 export class AuthoringApiError extends Error {
@@ -45,7 +61,7 @@ export function packIdFromTitle(title: string): string {
 
 export function createAuthoringClient(baseUrl: string, idToken: string, fetchImpl: typeof fetch = (...args) => fetch(...args)): AuthoringClient {
   const root = baseUrl.replace(/\/+$/u, '');
-  async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  async function call<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
     const response = await fetchImpl(`${root}${path}`, {
       method,
       headers: { authorization: `Bearer ${idToken}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
@@ -60,14 +76,24 @@ export function createAuthoringClient(baseUrl: string, idToken: string, fetchImp
     }
     return parsed as T;
   }
+  /** Presigned PUT of a file; the API never sees the bytes and the PUT carries no token. */
+  async function upload(file: { name: string; body: Blob }): Promise<string> {
+    const contentType = deckContentType(file.name);
+    if (!contentType) throw new AuthoringApiError(400, 'unsupported_file', 'Upload a PDF, PPTX, DOCX or TXT file.');
+    const presigned = await call<{ uploadId: string; url: string }>('POST', '/v1/uploads', { filename: file.name, contentType });
+    const put = await fetchImpl(presigned.url, { method: 'PUT', headers: { 'content-type': contentType }, body: file.body });
+    if (!put.ok) throw new AuthoringApiError(put.status, 'upload_failed', `The upload answered ${put.status}.`);
+    return presigned.uploadId;
+  }
+  const profilePath = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}`;
   return {
     async submitDeck(file, job) {
-      const contentType = deckContentType(file.name);
-      if (!contentType) throw new AuthoringApiError(400, 'unsupported_file', 'Upload a PDF, PPTX, DOCX or TXT deck.');
-      const upload = await call<{ uploadId: string; url: string }>('POST', '/v1/uploads', { filename: file.name, contentType });
-      const put = await fetchImpl(upload.url, { method: 'PUT', headers: { 'content-type': contentType }, body: file.body });
-      if (!put.ok) throw new AuthoringApiError(put.status, 'upload_failed', `The deck upload answered ${put.status}.`);
-      const created = await call<{ jobId: string }>('POST', '/v1/jobs', { uploadId: upload.uploadId, packId: job.packId, title: job.title, ...(job.description ? { description: job.description } : {}) });
+      const uploadId = await upload(file);
+      const created = await call<{ jobId: string }>('POST', '/v1/jobs', {
+        uploadId, packId: job.packId, title: job.title,
+        ...(job.description ? { description: job.description } : {}),
+        ...(job.profileId ? { profileId: job.profileId } : {}),
+      });
       return created.jobId;
     },
     getJob: jobId => call<JobState>('GET', `/v1/jobs/${encodeURIComponent(jobId)}`),
@@ -77,6 +103,15 @@ export function createAuthoringClient(baseUrl: string, idToken: string, fetchImp
     },
     async review(jobId, decisions) { await call('POST', `/v1/jobs/${encodeURIComponent(jobId)}/review`, { decisions }); },
     publish: jobId => call<Published>('POST', `/v1/jobs/${encodeURIComponent(jobId)}/publish`),
+    me: () => call('GET', '/v1/me'),
+    createProfile: input => call('POST', '/v1/profiles', input),
+    getProfile: profileId => call('GET', profilePath(profileId)),
+    async deleteProfile(profileId) { await call('DELETE', profilePath(profileId)); },
+    async addDocument(profileId, file, document) {
+      const uploadId = await upload(file);
+      return call<CourseDocument>('POST', `${profilePath(profileId)}/documents`, { uploadId, ...document });
+    },
+    async deleteDocument(profileId, docId) { await call('DELETE', `${profilePath(profileId)}/documents/${encodeURIComponent(docId)}`); },
   };
 }
 

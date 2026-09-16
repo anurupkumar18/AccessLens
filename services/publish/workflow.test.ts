@@ -100,4 +100,41 @@ describe('authoringStateMachine with visualization Lambdas', () => {
       if (state.Type === 'Task') expect(state.Resource, JSON.stringify(state)).toBeTruthy();
     }
   });
+
+  describe('course-library retrieval (spec section 9.4)', () => {
+    const spineOnly = authoringStateMachine({ ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio' }) as any;
+    const withLibrary = authoringStateMachine({ ingest: 'arn:ingest', analyst: 'arn:analyst', packAuthor: 'arn:author', audio: 'arn:audio', retrieve: 'arn:retrieve' }) as any;
+
+    it('emits no retrieval state when no retrieval Lambda exists', () => {
+      expect(Object.keys(spineOnly.States)).not.toContain('RetrieveForDeck');
+      expect(spineOnly.States.SlideMap.ItemProcessor.StartAt).toBe('PackAuthor');
+      expect(spineOnly.States.Ingest.Next).toBe('MarkDescribing');
+    });
+
+    it('retrieves for the deck (three windows, k 8) only when the job names a profile, then feeds the analyst', () => {
+      expect(withLibrary.States.Ingest.Next).toBe('DeckRetrieval');
+      expect(withLibrary.States.DeckRetrieval.Choices).toEqual([{ Variable: '$.profileId', IsNull: false, Next: 'RetrieveForDeck' }]);
+      expect(withLibrary.States.DeckRetrieval.Default).toBe('MarkDescribing');
+      const task = withLibrary.States.RetrieveForDeck;
+      expect(task.Resource).toBe('arn:retrieve');
+      expect(task.Parameters).toEqual({ 'profileId.$': '$.profileId', 'slides.$': '$.deck.slides', k: 8 });
+      expect(task.Catch[0].Next).toBe('MarkFailed');
+      expect(withLibrary.States.ApplyDeckExcerpts).toEqual({ Type: 'Pass', InputPath: '$.deckRetrieval.excerpts', ResultPath: '$.excerpts', Next: 'MarkDescribing' });
+    });
+
+    it('retrieves per slide (k 4) from the slide text before the pack author and passes the profile into the Map', () => {
+      const map = withLibrary.States.SlideMap;
+      expect(map.ItemSelector['profileId.$']).toBe('$.profileId');
+      expect(map.ItemProcessor.StartAt).toBe('SlideRetrieval');
+      const states = map.ItemProcessor.States;
+      expect(states.SlideRetrieval.Default).toBe('PackAuthor');
+      expect(states.RetrieveForSlide.Parameters).toEqual({ 'profileId.$': '$.profileId', 'query.$': '$.extractedText', k: 4 });
+      expect(states.ApplySlideExcerpts).toEqual({ Type: 'Pass', InputPath: '$.slideRetrieval.excerpts', ResultPath: '$.excerpts', Next: 'PackAuthor' });
+      expect(states.PackAuthor.Parameters['excerpts.$']).toBe('$.excerpts');
+    });
+
+    it('never names a published prefix in the retrieval states', () => {
+      expect(JSON.stringify([withLibrary.States.RetrieveForDeck, withLibrary.States.SlideMap.ItemProcessor.States.RetrieveForSlide])).not.toMatch(/packs\/|media\/|artifacts\//u);
+    });
+  });
 });

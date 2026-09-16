@@ -56,11 +56,17 @@ RUN npm install --ignore-scripts --no-audit --no-fund
 # Preserve the repository-relative paths because the portable source imports
 # services/shared and apps/extension directly.
 COPY services/ingest/src ${LAMBDA_TASK_ROOT}/services/ingest/src
+# The course-library indexer (services/library) rides in the same image: it
+# needs the same LibreOffice and Poppler, and the function is selected by
+# the CMD override in infra (library.handler), not by a second image build.
+COPY services/library/src ${LAMBDA_TASK_ROOT}/services/library/src
 COPY services/shared ${LAMBDA_TASK_ROOT}/services/shared
 COPY apps/extension/src/sources/screen ${LAMBDA_TASK_ROOT}/apps/extension/src/sources/screen
 COPY apps/extension/src/shared ${LAMBDA_TASK_ROOT}/apps/extension/src/shared
 RUN npm install --no-save --ignore-scripts --no-audit --no-fund \
-      @aws-sdk/client-s3@3.1133.0 esbuild@0.28.2 \
+      @aws-sdk/client-s3@3.1133.0 @aws-sdk/client-s3vectors@3.1133.0 \
+      @aws-sdk/client-bedrock-runtime@3.1133.0 @aws-sdk/client-dynamodb@3.1133.0 \
+      @aws-sdk/lib-dynamodb@3.1133.0 esbuild@0.28.2 \
     # CommonJS, not ESM: the AWS SDK's bundled internals call require() for
     # node:https and friends, and an ESM bundle answers that with "Dynamic
     # require of \"node:https\" is not supported" at cold start -- which is
@@ -69,6 +75,10 @@ RUN npm install --no-save --ignore-scripts --no-audit --no-fund \
     && npx esbuild ${LAMBDA_TASK_ROOT}/services/ingest/src/handler.ts \
       --bundle --platform=node --format=cjs --target=node22 \
       --outfile=${LAMBDA_TASK_ROOT}/index.js \
+      --packages=bundle \
+    && npx esbuild ${LAMBDA_TASK_ROOT}/services/library/src/handler.ts \
+      --bundle --platform=node --format=cjs --target=node22 \
+      --outfile=${LAMBDA_TASK_ROOT}/library.js \
       --packages=bundle \
     && rm -rf node_modules package.json package-lock.json services apps
 

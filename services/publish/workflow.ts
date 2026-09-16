@@ -21,6 +21,8 @@ export interface AuthoringLambdaArns {
   critic?: string;
   /** Writes one staged asset and one compact per-slide progress result. */
   recordVisualization?: string;
+  /** Course-library retrieval (spec section 9.4); without it no retrieval state is emitted. */
+  retrieve?: string;
 }
 
 interface State {
@@ -80,7 +82,36 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
     arns.planner && arns.route && arns.adapter && arns.generator && arns.critic && arns.recordVisualization,
   );
 
+  const withRetrieval = Boolean(arns.retrieve);
+
   const perSlideStates: Record<string, State> = {
+    // Spec section 9.4: the Pack Author gets up to four course-library
+    // excerpts for the slide's own text. A job without a profile keeps the
+    // deck-level excerpts (empty when there is no library at all).
+    ...(withRetrieval
+      ? {
+          SlideRetrieval: {
+            Type: 'Choice',
+            Choices: [{ Variable: '$.profileId', IsNull: false, Next: 'RetrieveForSlide' }],
+            Default: 'PackAuthor',
+          },
+          RetrieveForSlide: {
+            ...lambdaTask(arns.retrieve, 'ApplySlideExcerpts', '$.slideRetrieval'),
+            Parameters: {
+              'profileId.$': '$.profileId',
+              'query.$': '$.extractedText',
+              k: 4,
+            },
+            Retry: [{ ErrorEquals: ['States.ALL'], IntervalSeconds: 2, MaxAttempts: 2, BackoffRate: 2 }],
+          },
+          ApplySlideExcerpts: {
+            Type: 'Pass',
+            InputPath: '$.slideRetrieval.excerpts',
+            ResultPath: '$.excerpts',
+            Next: 'PackAuthor',
+          },
+        }
+      : {}),
     PackAuthor: {
       ...lambdaTask(arns.packAuthor, 'Audio', '$.packAuthor'),
       Parameters: {
@@ -322,7 +353,35 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
 
   const states: Record<string, State> = {
     MarkIngesting: statusUpdate('ingesting', 'Ingest'),
-    Ingest: catchToFailed(lambdaTask(arns.ingest, 'MarkDescribing', '$.deck')),
+    Ingest: catchToFailed(lambdaTask(arns.ingest, withRetrieval ? 'DeckRetrieval' : 'MarkDescribing', '$.deck')),
+    // Spec section 9.4: the Deck Analyst gets up to eight excerpts for the
+    // deck's text in three windows. createJob always sends profileId (null
+    // when the job has no course profile), so the Choice never sees a
+    // missing path.
+    ...(withRetrieval
+      ? {
+          DeckRetrieval: {
+            Type: 'Choice',
+            Choices: [{ Variable: '$.profileId', IsNull: false, Next: 'RetrieveForDeck' }],
+            Default: 'MarkDescribing',
+          },
+          RetrieveForDeck: catchToFailed({
+            ...lambdaTask(arns.retrieve, 'ApplyDeckExcerpts', '$.deckRetrieval'),
+            Parameters: {
+              'profileId.$': '$.profileId',
+              'slides.$': '$.deck.slides',
+              k: 8,
+            },
+            Retry: [{ ErrorEquals: ['States.ALL'], IntervalSeconds: 2, MaxAttempts: 2, BackoffRate: 2 }],
+          }),
+          ApplyDeckExcerpts: {
+            Type: 'Pass',
+            InputPath: '$.deckRetrieval.excerpts',
+            ResultPath: '$.excerpts',
+            Next: 'MarkDescribing',
+          },
+        }
+      : {}),
     MarkDescribing: statusUpdate('describing', 'Analyst'),
     Analyst: catchToFailed(lambdaTask(arns.analyst, 'AnalystOutcome', '$.analyst')),
     AnalystOutcome: {
@@ -342,6 +401,7 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
         'bucket.$': '$.bucket',
         'lesson.$': '$.analyst.lesson',
         'excerpts.$': '$.excerpts',
+        ...(withRetrieval ? { 'profileId.$': '$.profileId' } : {}),
         'assetId.$': '$$.Map.Item.Value.assetId',
         'page.$': '$$.Map.Item.Value.page',
         'mediaKey.$': '$$.Map.Item.Value.mediaKey',
@@ -362,7 +422,7 @@ export function authoringStateMachine(arns: AuthoringLambdaArns): object {
       },
       ItemProcessor: {
         ProcessorConfig: { Mode: 'INLINE' },
-        StartAt: 'PackAuthor',
+        StartAt: withRetrieval ? 'SlideRetrieval' : 'PackAuthor',
         States: perSlideStates,
       },
       ResultPath: '$.slides',

@@ -427,3 +427,48 @@ CloudFront viewer URL; for the installed extension add
 **Spec deviation, recorded.** `docs/prompts/viz-system-build.md` describes
 the deploy-time bearer token in SSM; this decision replaces that paragraph
 by user instruction. The prompt file is not edited.
+*Amended the same day by D13: the allowlist is gone; any verified Google
+account is an instructor.*
+
+## D13 — two roles; professors self-register and own a course library for retrieval — DECIDED (user, 2026-09-16: "We should have 2 roles, professor and student. Students don't need to sign in, but we need professor accounts to have a dataset of class resources (for RAG). Anybody can create a professor account for the moment")
+
+**Roles.** Students never sign in and never call the authoring API; they
+read published packs, media and artifacts from CloudFront as before, and
+nothing about them is stored anywhere (charter A4, hard rule 3). Professors
+sign in with Google (D12). There is no approval step and no allowlist for
+now: any verified Google account that calls `GET /v1/me` gets an instructor
+record (`instructors` table keyed by Google subject: email, name,
+createdAt, lastSeenAt). That record is the user base. Gating who may become
+a professor is a later decision; the place to add it is `ensureInstructor`
+in `services/api/instructors.ts`, nothing else moves.
+
+**Class resources for retrieval.** This is spec section 9, the course
+library, wired for real: a professor creates course profiles (`POST
+/v1/profiles`, owned by their subject id), adds textbooks, notes, slides,
+problem sets or a syllabus (`POST /v1/uploads` then `POST
+/v1/profiles/{id}/documents`), and the indexer Lambda extracts page text
+with Poppler (PPTX and DOCX go through LibreOffice first, in the same
+container as ingest), chunks page by page, embeds with Titan v2 from
+Lambda only (hard rule 12), writes the profile's S3 Vectors index plus the
+verbatim chunk manifest, and verifies with a page-one query before the
+document is `ready`. A deck job that names a profile now retrieves before
+Sonnet writes: eight excerpts for the deck analyst from three windows of
+the deck text, four per slide for the pack author from that slide's text
+(spec 9.4); references survive only the verbatim check that already
+existed. A job without a profile runs exactly as before. Every profile,
+document and search route answers 404 for another professor's profile.
+
+**Deviations from the spec's shape, recorded.** Indexing is one Lambda
+invocation running the four stages in sequence (the document record
+reports each stage), not a Step Functions execution per document: the
+stages already existed as one function and a workflow would add only
+visibility. The S3 Vectors bucket is a native CloudFormation resource
+(`AWS::S3Vectors::VectorBucket` exists now), so no custom resource; indexes
+are created per profile at runtime and `make destroy` deletes any that
+remain before the stack delete. The documents table is keyed by `docId`
+with a `profileId-index`, matching the store the library lane wrote.
+
+**What students get.** Read mode already lists an asset's `references`
+as "From your course materials"; nothing else on the student side changes.
+The search route is instructor-only; a student question-answering client
+would go through the AI gateway, which is not part of this decision.

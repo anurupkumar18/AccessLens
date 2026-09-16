@@ -39,3 +39,25 @@ export async function loadRemotePack(url: URL, fetchImpl: typeof fetch = fetch):
   registerRemotePackBase(pack.packId, new URL('/', url));
   return pack;
 }
+
+/**
+ * Where a session's pack lives once the authoring pipeline has published it:
+ * `packs/<packId>/<version>.json` under the asset distribution. The live
+ * session's events name the pack by id and version, so a student who joins
+ * with a code can fetch exactly the pack the instructor is teaching, with no
+ * bundled copy and no URL to paste. The base is the deployed distribution
+ * (`VITE_ACCESSLENS_ASSET_BASE_URL`); a local host with no configured base
+ * falls back to its own origin, where the dev server proxies `/packs`.
+ */
+export function publishedPackUrl(packId: string, version: number, base: string = publishedPackBase()): URL {
+  return new URL(`packs/${encodeURIComponent(packId)}/${version}.json`, base.endsWith('/') ? base : `${base}/`);
+}
+
+function publishedPackBase(): string {
+  const configured = (import.meta.env.VITE_ACCESSLENS_ASSET_BASE_URL as string | undefined)?.trim();
+  return configured || window.location.origin;
+}
+
+export function fetchPublishedPack(packId: string, version: number): Promise<AccessPack> {
+  return loadRemotePack(publishedPackUrl(packId, version));
+}

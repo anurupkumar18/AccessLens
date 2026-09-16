@@ -331,14 +331,14 @@ an LMS plugin, can drive the same endpoints. The contract is an OpenAPI 3.1
 document at `packages/contracts/authoring-api.openapi.yaml`, generated from the
 same Zod schemas the Lambdas validate with, and tested so the two cannot drift.
 
-Auth (D12): instructors sign in with Google. Clients send
-`Authorization: Bearer <Google ID token>`; API Gateway's JWT authorizer
-verifies it against Google for this deployment's OAuth client id (and the
-Google Cloud SDK's, so `gcloud auth print-identity-token` works for
-scripts), then every route checks the verified email against the deployed
-instructor allowlist (`ACCESSLENS_INSTRUCTORS`, emails and `@domains`) and
-answers 403 otherwise. Jobs belong to the Google account that created them.
-No accounts or profiles are stored anywhere.
+Auth (D12, D13): two roles. Students never call this API. Instructors sign
+in with Google: clients send `Authorization: Bearer <Google ID token>`, and
+API Gateway's JWT authorizer verifies it against Google for this
+deployment's OAuth client id (and the Google Cloud SDK's, so `gcloud auth
+print-identity-token` works for scripts). Any verified Google account is an
+instructor for now; `GET /v1/me` creates the account record on first call.
+Jobs and course profiles belong to the Google account that created them
+and read as 404 to anyone else.
 
 | Method and path | Purpose | Request | Response |
 | --- | --- | --- | --- |
@@ -371,7 +371,7 @@ with `curl`, how to watch a job in the console, and `make destroy` to remove
 everything. Every step names the exact command and what success looks like.
 
 ```text
-make deploy      cdk deploy with GOOGLE_CLIENT_ID and ACCESSLENS_INSTRUCTORS, then writes .env.local and prints the URLs
+make deploy      cdk deploy with GOOGLE_CLIENT_ID, then writes .env.local and prints the URLs
 make smoke       curl /v1/health, upload the HNSW PDF, start a job, poll to review, print the draft summary
 make destroy     cdk destroy plus emptying the buckets, so nothing keeps billing
 ```

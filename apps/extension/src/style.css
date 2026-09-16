@@ -748,3 +748,15 @@ input[type='range'] { accent-color: var(--ink); }
 .authoring-review > button, .authoring-published button { margin-right: .5rem; }
 .authoring-account { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: 0 0 1rem; }
 .authoring-account button { margin: 0; }
+.authoring select { font: inherit; padding: .5rem .6rem; border: 1px solid var(--rule); background: var(--field); color: var(--ink); }
+.library { margin: 1.5rem 0; padding: 1rem; border: 1px solid var(--rule); }
+.library h3 { margin: 0 0 .25rem; font-size: 1.05rem; }
+.library form { display: grid; gap: .6rem; max-width: 36rem; margin-top: .75rem; }
+.library-course { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; margin-top: 1rem; }
+.library-course label { display: grid; gap: .25rem; flex: 1 1 16rem; }
+.library-documents { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .5rem; }
+.library-documents li { display: grid; grid-template-columns: 1fr auto; gap: .1rem .75rem; align-items: center; padding: .5rem .6rem; border: 1px solid var(--rule); }
+.library-doc-title { font-weight: 600; }
+.library-doc-meta, .library-doc-status { color: var(--muted); font-size: .92em; grid-column: 1; }
+.library-doc-failed { color: var(--danger, #b00020); }
+.library-documents button { grid-column: 2; grid-row: 1 / span 3; margin: 0; }

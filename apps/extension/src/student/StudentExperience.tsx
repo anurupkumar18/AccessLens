@@ -48,6 +48,11 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
     ? (assetId: string, regionId: string) => ai.speak(capability, pack.packId, pack.version, assetId, regionId, 'shortDescription')
     : undefined;
 
+  // A different pack is a different lesson: the shell swaps the pack in when
+  // the session names one this build did not hold (fetched from the published
+  // distribution), and the event already seen must then be judged against
+  // the new pack rather than stay refused for the old one.
+  useEffect(() => { setLive(initialStudentLiveState); }, [pack.packId, pack.version]);
   useEffect(() => {
     if (!event) return;
     setLive((current) => applyLiveEvent(current, event, pack));

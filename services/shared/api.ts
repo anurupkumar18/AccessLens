@@ -147,6 +147,8 @@ export type DocumentRecord = z.infer<typeof DocumentRecordSchema>;
 
 export const ProfileRecordSchema = z.object({
   profileId: z.string().min(1),
+  /** Google subject of the instructor who owns it (D13); every profile route is scoped to it. */
+  ownerSub: z.string().min(1).optional(),
   name: z.string().min(1),
   subject: z.string().min(1),
   level: z.string().min(1),
@@ -195,6 +197,26 @@ export const SearchResponseSchema = z.object({
 
 export const DeletedResponseSchema = z.object({ deleted: z.literal(true), id: z.string().min(1) }).strict();
 
+/**
+ * The signed-in instructor's own record (D13). Created on first sign-in;
+ * anybody with a verified Google account may create one for now. This is the
+ * only identity the service stores and it is never a student's.
+ */
+export const InstructorRecordSchema = z.object({
+  sub: z.string().min(1),
+  email: z.string().min(3),
+  name: z.string().min(1).optional(),
+  createdAt: z.string().datetime(),
+  lastSeenAt: z.string().datetime(),
+}).strict();
+export type InstructorRecord = z.infer<typeof InstructorRecordSchema>;
+
+export const MeResponseSchema = z.object({
+  instructor: InstructorRecordSchema,
+  /** Every course profile this instructor owns, newest first. */
+  profiles: z.array(ProfileRecordSchema),
+}).strict();
+
 // ---------------------------------------------------------------------------
 // The route table. This array is the single source the OpenAPI generator walks,
 // so a route that exists in the API and not here cannot be documented, and a
@@ -208,12 +230,13 @@ export interface RouteSpec {
   request?: z.ZodTypeAny;
   response: z.ZodTypeAny;
   successStatus: 200 | 201 | 202;
-  /** Static CloudFront delivery means a render-only client never needs the token. */
+  /** A Google ID token as a bearer (D12). Static CloudFront delivery means students never need one. */
   auth: 'bearer';
 }
 
 export const ROUTES: RouteSpec[] = [
   { method: 'GET',  path: '/v1/health', operationId: 'getHealth', summary: 'Liveness and deployed version', response: HealthResponseSchema, successStatus: 200, auth: 'bearer' },
+  { method: 'GET',  path: '/v1/me', operationId: 'getMe', summary: 'The signed-in instructor, created on first call, with their course profiles', response: MeResponseSchema, successStatus: 200, auth: 'bearer' },
 
   { method: 'POST', path: '/v1/uploads', operationId: 'createUpload', summary: 'Get a presigned PUT URL for a deck or a library document', request: CreateUploadRequestSchema, response: CreateUploadResponseSchema, successStatus: 200, auth: 'bearer' },
   { method: 'POST', path: '/v1/jobs', operationId: 'createJob', summary: 'Start an authoring job on an uploaded deck', request: CreateJobRequestSchema, response: CreateJobResponseSchema, successStatus: 202, auth: 'bearer' },

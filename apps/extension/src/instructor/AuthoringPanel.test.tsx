@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { AccessPackSchema } from '../shared/contracts';
-import { AuthoringApiError, type AuthoringClient, type JobState } from '../shared/authoringClient';
+import { AuthoringApiError, type AuthoringClient, type CourseProfile, type JobState } from '../shared/authoringClient';
 import type { GoogleSession } from '../shared/googleSignIn';
 import { AuthoringPanel } from './AuthoringPanel';
 import publishedPack from '../../../viewer/fixtures/published-pack.json';
@@ -16,7 +16,10 @@ let container: HTMLDivElement | null = null;
 let root: Root | null = null;
 afterEach(() => { if (root) act(() => root!.unmount()); container?.remove(); container = null; root = null; vi.useRealTimers(); });
 
-function fakeClient(statuses: JobState['status'][]) {
+const instructor = { sub: 'g-1', email: 'prof@uni.edu', name: 'Prof Example', createdAt: '2026-09-16T00:00:00.000Z', lastSeenAt: '2026-09-16T00:00:00.000Z' };
+const algorithms: CourseProfile = { profileId: 'prof-algo', name: 'Algorithms', subject: 'CS', level: 'undergrad', createdAt: '2026-09-16T00:00:00.000Z' };
+
+function fakeClient(statuses: JobState['status'][], profiles: CourseProfile[] = []) {
   const reviews: unknown[] = [];
   let polls = 0;
   const client: AuthoringClient = {
@@ -25,6 +28,12 @@ function fakeClient(statuses: JobState['status'][]) {
     getDraft: vi.fn(async () => pack),
     review: vi.fn(async (_jobId, decisions) => { reviews.push(decisions); }),
     publish: vi.fn(async () => ({ packId: pack.packId, version: 9, packUrl: 'https://cdn.test/packs/p/9.json' })),
+    me: vi.fn(async () => ({ instructor, profiles })),
+    createProfile: vi.fn(async input => ({ profile: { ...algorithms, ...input, profileId: 'prof-new' }, documents: [] })),
+    getProfile: vi.fn(async profileId => ({ profile: profiles.find(p => p.profileId === profileId) ?? algorithms, documents: [] })),
+    deleteProfile: vi.fn(async () => undefined),
+    addDocument: vi.fn(async () => { throw new Error('not used'); }),
+    deleteDocument: vi.fn(async () => undefined),
   };
   return { client, reviews };
 }
@@ -51,7 +60,7 @@ async function fillAndSubmit() {
     Object.defineProperty(fileInput, 'files', { value: [file] }); fileInput.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await flush();
-  act(() => { q<HTMLFormElement>('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+  act(() => { q<HTMLFormElement>('form[aria-label="Upload a deck"]').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
   await flush();
 }
 
@@ -115,5 +124,29 @@ describe('AuthoringPanel', () => {
     mount(<AuthoringPanel apiUrl={null} clientId={null} />);
     expect(container!.textContent).toContain('no authoring API or Google sign-in configured');
     expect(container!.querySelector('button')).toBeNull();
+  });
+
+  it('creates the account on sign-in, greets the instructor by name, and sends the chosen course with the deck', async () => {
+    const { client } = fakeClient(['ingesting'], [algorithms]);
+    render(client);
+    await flush();
+    expect(client.me).toHaveBeenCalledTimes(1);
+    expect(container!.textContent).toContain('Prof Example');
+    const select = q<HTMLSelectElement>('#authoring-profile');
+    expect(Array.from(select.options).map(o => o.value)).toEqual(['', 'prof-algo']);
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!;
+      setter.call(select, 'prof-algo'); select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await fillAndSubmit();
+    expect(client.submitDeck).toHaveBeenCalledWith(expect.anything(), { packId: 'how-hnsw-works', title: 'How HNSW Works', profileId: 'prof-algo' });
+  });
+
+  it('offers no course picker when the instructor has no profiles', async () => {
+    const { client } = fakeClient(['ingesting']);
+    render(client);
+    await flush();
+    expect(container!.querySelector('#authoring-profile')).toBeNull();
+    expect(container!.querySelector('.library')).not.toBeNull();
   });
 });

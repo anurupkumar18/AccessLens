@@ -102,7 +102,9 @@ export const createJob: InstructorHandler = async (event, caller) => {
         packId: input.packId,
         title: input.title,
         ...(input.description === undefined ? {} : { description: input.description }),
-        ...(input.profileId === undefined ? {} : { profileId: input.profileId }),
+        // Always present: the workflow's retrieval Choice reads it (null
+        // means no course profile, so no retrieval).
+        profileId: input.profileId ?? null,
         visualHints: input.visualHints ?? [],
         uploadId: input.uploadId,
         sourceKey,
@@ -218,10 +220,6 @@ export const getArtifactManifest: OperationHandler = async event => {
   const manifest = ArtifactManifestSchema.safeParse(value);
   if (!manifest.success) throw new Error(`Stored artifact ${key} does not match ArtifactManifestSchema`);
   return respond(artifactRoute, manifest.data);
-};
-
-export const notImplemented = (milestone: string): OperationHandler => async () => {
-  throw new ApiHttpError(501, 'not_implemented', `${milestone} fills in this operation.`);
 };
 
 function parsePositiveInteger(value: string, name: string): number {

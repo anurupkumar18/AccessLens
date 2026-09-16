@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { AccessPack } from '../shared/contracts';
 import {
   AuthoringApiError, authoringApiUrl, createAuthoringClient, packIdFromTitle,
-  type AuthoringClient, type JobState, type Published,
+  type AuthoringClient, type CourseProfile, type Instructor, type JobState, type Published,
 } from '../shared/authoringClient';
+import { LibraryPanel } from './LibraryPanel';
 import {
   extensionIdentity, googleClientId, readSession, renderGoogleButton, signInWithExtension, writeSession, type GoogleSession,
 } from '../shared/googleSignIn';
@@ -57,6 +58,8 @@ export function AuthoringPanel({
   const [signInError, setSignInError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [profileId, setProfileId] = useState('');
+  const [account, setAccount] = useState<{ instructor: Instructor; profiles: CourseProfile[] } | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const fileInput = useRef<HTMLInputElement>(null);
   const googleButton = useRef<HTMLDivElement>(null);
@@ -64,8 +67,21 @@ export function AuthoringPanel({
   const client = injected ?? (apiUrl && session ? createAuthoringClient(apiUrl, session.idToken) : null);
 
   function signOut(): void {
-    writeSession(null); setSession(null); setPhase({ kind: 'idle' });
+    writeSession(null); setSession(null); setAccount(null); setPhase({ kind: 'idle' });
   }
+
+  // First call after sign-in creates the instructor account (D13) and lists
+  // the course profiles a deck can be described against.
+  useEffect(() => {
+    if (!client) { setAccount(null); return; }
+    let stopped = false;
+    client.me().then(me => { if (!stopped) setAccount(me); }).catch(error => {
+      if (!stopped) setPhase({ kind: 'failed', message: failure(error) });
+    });
+    return () => { stopped = true; };
+    // Re-run when the client changes (sign-in / sign-out), not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client === null, session?.idToken, injected]);
 
   /** An expired or revoked Google session reads as 401; drop it so the sign-in button returns. */
   function failure(error: unknown): string {
@@ -125,7 +141,7 @@ export function AuthoringPanel({
     if (!client || !file || !title.trim()) return;
     setPhase({ kind: 'uploading' });
     try {
-      const jobId = await client.submitDeck({ name: file.name, type: file.type, body: file }, { packId: packIdFromTitle(title), title: title.trim() });
+      const jobId = await client.submitDeck({ name: file.name, type: file.type, body: file }, { packId: packIdFromTitle(title), title: title.trim(), ...(profileId ? { profileId } : {}) });
       setPhase({ kind: 'running', jobId, job: null });
     } catch (error) {
       setPhase({ kind: 'failed', message: failure(error) });
@@ -182,12 +198,14 @@ export function AuthoringPanel({
       <h2 id="authoring-heading">Upload slides</h2>
       <p className="supporting-text">A deck becomes a lesson pack: slide images, descriptions and audio, which you review before anyone sees them.</p>
 
-      {session && (
+      {(account || session) && (
         <p className="authoring-account">
-          <span>Signed in as <strong>{session.email}</strong></span>
+          <span>Signed in as <strong>{account?.instructor.name ?? account?.instructor.email ?? session?.email}</strong>{account?.instructor.name ? ` (${account.instructor.email})` : ''}</span>
           <button type="button" className="secondary" onClick={signOut}>Sign out</button>
         </p>
       )}
+
+      {account && <LibraryPanel client={client} profiles={account.profiles} onProfilesChange={profiles => setAccount({ ...account, profiles })} pollMs={pollMs} />}
 
       {(phase.kind === 'idle' || phase.kind === 'uploading' || (phase.kind === 'failed' && !phase.jobId)) && (
         <form onSubmit={e => { void submit(e); }} aria-label="Upload a deck">
@@ -197,6 +215,14 @@ export function AuthoringPanel({
           <label htmlFor="authoring-file">Deck (PDF or PPTX)
             <input id="authoring-file" ref={fileInput} type="file" accept=".pdf,.pptx,.docx,.txt" required onChange={e => setFile(e.target.files?.[0] ?? null)} />
           </label>
+          {account && account.profiles.length > 0 && (
+            <label htmlFor="authoring-profile">Course (descriptions quote its materials)
+              <select id="authoring-profile" value={profileId} onChange={e => setProfileId(e.target.value)}>
+                <option value="">No course</option>
+                {account.profiles.map(profile => <option key={profile.profileId} value={profile.profileId}>{profile.name}</option>)}
+              </select>
+            </label>
+          )}
           <button type="submit" disabled={!client || !file || !title.trim() || phase.kind === 'uploading'}>
             {phase.kind === 'uploading' ? 'Uploading…' : 'Upload and describe'}
           </button>

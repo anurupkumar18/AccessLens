@@ -43,25 +43,25 @@ Success ends with `Environment aws://087328706621/us-east-1 bootstrapped`.
 
 ## 2. Deploy the temporary stack
 
-The API signs instructors in with Google, so the deploy needs two values,
-in the environment or in `.env.local`:
+The API signs instructors in with Google, so the deploy needs the OAuth
+client id, in the environment or in `.env.local`:
 
 ```sh
 export GOOGLE_CLIENT_ID='<web-client-id>.apps.googleusercontent.com'
-export ACCESSLENS_INSTRUCTORS='you@example.edu,@cs.example.edu'
 make deploy
 ```
 
 `GOOGLE_CLIENT_ID` is an OAuth 2.0 client of type Web application from the
 Google Cloud console (APIs & Services, Credentials), with authorized
-JavaScript origins `http://localhost:5173` and the viewer URL below.
-`ACCESSLENS_INSTRUCTORS` lists who may author: exact emails and/or whole
-`@domains`, comma-separated. Anyone else who signs in gets HTTP 403.
+JavaScript origins `http://localhost:5173` and the viewer URL below. Any
+verified Google account that signs in becomes an instructor (D13); students
+never sign in.
 
-This creates the `AccessLensAuthoring` stack, six private buckets, three
-on-demand DynamoDB tables, the CloudFront distribution and the HTTP API with
-its Google JWT authorizer. It also writes the untracked `.env.local` and
-`.cdk-outputs.json` files, keeping both values above in `.env.local`.
+This creates the `AccessLensAuthoring` stack, six private buckets, the S3
+Vectors bucket for course libraries, four on-demand DynamoDB tables, the
+CloudFront distribution and the HTTP API with its Google JWT authorizer. It
+also writes the untracked `.env.local` and `.cdk-outputs.json` files,
+keeping the client id in `.env.local`.
 
 Success ends with lines in this form (the values are different on each deploy):
 
@@ -70,7 +70,7 @@ API URL: https://<api-id>.execute-api.us-east-1.amazonaws.com/
 Viewer URL: https://<distribution-id>.cloudfront.net
 Asset base URL: https://<distribution-id>.cloudfront.net
 Google client id: <web-client-id>.apps.googleusercontent.com
-Instructors: you@example.edu,@cs.example.edu
+Vector bucket: accesslens-library-087328706621
 ```
 
 ## 3. Confirm the viewer is served by CloudFront
@@ -88,8 +88,7 @@ reaches it through the distribution, not through a public S3 URL.
 
 ## 4. Confirm the protected API
 
-Manual requests need a Google ID token for an account on
-`ACCESSLENS_INSTRUCTORS`. The Google Cloud SDK issues one:
+Manual requests need a Google ID token. The Google Cloud SDK issues one:
 
 ```sh
 gcloud auth login   # once, as the instructor account
@@ -121,8 +120,17 @@ curl --silent --show-error -i "$API_URL/v1/health"
 ```
 
 Success is HTTP 401. API Gateway rejects the request before the health Lambda
-runs. A valid Google sign-in for an account that is not on the instructor
-list answers HTTP 403 with `"code":"not_an_instructor"` on any route below.
+runs. The first authenticated call to the account route creates the
+instructor record:
+
+```sh
+curl --fail-with-body --silent --show-error \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" \
+  "$API_URL/v1/me"
+```
+
+Success is JSON with `instructor.email` equal to the signed-in account and
+an empty `profiles` list on a fresh deploy.
 
 ## 5. Upload a deck and queue a job
 
@@ -238,7 +246,46 @@ creation, and bounded polls until the job leaves `queued`. It ends with
 `Smoke complete.` and the status it last saw; `ingesting` or later means the
 pipeline is running.
 
-## 6. Remove everything
+## 6. Give a course its materials, then describe a deck against them
+
+A course profile is the professor's private library (spec section 9). Create
+one, upload a PDF the same way as a deck, and register it:
+
+```sh
+PROFILE_JSON="$(curl --fail-with-body --silent --show-error \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" -H 'content-type: application/json' \
+  -d '{"name":"Algorithms","subject":"Computer science","level":"Undergraduate"}' \
+  "$API_URL/v1/profiles")"
+export PROFILE_ID="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).profile.profileId)' "$PROFILE_JSON")"
+# ... POST /v1/uploads and PUT the PDF as in step 5, keeping its UPLOAD_ID ...
+curl --fail-with-body --silent --show-error \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" -H 'content-type: application/json' \
+  -d "{\"uploadId\":\"$UPLOAD_ID\",\"kind\":\"notes\",\"title\":\"Lecture 5 notes\"}" \
+  "$API_URL/v1/profiles/$PROFILE_ID/documents"
+```
+
+Success is HTTP 202 with `"status":"pending"`. Poll
+`GET /v1/profiles/$PROFILE_ID` until the document reports `ready`: it moves
+through `extracting`, `chunking`, `embedding` (Titan v2, from the indexer
+Lambda) and `verifying` (a page-one sentence must retrieve a page-one
+chunk). A failed document says which stage and why; the profile stays
+usable. Search the library directly:
+
+```sh
+curl --fail-with-body --silent --show-error \
+  -H "Authorization: Bearer $ACCESSLENS_ID_TOKEN" -H 'content-type: application/json' \
+  -d '{"query":"how does the algorithm choose the next node","k":3}' \
+  "$API_URL/v1/profiles/$PROFILE_ID/search"
+```
+
+Success is JSON `hits` with `title`, `page`, `score` and the verbatim
+chunk `text`. A job created with `"profileId":"$PROFILE_ID"` in step 5 runs
+retrieval before the analyst and before each slide's description, and the
+draft's assets carry `references` (`docId`, `title`, `page`, `quote`) whose
+quotes are verbatim substrings of retrieved chunks. A job without a profile
+runs exactly as before.
+
+## 7. Remove everything
 
 When finished, run:
 
@@ -254,8 +301,10 @@ AccessLensAuthoring destroyed; temporary buckets, tables and the API are removed
 
 The command empties only the buckets named by this deployment's own CDK output,
 then destroys the `AccessLensAuthoring` stack. It does not touch workshop
-infrastructure or another stack. The CloudFormation delete removes the API
-and its authorizer, tables, buckets, distribution, Lambdas, and IAM roles.
+infrastructure or another stack. It first deletes any S3 Vectors indexes
+the course profiles created, then the CloudFormation delete removes the API
+and its authorizer, tables, buckets, the vector bucket, distribution,
+Lambdas, and IAM roles.
 
 To prove that teardown was complete, deploy a second time:
 
@@ -264,5 +313,5 @@ make deploy
 ```
 
 Success is a fresh set of `API URL`, `Viewer URL`, `Asset base URL`,
-`Google client id` and `Instructors` lines. Run `make destroy` once more after that
+`Google client id` and `Vector bucket` lines. Run `make destroy` once more after that
 verification; this AWS account and all resources in it are temporary.

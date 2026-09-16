@@ -19,6 +19,10 @@ function fakeApi() {
     if (url.endsWith('/v1/jobs/j1/review')) return json(200, { jobId: 'j1', status: 'review', reviewedAssetIds: ['slide-01'] });
     if (url.endsWith('/v1/jobs/j1/publish')) return json(201, { packId: 'hnsw-explainer', version: 3, packUrl: 'https://cdn.test/packs/hnsw-explainer/3.json' });
     if (url.endsWith('/v1/jobs/nope')) return json(404, { error: { code: 'not_found', message: 'no such job' } });
+    if (url.endsWith('/v1/me')) return json(200, { instructor: { sub: 'g', email: 'p@u.edu', createdAt: '2026-09-16T00:00:00.000Z', lastSeenAt: '2026-09-16T00:00:00.000Z' }, profiles: [] });
+    if (url.endsWith('/v1/profiles') && method === 'POST') return json(201, { profile: { profileId: 'pr1', name: 'Algo', subject: 'CS', level: 'ug', createdAt: '2026-09-16T00:00:00.000Z', vectorIndexName: 'pr1' }, documents: [] });
+    if (url.endsWith('/v1/profiles/pr1/documents') && method === 'POST') return json(202, { docId: 'u1', profileId: 'pr1', kind: 'notes', title: 'Notes', pages: 0, chunks: 0, status: 'pending' });
+    if (url.endsWith('/v1/profiles/pr1/documents/u1') && method === 'DELETE') return json(200, { deleted: true, id: 'u1' });
     return json(500, { error: { code: 'unexpected', message: url } });
   }) as unknown as typeof fetch;
   return { calls, fetchImpl };
@@ -64,5 +68,23 @@ describe('authoring client', () => {
     expect(deckContentType('a.key')).toBeNull();
     expect(packIdFromTitle('How HNSW Works!')).toBe('how-hnsw-works');
     expect(packIdFromTitle('???')).toBe('lesson');
+  });
+
+  it('creates the account, a course, and a document through the presigned upload, sending the course with a deck job', async () => {
+    const api = fakeApi();
+    const client = createAuthoringClient('https://api.test', 'tok', api.fetchImpl);
+    expect((await client.me()).instructor.email).toBe('p@u.edu');
+    expect((await client.createProfile({ name: 'Algo', subject: 'CS', level: 'ug' })).profile.profileId).toBe('pr1');
+    const document = await client.addDocument('pr1', { name: 'notes.pdf', type: '', body: new Blob(['x']) }, { kind: 'notes', title: 'Notes' });
+    expect(document.status).toBe('pending');
+    expect(api.calls.map(c => `${c.method} ${c.url}`).slice(-3)).toEqual([
+      'POST https://api.test/v1/uploads',
+      'PUT https://decks.s3.amazonaws.com/uploads/u1/deck.pdf?sig',
+      'POST https://api.test/v1/profiles/pr1/documents',
+    ]);
+    expect(api.calls.at(-1)?.body).toEqual({ uploadId: 'u1', kind: 'notes', title: 'Notes' });
+    await client.deleteDocument('pr1', 'u1');
+    await client.submitDeck({ name: 'deck.pdf', type: '', body: new Blob(['x']) }, { packId: 'hnsw-explainer', title: 'HNSW', profileId: 'pr1' });
+    expect(api.calls.at(-1)?.body).toEqual({ uploadId: 'u1', packId: 'hnsw-explainer', title: 'HNSW', profileId: 'pr1' });
   });
 });

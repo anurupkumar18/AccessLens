@@ -16,6 +16,7 @@ import { ROUTES, type RouteSpec } from '../../services/shared/api';
 import { AgentsExtension } from './agents-extension';
 import { HarnessExtension } from './harness-extension';
 import { IngestExtension } from './ingest-extension';
+import { LibraryExtension } from './library-extension';
 import { PipelineExtensionPoints } from './pipeline-extension';
 import { StateMachinesExtension } from './state-machines-extension';
 import { VectorsExtension } from './vectors-extension';
@@ -26,15 +27,16 @@ const ROOT = process.cwd();
  * Instructors sign in with Google (D12). API Gateway verifies each ID token
  * against Google's issuer; the audience is this deployment's own OAuth web
  * client plus the Google Cloud SDK's public client, so `gcloud auth
- * print-identity-token` works for scripts. Neither audience admits anyone by
- * itself: every route then checks the instructor allowlist in the Lambda.
+ * print-identity-token` works for scripts. Any verified Google account is an
+ * instructor for now (D13); students never call this API.
  */
 const GOOGLE_ISSUER = 'https://accounts.google.com';
 const GCLOUD_CLIENT_ID = '32555940559.apps.googleusercontent.com';
-/** Synth-only placeholder so `cdk destroy` and tests work without context; deploy.sh refuses to deploy with it. */
+/** Synth-only placeholder so `cdk destroy` and tests work without context; the deploy script needs the real one. */
 const UNCONFIGURED_CLIENT_ID = 'unconfigured.apps.googleusercontent.com';
 const API_HANDLER_BY_OPERATION: Record<string, string> = {
   getHealth: 'getHealth.ts',
+  getMe: 'getMe.ts',
   createUpload: 'createUpload.ts',
   createJob: 'createJob.ts',
   getJob: 'getJob.ts',
@@ -61,8 +63,10 @@ export class AccessLensAuthoringStack extends Stack {
   readonly library: s3.Bucket;
   readonly viewer: s3.Bucket;
   readonly jobs: dynamodb.Table;
+  readonly instructors: dynamodb.Table;
   readonly profiles: dynamodb.Table;
   readonly documents: dynamodb.Table;
+  readonly libraryExtension: LibraryExtension;
   readonly distribution: cloudfront.Distribution;
   readonly api: apigateway.HttpApi;
   stateMachine!: sfn.StateMachine;
@@ -83,11 +87,21 @@ export class AccessLensAuthoringStack extends Stack {
     this.viewer = this.bucket('Viewer');
 
     this.jobs = this.table('Jobs', { partitionKey: { name: 'jobId', type: dynamodb.AttributeType.STRING }, timeToLiveAttribute: 'expiresAt' });
+    // Two roles (D13): students never reach this API; instructors get a record
+    // on first sign-in and own course profiles, whose documents are indexed
+    // for retrieval.
+    this.instructors = this.table('Instructors', { partitionKey: { name: 'sub', type: dynamodb.AttributeType.STRING } });
     this.profiles = this.table('Profiles', { partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING } });
-    this.documents = this.table('Documents', {
-      partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'docId', type: dynamodb.AttributeType.STRING },
+    this.profiles.addGlobalSecondaryIndex({
+      indexName: 'ownerSub-index',
+      partitionKey: { name: 'ownerSub', type: dynamodb.AttributeType.STRING },
     });
+    this.documents = this.table('LibraryDocuments', { partitionKey: { name: 'docId', type: dynamodb.AttributeType.STRING } });
+    this.documents.addGlobalSecondaryIndex({
+      indexName: 'profileId-index',
+      partitionKey: { name: 'profileId', type: dynamodb.AttributeType.STRING },
+    });
+    this.libraryExtension = new LibraryExtension(this, 'CourseLibrary', { root: ROOT, library: this.library, documents: this.documents });
 
     const viewerOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.viewer);
     const packsOrigin = origins.S3BucketOrigin.withOriginAccessControl(this.packs);
@@ -131,7 +145,6 @@ export class AccessLensAuthoringStack extends Stack {
     viewerDeployment.node.defaultChild && (viewerDeployment.node.defaultChild as { applyRemovalPolicy?: (policy: RemovalPolicy) => void }).applyRemovalPolicy?.(RemovalPolicy.DESTROY);
 
     const googleClientId = (this.node.tryGetContext('googleClientId') as string | undefined) || UNCONFIGURED_CLIENT_ID;
-    const instructorAllowlist = (this.node.tryGetContext('instructorAllowlist') as string | undefined) ?? '';
     const authorizer = new apigatewayAuthorizers.HttpJwtAuthorizer('GoogleSignIn', GOOGLE_ISSUER, {
       jwtAudience: [googleClientId, GCLOUD_CLIENT_ID],
       identitySource: ['$request.header.Authorization'],
@@ -156,16 +169,14 @@ export class AccessLensAuthoringStack extends Stack {
       catalog: this.catalog,
       jobs: this.jobs,
       publicBaseUrl: `https://${this.distribution.domainName}`,
+      retrieve: this.libraryExtension.retrieve,
     });
     this.stateMachine = pipeline.stateMachine;
 
     for (const route of ROUTES) {
       const handlerFile = API_HANDLER_BY_OPERATION[route.operationId];
       if (!handlerFile) throw new Error(`No Lambda handler mapped for ${route.operationId}`);
-      const handler = this.nodeFunction(route.operationId, handlerFile, {
-        ...this.environmentFor(route),
-        INSTRUCTOR_ALLOWLIST: instructorAllowlist,
-      });
+      const handler = this.nodeFunction(route.operationId, handlerFile, this.environmentFor(route));
       this.applyLeastPrivilege(route, handler);
       const integration = new integrations.HttpLambdaIntegration(`${route.operationId}Integration`, handler);
       this.api.addRoutes({
@@ -187,7 +198,7 @@ export class AccessLensAuthoringStack extends Stack {
     this.output('ViewerUrl', `https://${this.distribution.domainName}`);
     this.output('AssetBaseUrl', `https://${this.distribution.domainName}`);
     this.output('GoogleClientId', googleClientId);
-    this.output('InstructorAllowlist', instructorAllowlist);
+    this.output('VectorBucketName', this.libraryExtension.vectorBucketName);
     this.output('DecksBucketName', this.decks.bucketName);
     this.output('CatalogBucketName', this.catalog.bucketName);
     this.output('PacksBucketName', this.packs.bucketName);
@@ -269,9 +280,30 @@ export class AccessLensAuthoringStack extends Stack {
         return { PACKS_BUCKET: this.packs.bucketName };
       case 'getArtifactManifest':
         return { ARTIFACTS_BUCKET: this.artifacts.bucketName };
+      case 'getMe':
+        return { INSTRUCTORS_TABLE: this.instructors.tableName, ...this.libraryEnvironment() };
+      case 'createProfile':
+      case 'getProfile':
+      case 'deleteProfile':
+      case 'registerDocument':
+      case 'getDocument':
+      case 'deleteDocument':
+      case 'searchProfile':
+        return this.libraryEnvironment();
       default:
         return {};
     }
+  }
+
+  private libraryEnvironment(): Record<string, string> {
+    return {
+      LIBRARY_BUCKET: this.library.bucketName,
+      VECTOR_BUCKET: this.libraryExtension.vectorBucketName,
+      PROFILES_TABLE: this.profiles.tableName,
+      DOCUMENTS_TABLE: this.documents.tableName,
+      DECKS_BUCKET: this.decks.bucketName,
+      INDEXER_FUNCTION_NAME: this.libraryExtension.indexer.functionName,
+    };
   }
 
   private applyLeastPrivilege(route: RouteSpec, fn: lambda.Function): void {
@@ -315,8 +347,55 @@ export class AccessLensAuthoringStack extends Stack {
       case 'getArtifactManifest':
         fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [this.artifacts.arnForObjects('*')] }));
         break;
+      // The course library (spec section 9, D13). Profiles and documents are
+      // the instructor's own; the search route is the one reader of vectors
+      // besides the pipeline's retrieval Lambda.
+      case 'getMe':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem'], resources: [this.instructors.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.profiles.tableArn}/index/ownerSub-index`] }));
+        break;
+      case 'createProfile':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:PutItem'], resources: [this.profiles.tableArn] }));
+        this.libraryExtension.grantVectors(fn, ['s3vectors:CreateIndex', 's3vectors:GetIndex']);
+        break;
+      case 'getProfile':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`] }));
+        break;
+      case 'deleteProfile':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:DeleteItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:DeleteItem'], resources: [this.documents.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:Query'], resources: [`${this.documents.tableArn}/index/profileId-index`] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.library.bucketArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:DeleteObject'], resources: [this.library.arnForObjects('library/*')] }));
+        this.libraryExtension.grantVectors(fn, ['s3vectors:DeleteIndex', 's3vectors:DeleteVectors']);
+        break;
+      case 'registerDocument':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], resources: [this.documents.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.decks.bucketArn, this.library.bucketArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [this.decks.arnForObjects('uploads/*')] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:DeleteObject'], resources: [this.library.arnForObjects('library/*')] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['lambda:InvokeFunction'], resources: [this.libraryExtension.indexer.functionArn] }));
+        this.libraryExtension.grantVectors(fn, ['s3vectors:DeleteVectors']);
+        break;
+      case 'getDocument':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn, this.documents.tableArn] }));
+        break;
+      case 'deleteDocument':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:DeleteItem'], resources: [this.documents.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:ListBucket'], resources: [this.library.bucketArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:DeleteObject'], resources: [this.library.arnForObjects('library/*')] }));
+        this.libraryExtension.grantVectors(fn, ['s3vectors:DeleteVectors']);
+        break;
+      case 'searchProfile':
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem'], resources: [this.profiles.tableArn] }));
+        fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [this.library.arnForObjects('library/*')] }));
+        this.libraryExtension.grantVectors(fn, ['s3vectors:QueryVectors', 's3vectors:GetVectors', 's3vectors:GetIndex']);
+        this.libraryExtension.grantTitan(fn, this);
+        break;
       default:
-        // V2's not-implemented routes intentionally have no data-plane access.
         break;
     }
   }

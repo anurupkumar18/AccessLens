@@ -2,7 +2,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import publishedFixture from '../../../viewer/fixtures/published-pack.json';
+import { resetRemotePackBasesForTests } from '../shared/packMedia';
 import { App, packChoices } from './App';
 import { InMemorySessionClient } from '../shared/contracts';
 import { loadPreferences, resetPreferencesForTests } from '../shared/preferences';
@@ -16,7 +18,7 @@ const syntheticPack = AccessPackSchema.parse(testPack);
 describe('App shell', () => {
   let container: HTMLDivElement | null = null;
 
-  beforeEach(() => resetPreferencesForTests());
+  beforeEach(() => { resetPreferencesForTests(); resetRemotePackBasesForTests(); });
 
   afterEach(() => {
     if (container) {
@@ -73,6 +75,51 @@ describe('App shell', () => {
     // Part 3's Focus view renders the followed slide's regions from the resolved pack.
     expect(container.textContent).toContain(`Following ${hnsw.assets[1].assetId}.`);
     expect(container.textContent).toContain(hnsw.assets[1].regions[0].regionId);
+  });
+
+  it('fetches the published pack a session names when no bundled pack matches', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const client = new InMemorySessionClient();
+    const published = AccessPackSchema.parse(publishedFixture);
+    const fetchPublishedPack = vi.fn(async () => published);
+    const root = createRoot(container);
+    act(() => root.render(<App client={client} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} fetchPublishedPack={fetchPublishedPack} />));
+
+    const studentButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
+    act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    // The instructor is teaching a pack the pipeline published; this build bundles no copy of that version.
+    expect(packChoices.some(c => c.pack.packId === published.packId && c.pack.version === published.version)).toBe(false);
+    await client.join('ABC123');
+    await act(async () => {
+      client.send({
+        schemaVersion: '1.0', type: 'asset.changed', sessionId: 'ABC123', packId: published.packId, packVersion: published.version,
+        sequence: 1, sentAt: '2026-09-15T15:00:00Z', assetId: published.assets[0].assetId,
+      });
+      await Promise.resolve();
+    });
+
+    expect(fetchPublishedPack).toHaveBeenCalledTimes(1);
+    expect(fetchPublishedPack).toHaveBeenCalledWith(published.packId, published.version);
+    expect(container.textContent).not.toContain('different reviewed lesson version');
+    expect(container.textContent).toContain(`Following ${published.assets[0].assetId}.`);
+    expect(container.textContent).toContain(published.assets[0].regions[0].regionId);
+  });
+
+  it('tells the student when the session pack cannot be fetched', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const client = new InMemorySessionClient();
+    const root = createRoot(container);
+    act(() => root.render(<App client={client} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} fetchPublishedPack={async () => { throw new Error('HTTP 404'); }} />));
+    act(() => Array.from(container!.querySelectorAll('button')).find(b => b.textContent === 'Student')!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await client.join('ABC123');
+    await act(async () => {
+      client.send({ schemaVersion: '1.0', type: 'asset.changed', sessionId: 'ABC123', packId: 'nope', packVersion: 9, sequence: 1, sentAt: '2026-09-15T15:00:00Z', assetId: 'slide-01' });
+      await Promise.resolve();
+    });
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('nope v9');
   });
 
   it('persists the student reduced-motion preference to local storage only', async () => {

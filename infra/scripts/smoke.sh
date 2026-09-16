@@ -20,7 +20,7 @@ TOKEN="${ACCESSLENS_ID_TOKEN:-}"
 if [[ -z "$TOKEN" ]] && command -v gcloud >/dev/null 2>&1; then
   TOKEN="$(gcloud auth print-identity-token 2>/dev/null || true)"
 fi
-: "${TOKEN:?No Google ID token. Run 'gcloud auth login' as an instructor on ACCESSLENS_INSTRUCTORS, or set ACCESSLENS_ID_TOKEN}"
+: "${TOKEN:?No Google ID token. Run 'gcloud auth login' with any Google account, or set ACCESSLENS_ID_TOKEN}"
 
 printf '%s\n' '--- health ---'
 curl --fail-with-body --silent --show-error --max-time 15 \

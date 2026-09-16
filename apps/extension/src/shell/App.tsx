@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AccessPackSchema, type AccessPack, type LiveEvent, type SessionClient } from '../shared/contracts';
+import { fetchPublishedPack } from '../shared/remotePack';
 import { defaultPreferences, loadPreferences, savePreferences, type StudentPreferences } from '../shared/preferences';
 import { InstructorPanel } from '../instructor';
 import { AuthoringPanel } from '../instructor/AuthoringPanel';
@@ -43,11 +44,13 @@ export const packChoices: PackChoice[] = [
 interface Props {
   client?: SessionClient;
   pack?: AccessPack;
+  /** Fetches the published pack a session names; injected in tests. */
+  fetchPublishedPack?: (packId: string, version: number) => Promise<AccessPack>;
   host?: CaptureHost;
   scheduler?: Scheduler;
 }
 
-export function App({ client = defaultClient, pack, host = defaultHost, scheduler }: Props): React.ReactElement {
+export function App({ client = defaultClient, pack, host = defaultHost, scheduler, fetchPublishedPack: fetchPack = fetchPublishedPack }: Props): React.ReactElement {
   const [role, setRole] = useState<Role>('instructor');
   const [event, setEvent] = useState<LiveEvent | null>(null);
   const [preferences, setPreferences] = useState<StudentPreferences>(defaultPreferences);
@@ -58,13 +61,29 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
   const activePack = pack ?? choice.pack;
   const activeIsDraft = pack ? false : choice.status === 'draft';
   // Students never pick a pack: the session's events name the pack the
-  // instructor is teaching, and the student view follows that. Until the
-  // first event arrives there is nothing to render against, so any known
-  // pack will do.
-  const sessionPack = event ? packChoices.find(c => c.pack.packId === event.packId && c.pack.version === event.packVersion)?.pack : undefined;
-  const studentPack = pack ?? sessionPack ?? choice.pack;
+  // instructor is teaching, and the student view follows that. A bundled
+  // pack of that id and version is used as is; anything else is fetched from
+  // the published distribution, which is where every pack the authoring
+  // pipeline publishes lives. Until the first event arrives there is nothing
+  // to render against, so any known pack will do.
+  const [fetchedPack, setFetchedPack] = useState<AccessPack | null>(null);
+  const [packError, setPackError] = useState<string | null>(null);
+  const requestedPack = useRef<string | null>(null);
+  const bundledPack = event ? packChoices.find(c => c.pack.packId === event.packId && c.pack.version === event.packVersion)?.pack : undefined;
+  const publishedPack = event && fetchedPack && fetchedPack.packId === event.packId && fetchedPack.version === event.packVersion ? fetchedPack : undefined;
+  const studentPack = pack ?? bundledPack ?? publishedPack ?? choice.pack;
 
   useEffect(() => client.subscribe(setEvent), [client]);
+  useEffect(() => {
+    if (!event || pack || bundledPack || publishedPack) return;
+    const key = `${event.packId}@${event.packVersion}`;
+    if (requestedPack.current === key) return;
+    requestedPack.current = key;
+    setPackError(null);
+    fetchPack(event.packId, event.packVersion)
+      .then(setFetchedPack)
+      .catch((error: unknown) => setPackError(`Could not load the lesson pack ${event.packId} v${event.packVersion}: ${error instanceof Error ? error.message : String(error)}`));
+  }, [event, pack, bundledPack, publishedPack, fetchPack]);
   useEffect(() => { loadPreferences().then(setPreferences); }, []);
 
   function updatePreferences(next: StudentPreferences): void {
@@ -107,6 +126,8 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
             <AuthoringPanel />
           </>
         ) : (
+          <>
+          {packError && <p role="alert" className="pack-error">{packError}</p>}
           <StudentExperience
             client={client}
             event={event}
@@ -114,6 +135,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
             preferences={preferences}
             onPreferencesChange={updatePreferences}
           />
+          </>
         )}
       </main>
     </ErrorBoundary>
