@@ -1,0 +1,1418 @@
+{
+  "live-bench": {
+    "startedAt": "2026-09-16T16:48:09.209Z",
+    "finishedAt": "2026-09-16T16:51:00.355Z",
+    "durationS": 171,
+    "git": {
+      "head": "95e045f964d91c5b83ae0929519f90b8586b86b2",
+      "branch": "qa/quality-bench",
+      "appSourceSha": "95e045f964d91c5b83ae0929519f90b8586b86b2",
+      "appSourceDirty": false
+    },
+    "relay": "wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo",
+    "build": {
+      "outDir": ".cache/qa/build",
+      "ms": 221,
+      "relayUrlBaked": true
+    },
+    "options": {
+      "relay": "wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo",
+      "events": 30,
+      "intervalMs": 750,
+      "port": 5180,
+      "skipBuild": false,
+      "headed": false,
+      "noWrite": false
+    },
+    "environment": {
+      "os": "Darwin 25.6.0 (arm64)",
+      "cpus": "10 x Apple M5",
+      "node": "v22.23.2",
+      "playwright": "1.63.0",
+      "chromium": "153.0.8010.12",
+      "headless": true,
+      "contexts": "instructor, studentA (own proxy), studentB (own proxy), plus window/screen instructors and a late student"
+    },
+    "summary": {
+      "pass": 33,
+      "fail": 6,
+      "measured": 4,
+      "inconclusive": 0
+    },
+    "checks": [
+      {
+        "id": "C01",
+        "name": "No capture before Start (charter A1)",
+        "result": "PASS",
+        "detail": "getDisplayMedia calls before any click: 0"
+      },
+      {
+        "id": "C02",
+        "name": "Permission denial is handled",
+        "result": "PASS",
+        "detail": "status \"Sharing is required for live sync. Click Start and choose a tab, window, or screen.\"; join code shown: false; Start offered again: true"
+      },
+      {
+        "id": "C03",
+        "name": "Tab share: join code issued and first slide matched",
+        "result": "PASS",
+        "detail": "code V6UKB6 after 154 ms; \"The Animal Cell\" matched 700 ms after Start; status \"Sharing a tab. Current slide: The Animal Cell. Region: none.\""
+      },
+      {
+        "id": "C04",
+        "name": "getDisplayMedia runs inside the Start click's user activation",
+        "result": "PASS",
+        "detail": "userActivation.isActive=true; called 124 ms after the click (the relay create() round trip runs first); options {\"video\":{\"frameRate\":{\"ideal\":5,\"max\":15}},\"audio\":false,\"selfBrowserSurface\":\"exclude\",\"surfaceSwitching\":\"include\",\"monitorTypeSurfaces\":\"include\"}"
+      },
+      {
+        "id": "C05",
+        "name": "Students A and B join with the code and reach live",
+        "result": "PASS",
+        "detail": "A live in 473 ms, B live in 418 ms; caught-up view A \"The Animal Cell|\", B \"The Animal Cell|\""
+      },
+      {
+        "id": "D01",
+        "name": "Delivery: 30 ordered region changes reach both students",
+        "result": "PASS",
+        "detail": "emitted 30/30; A rendered 30/30 (received 30); B rendered 30/30 (received 30); relay rejections/errors to instructor: 0"
+      },
+      {
+        "id": "D02",
+        "name": "Order preserved (arrival and render)",
+        "result": "PASS",
+        "detail": "A arrival ordered true, render ordered true, duplicates 0; B arrival ordered true, render ordered true, duplicates 0"
+      },
+      {
+        "id": "D03",
+        "name": "Event-to-render latency, student A (click to DOM commit)",
+        "result": "MEASURED",
+        "detail": "p50 143 ms, p95 197 ms, max 268 ms (n=30); network share p50 141 ms, app share p50 1 ms"
+      },
+      {
+        "id": "D04",
+        "name": "Event-to-render latency, student B (click to DOM commit)",
+        "result": "MEASURED",
+        "detail": "p50 136 ms, p95 181 ms, max 263 ms (n=30); network share p50 134 ms, app share p50 1 ms"
+      },
+      {
+        "id": "D05",
+        "name": "Inter-student render skew |A - B|",
+        "result": "MEASURED",
+        "detail": "p50 3 ms, p95 60 ms, max 61 ms (n=30)"
+      },
+      {
+        "id": "D06",
+        "name": "Tab share: slide change to instructor match",
+        "result": "MEASURED",
+        "detail": "12 switches; p50 429 ms, max 589 ms (sampler runs every 500 ms)"
+      },
+      {
+        "id": "R01",
+        "name": "Silent stall (context.setOffline 5 s): B pill shows a non-live state",
+        "result": "FAIL",
+        "detail": "pill values while offline: [\"live\"]; socket closes: 0; 5 of 5 instructor events were held (not delivered) while offline"
+      },
+      {
+        "id": "R02",
+        "name": "Silent stall: no false \"live\" while offline",
+        "result": "FAIL",
+        "detail": "B's pill read \"live\" for 4019 of 4019 ms while 5 events were held back. The socket never closed and the client has no heartbeat, so nothing noticed. See bug BUG-1"
+      },
+      {
+        "id": "R03",
+        "name": "Silent stall: pill is live after restore",
+        "result": "PASS",
+        "detail": "live 0 ms after restore (it never left live)"
+      },
+      {
+        "id": "R04",
+        "name": "Silent stall: B converges to the instructor's current region after restore",
+        "result": "PASS",
+        "detail": "B went from \"Mitochondria and Energy|mitochondrion\" to the instructor's \"Mitochondria and Energy|cytoplasm\" 3 ms after restore; 5 held events arrived late, first 1 ms after restore"
+      },
+      {
+        "id": "R05",
+        "name": "Silent stall: student A unaffected",
+        "result": "PASS",
+        "detail": "A rendered 5/5 events emitted during B's outage"
+      },
+      {
+        "id": "H01",
+        "name": "Hard drop (TCP reset, 5 s): B pill shows a non-live state",
+        "result": "PASS",
+        "detail": "\"stale\" 2 ms after the drop; pill values while down: [\"stale\"]"
+      },
+      {
+        "id": "H02",
+        "name": "Hard drop: no false \"live\" while down",
+        "result": "PASS",
+        "detail": "pill read \"live\" for 0 ms of the outage (after the first second)"
+      },
+      {
+        "id": "H03",
+        "name": "Hard drop: B reconnects and returns to live",
+        "result": "PASS",
+        "detail": "live 4034 ms after the network returned; resumed socket: true"
+      },
+      {
+        "id": "H04",
+        "name": "Hard drop: B converges to the instructor's current region with no new event (latest-state catch-up)",
+        "result": "FAIL",
+        "detail": "15 s after reconnect B still shows \"Mitochondria and Energy|cytoplasm\" while the instructor is at \"Mitochondria and Energy|mitochondrion\"; events received after reconnect: 0. See bug BUG-2"
+      },
+      {
+        "id": "H05",
+        "name": "Hard drop: live delivery resumes on the next instructor event",
+        "result": "PASS",
+        "detail": "B rendered the next region 125 ms after it was sent"
+      },
+      {
+        "id": "H06",
+        "name": "Hard drop: student A unaffected",
+        "result": "PASS",
+        "detail": "A rendered 5/5 events emitted during B's outage"
+      },
+      {
+        "id": "E01",
+        "name": "Extended drop (15 s): B reconnects on its own after the network returns",
+        "result": "FAIL",
+        "detail": "still \"stale\" 30 s after restore; 5 connection attempts, the last 8771 ms after the drop, none after the network returned. See bug BUG-3"
+      },
+      {
+        "id": "E02",
+        "name": "Extended drop: pressing Join again recovers B",
+        "result": "PASS",
+        "detail": "live 306 ms; converged to \"Mitochondria and Energy|mitochondrion\": true"
+      },
+      {
+        "id": "P01",
+        "name": "Relay: a student resuming with its capability gets the latest state",
+        "result": "FAIL",
+        "detail": "join catch-up: asset.changed (sent via $default); resume catch-up within 8 s: NONE; next live event on resumed socket: true"
+      },
+      {
+        "id": "P02",
+        "name": "Relay accepts every event type the extension emits",
+        "result": "PASS",
+        "detail": "all 8 accepted: session.started, asset.changed, region.changed, source.unmatched, capture.paused, capture.resumed, capture.stopped, session.ended"
+      },
+      {
+        "id": "P03",
+        "name": "Relay: session.ended reaches students when the client closes right after sending it (End Session)",
+        "result": "FAIL",
+        "detail": "2/6 trials delivered session.ended to the student; the other trials' events were lost to the close that follows in the same tick. See bug BUG-5"
+      },
+      {
+        "id": "S01",
+        "name": "Window share: slide found inside toolbar and margins",
+        "result": "PASS",
+        "detail": "\"The Animal Cell\" matched 1079 ms after the share started; status \"Sharing a window. Current slide: The Animal Cell. Region: none.\""
+      },
+      {
+        "id": "S02",
+        "name": "Window share: slide change followed",
+        "result": "PASS",
+        "detail": "\"Building and Shipping Proteins\" matched 510 ms after the change; asset.changed sent for [\"cell-slide-01\",\"cell-slide-04\"]; relay rejections 0"
+      },
+      {
+        "id": "S03",
+        "name": "Window share: unreviewed slide reads Unmatched, no invented match",
+        "result": "PASS",
+        "detail": "Unmatched 1605 ms after the change; false matches: 0; status \"Sharing a window. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow.\""
+      },
+      {
+        "id": "S11",
+        "name": "Whole-screen share: slide found inside desktop, menu bar, dock, other window",
+        "result": "PASS",
+        "detail": "\"The Animal Cell\" matched 1061 ms after the share started; status \"Sharing your screen. Current slide: The Animal Cell. Region: none.\""
+      },
+      {
+        "id": "S12",
+        "name": "Whole-screen share: slide change followed",
+        "result": "PASS",
+        "detail": "\"Building and Shipping Proteins\" matched 566 ms after the change; asset.changed sent for [\"cell-slide-01\",\"cell-slide-04\"]; relay rejections 0"
+      },
+      {
+        "id": "S13",
+        "name": "Whole-screen share: unreviewed slide reads Unmatched, no invented match",
+        "result": "PASS",
+        "detail": "Unmatched 1541 ms after the change; false matches: 0; status \"Sharing your screen. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow.\""
+      },
+      {
+        "id": "L01",
+        "name": "Tab share: unreviewed slide -> instructor Unmatched, both students \"unmatched\"",
+        "result": "PASS",
+        "detail": "instructor Unmatched in 1413 ms; A \"unmatched\", B \"unmatched\""
+      },
+      {
+        "id": "L02",
+        "name": "Correction: both students follow the corrected slide and region; correction sticks",
+        "result": "PASS",
+        "detail": "A 154 ms, B 155 ms; A \"live\", B \"live\"; instructor still on the correction 2 s later with the unreviewed slide on screen: true"
+      },
+      {
+        "id": "L03",
+        "name": "After a correction, moving to a reviewed slide resumes automatic matching",
+        "result": "PASS",
+        "detail": "instructor matched \"Mitochondria and Energy\" 213 ms; A true, B true"
+      },
+      {
+        "id": "L04",
+        "name": "Pause: both students show \"paused\"; slide changes are not sent while paused",
+        "result": "PASS",
+        "detail": "A \"paused\", B \"paused\"; instructor paused: true; events sent after a slide change while paused: 0; relay replies: [\"accepted\"]"
+      },
+      {
+        "id": "L05",
+        "name": "Resume: both students live again and follow the slide changed during pause",
+        "result": "PASS",
+        "detail": "A \"live\", B \"live\"; A on \"Breaking Down and Storing|\", B on \"Breaking Down and Storing|\""
+      },
+      {
+        "id": "L06",
+        "name": "Source closed by the browser (\"Stop sharing\" bar): students leave \"live\", session stays open",
+        "result": "PASS",
+        "detail": "instructor \"Stopped sharing. The session is still open: Start again to share, or End Session to close it.\"; A \"stopped\", B \"stopped\" 10 s later; sent [\"63:capture.stopped\"]; relay replied [\"accepted\"]; join code kept: true"
+      },
+      {
+        "id": "L07",
+        "name": "Start again on the same code: students follow without rejoining",
+        "result": "PASS",
+        "detail": "matched 598 ms after Start; same code: true; A \"live\", B \"live\"; instructor now \"Sharing a tab. Current slide: Inside the Nucleus. Region: none.\""
+      },
+      {
+        "id": "L08",
+        "name": "Stop button: students leave \"live\" (show \"stopped\")",
+        "result": "PASS",
+        "detail": "instructor \"Stopped sharing. The session is still open: Start again to share, or End Session to close it.\"; A \"stopped\", B \"stopped\" 10 s later; sent [\"66:capture.stopped\"]; relay replied [\"accepted\"]"
+      },
+      {
+        "id": "L09",
+        "name": "End Session: both students \"ended\"",
+        "result": "PASS",
+        "detail": "instructor ended: true; sent [\"67:session.ended\"]; A \"ended\", B \"ended\"; A received [\"session.ended\"], B received [\"session.ended\"]"
+      },
+      {
+        "id": "L10",
+        "name": "A late join to the ended code is refused",
+        "result": "PASS",
+        "detail": "join message \"Could not join this session. Check the code and try again.\"; pill \"waiting\""
+      }
+    ],
+    "metrics": {
+      "startToJoinCodeMs": 154,
+      "startToFirstMatchMs": 700,
+      "clickToGetDisplayMediaMs": 124,
+      "joinToLiveMs": {
+        "A": 473,
+        "B": 418
+      },
+      "orderedDelivery": {
+        "planned": 30,
+        "emitted": 30,
+        "intervalMs": 750,
+        "error": null,
+        "instructorRejectedOrErrors": [],
+        "slideRecognitionMs": {
+          "n": 12,
+          "min": 218,
+          "p50": 429,
+          "p95": 589,
+          "max": 589,
+          "mean": 434
+        },
+        "slideSwitches": [
+          {
+            "to": "cell-slide-02",
+            "ok": true,
+            "ms": 429
+          },
+          {
+            "to": "cell-slide-03",
+            "ok": true,
+            "ms": 423
+          },
+          {
+            "to": "cell-slide-04",
+            "ok": true,
+            "ms": 446
+          },
+          {
+            "to": "cell-slide-05",
+            "ok": true,
+            "ms": 218
+          },
+          {
+            "to": "cell-slide-01",
+            "ok": true,
+            "ms": 277
+          },
+          {
+            "to": "cell-slide-02",
+            "ok": true,
+            "ms": 538
+          },
+          {
+            "to": "cell-slide-03",
+            "ok": true,
+            "ms": 523
+          },
+          {
+            "to": "cell-slide-04",
+            "ok": true,
+            "ms": 533
+          },
+          {
+            "to": "cell-slide-05",
+            "ok": true,
+            "ms": 318
+          },
+          {
+            "to": "cell-slide-01",
+            "ok": true,
+            "ms": 323
+          },
+          {
+            "to": "cell-slide-02",
+            "ok": true,
+            "ms": 585
+          },
+          {
+            "to": "cell-slide-03",
+            "ok": true,
+            "ms": 589
+          }
+        ],
+        "A": {
+          "received": 30,
+          "rendered": 30,
+          "arrivalOrdered": true,
+          "renderOrdered": true,
+          "duplicates": 0,
+          "latency": {
+            "n": 30,
+            "min": 111,
+            "p50": 143,
+            "p95": 197,
+            "max": 268,
+            "mean": 146
+          },
+          "network": {
+            "n": 30,
+            "min": 110,
+            "p50": 141,
+            "p95": 194,
+            "max": 266,
+            "mean": 145
+          },
+          "app": {
+            "n": 30,
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 4,
+            "mean": 1
+          }
+        },
+        "B": {
+          "received": 30,
+          "rendered": 30,
+          "arrivalOrdered": true,
+          "renderOrdered": true,
+          "duplicates": 0,
+          "latency": {
+            "n": 30,
+            "min": 109,
+            "p50": 136,
+            "p95": 181,
+            "max": 263,
+            "mean": 143
+          },
+          "network": {
+            "n": 30,
+            "min": 108,
+            "p50": 134,
+            "p95": 180,
+            "max": 261,
+            "mean": 142
+          },
+          "app": {
+            "n": 30,
+            "min": 0,
+            "p50": 1,
+            "p95": 2,
+            "max": 4,
+            "mean": 1
+          }
+        },
+        "skew": {
+          "n": 30,
+          "min": 0,
+          "p50": 3,
+          "p95": 60,
+          "max": 61,
+          "mean": 9
+        },
+        "perEvent": [
+          {
+            "i": 1,
+            "seq": 3,
+            "key": "The Animal Cell|cell-membrane",
+            "A": 152,
+            "B": 153,
+            "skew": 1
+          },
+          {
+            "i": 2,
+            "seq": 4,
+            "key": "The Animal Cell|cytoplasm",
+            "A": 150,
+            "B": 148,
+            "skew": 2
+          },
+          {
+            "i": 3,
+            "seq": 5,
+            "key": "The Animal Cell|nucleus",
+            "A": 151,
+            "B": 153,
+            "skew": 2
+          },
+          {
+            "i": 4,
+            "seq": 7,
+            "key": "Inside the Nucleus|nucleus",
+            "A": 174,
+            "B": 174,
+            "skew": 0
+          },
+          {
+            "i": 5,
+            "seq": 8,
+            "key": "Inside the Nucleus|nucleolus",
+            "A": 111,
+            "B": 114,
+            "skew": 3
+          },
+          {
+            "i": 6,
+            "seq": 10,
+            "key": "Mitochondria and Energy|mitochondrion",
+            "A": 116,
+            "B": 119,
+            "skew": 3
+          },
+          {
+            "i": 7,
+            "seq": 11,
+            "key": "Mitochondria and Energy|cytoplasm",
+            "A": 159,
+            "B": 162,
+            "skew": 3
+          },
+          {
+            "i": 8,
+            "seq": 13,
+            "key": "Building and Shipping Proteins|ribosome",
+            "A": 183,
+            "B": 180,
+            "skew": 3
+          },
+          {
+            "i": 9,
+            "seq": 14,
+            "key": "Building and Shipping Proteins|rough-er",
+            "A": 133,
+            "B": 128,
+            "skew": 5
+          },
+          {
+            "i": 10,
+            "seq": 15,
+            "key": "Building and Shipping Proteins|golgi-apparatus",
+            "A": 146,
+            "B": 146,
+            "skew": 0
+          },
+          {
+            "i": 11,
+            "seq": 17,
+            "key": "Breaking Down and Storing|lysosome",
+            "A": 148,
+            "B": 148,
+            "skew": 0
+          },
+          {
+            "i": 12,
+            "seq": 18,
+            "key": "Breaking Down and Storing|vacuole",
+            "A": 186,
+            "B": 128,
+            "skew": 58
+          },
+          {
+            "i": 13,
+            "seq": 20,
+            "key": "The Animal Cell|cell-membrane",
+            "A": 152,
+            "B": 149,
+            "skew": 3
+          },
+          {
+            "i": 14,
+            "seq": 21,
+            "key": "The Animal Cell|cytoplasm",
+            "A": 134,
+            "B": 136,
+            "skew": 2
+          },
+          {
+            "i": 15,
+            "seq": 22,
+            "key": "The Animal Cell|nucleus",
+            "A": 135,
+            "B": 133,
+            "skew": 2
+          },
+          {
+            "i": 16,
+            "seq": 24,
+            "key": "Inside the Nucleus|nucleus",
+            "A": 121,
+            "B": 123,
+            "skew": 2
+          },
+          {
+            "i": 17,
+            "seq": 25,
+            "key": "Inside the Nucleus|nucleolus",
+            "A": 117,
+            "B": 115,
+            "skew": 2
+          },
+          {
+            "i": 18,
+            "seq": 27,
+            "key": "Mitochondria and Energy|mitochondrion",
+            "A": 117,
+            "B": 109,
+            "skew": 8
+          },
+          {
+            "i": 19,
+            "seq": 28,
+            "key": "Mitochondria and Energy|cytoplasm",
+            "A": 144,
+            "B": 119,
+            "skew": 25
+          },
+          {
+            "i": 20,
+            "seq": 30,
+            "key": "Building and Shipping Proteins|ribosome",
+            "A": 120,
+            "B": 119,
+            "skew": 1
+          },
+          {
+            "i": 21,
+            "seq": 31,
+            "key": "Building and Shipping Proteins|rough-er",
+            "A": 121,
+            "B": 181,
+            "skew": 60
+          },
+          {
+            "i": 22,
+            "seq": 32,
+            "key": "Building and Shipping Proteins|golgi-apparatus",
+            "A": 143,
+            "B": 147,
+            "skew": 4
+          },
+          {
+            "i": 23,
+            "seq": 34,
+            "key": "Breaking Down and Storing|lysosome",
+            "A": 268,
+            "B": 263,
+            "skew": 5
+          },
+          {
+            "i": 24,
+            "seq": 35,
+            "key": "Breaking Down and Storing|vacuole",
+            "A": 122,
+            "B": 125,
+            "skew": 3
+          },
+          {
+            "i": 25,
+            "seq": 37,
+            "key": "The Animal Cell|cell-membrane",
+            "A": 148,
+            "B": 143,
+            "skew": 5
+          },
+          {
+            "i": 26,
+            "seq": 38,
+            "key": "The Animal Cell|cytoplasm",
+            "A": 147,
+            "B": 153,
+            "skew": 6
+          },
+          {
+            "i": 27,
+            "seq": 39,
+            "key": "The Animal Cell|nucleus",
+            "A": 197,
+            "B": 136,
+            "skew": 61
+          },
+          {
+            "i": 28,
+            "seq": 41,
+            "key": "Inside the Nucleus|nucleus",
+            "A": 130,
+            "B": 129,
+            "skew": 1
+          },
+          {
+            "i": 29,
+            "seq": 42,
+            "key": "Inside the Nucleus|nucleolus",
+            "A": 132,
+            "B": 132,
+            "skew": 0
+          },
+          {
+            "i": 30,
+            "seq": 44,
+            "key": "Mitochondria and Energy|mitochondrion",
+            "A": 135,
+            "B": 133,
+            "skew": 2
+          }
+        ]
+      },
+      "silentStall": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "preOutageKey": "Mitochondria and Energy|mitochondrion",
+            "target": "Mitochondria and Energy|cytoplasm",
+            "offlineMs": 5025,
+            "emitted": 5,
+            "receivedWhileOffline": 0,
+            "held": 5,
+            "socketClosesWhileOffline": 0,
+            "pillsWhileOffline": [
+              "live"
+            ],
+            "liveMsWhileHeld": 4019,
+            "heldWindowMs": 4019,
+            "heldDeliveredAfterRestore": 5,
+            "firstHeldDeliveredMsAfterRestore": 1,
+            "liveAfterRestore": true,
+            "liveMsAfterRestore": 0,
+            "converged": true,
+            "convergeMsAfterRestore": 3,
+            "aRendered": 5
+          }
+        ]
+      },
+      "hardDrop": {
+        "preOutageKey": "Mitochondria and Energy|cytoplasm",
+        "downMs": 5039,
+        "emitted": 5,
+        "staleAfterMs": 2,
+        "pillsWhileDown": [
+          "stale"
+        ],
+        "liveMsWhileDown": 0,
+        "reconnectMsAfterRestore": 4034,
+        "reopenedSockets": [
+          {
+            "t": 1789577335696,
+            "id": 6,
+            "url": "wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo",
+            "resumed": true
+          }
+        ],
+        "eventsReceivedAfterReconnectBeforeNextEmit": [],
+        "target": "Mitochondria and Energy|mitochondrion",
+        "keyAfterWait": "Mitochondria and Energy|cytoplasm",
+        "converged": false,
+        "followedNextEvent": true,
+        "followMs": 125,
+        "aFollowedAll": true,
+        "proxyLog": [
+          {
+            "dt": 256,
+            "refused": true
+          },
+          {
+            "dt": 762,
+            "refused": true
+          },
+          {
+            "dt": 1766,
+            "refused": true
+          },
+          {
+            "dt": 3771,
+            "refused": true
+          },
+          {
+            "dt": 8775,
+            "refused": false
+          }
+        ]
+      },
+      "extendedDrop": {
+        "downMs": 15001,
+        "staleSeen": true,
+        "recoveredAutomatically": false,
+        "recoverMs": null,
+        "connectAttempts": [
+          {
+            "dt": 253,
+            "refused": true
+          },
+          {
+            "dt": 757,
+            "refused": true
+          },
+          {
+            "dt": 1762,
+            "refused": true
+          },
+          {
+            "dt": 3766,
+            "refused": true
+          },
+          {
+            "dt": 8771,
+            "refused": true
+          }
+        ],
+        "lastAttemptMsAfterDrop": 8771,
+        "pillAfter30s": "stale",
+        "socketsOpenedAfterRestore": 0,
+        "manualRejoin": {
+          "live": true,
+          "liveMs": 306,
+          "converged": true,
+          "target": "Mitochondria and Energy|mitochondrion"
+        }
+      },
+      "relayResumeProbe": {
+        "sessionId": "QA6CEN",
+        "catchUpOnJoin": {
+          "type": "asset.changed",
+          "sequence": 2
+        },
+        "catchUpOnResume": null,
+        "liveAfterResume": true
+      },
+      "relayAllowlistProbe": {
+        "sessionId": "QB6MZR",
+        "results": [
+          {
+            "type": "session.started",
+            "reply": "accepted"
+          },
+          {
+            "type": "asset.changed",
+            "reply": "accepted"
+          },
+          {
+            "type": "region.changed",
+            "reply": "accepted"
+          },
+          {
+            "type": "source.unmatched",
+            "reply": "accepted"
+          },
+          {
+            "type": "capture.paused",
+            "reply": "accepted"
+          },
+          {
+            "type": "capture.resumed",
+            "reply": "accepted"
+          },
+          {
+            "type": "capture.stopped",
+            "reply": "accepted"
+          },
+          {
+            "type": "session.ended",
+            "reply": "accepted"
+          }
+        ]
+      },
+      "relayEndRaceProbe": {
+        "trials": [
+          {
+            "sessionId": "QE6OA7",
+            "studentGotEnded": true,
+            "ms": 132
+          },
+          {
+            "sessionId": "QE6P7Q",
+            "studentGotEnded": true,
+            "ms": 129
+          },
+          {
+            "sessionId": "QE6Q5S",
+            "studentGotEnded": false,
+            "ms": null
+          },
+          {
+            "sessionId": "QE6VO7",
+            "studentGotEnded": false,
+            "ms": null
+          },
+          {
+            "sessionId": "QE716M",
+            "studentGotEnded": false,
+            "ms": null
+          },
+          {
+            "sessionId": "QE76P0",
+            "studentGotEnded": false,
+            "ms": null
+          }
+        ]
+      },
+      "windowShare": {
+        "firstMatchMs": 1079,
+        "switchMatchMs": 510,
+        "unmatchedMs": 1605,
+        "assetEventsSent": [
+          "cell-slide-01",
+          "cell-slide-04"
+        ],
+        "relayRejections": [],
+        "statuses": [
+          "Sharing a window. Current slide: The Animal Cell. Region: none.",
+          "Sharing a window. Current slide: Building and Shipping Proteins. Region: none.",
+          "Sharing a window. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow."
+        ]
+      },
+      "monitorShare": {
+        "firstMatchMs": 1061,
+        "switchMatchMs": 566,
+        "unmatchedMs": 1541,
+        "assetEventsSent": [
+          "cell-slide-01",
+          "cell-slide-04"
+        ],
+        "relayRejections": [],
+        "statuses": [
+          "Sharing your screen. Current slide: The Animal Cell. Region: none.",
+          "Sharing your screen. Current slide: Building and Shipping Proteins. Region: none.",
+          "Sharing your screen. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow."
+        ]
+      },
+      "sourceClosure": {
+        "sent": [
+          "63:capture.stopped"
+        ],
+        "relayReplies": [
+          "accepted"
+        ],
+        "A": "stopped",
+        "B": "stopped"
+      },
+      "captureControlsAria": "- group \"Capture controls\":\n  - button \"Pause\"\n  - button \"■ Stop\"\n  - button \"End Session\"",
+      "stopButton": {
+        "sent": [
+          "66:capture.stopped"
+        ],
+        "relayReplies": [
+          "accepted"
+        ],
+        "A": "stopped",
+        "B": "stopped"
+      },
+      "endSession": {
+        "sent": [
+          "67:session.ended"
+        ],
+        "instructorEnded": true,
+        "A": "ended",
+        "B": "ended",
+        "aReceived": [
+          "session.ended"
+        ],
+        "bReceived": [
+          "session.ended"
+        ]
+      },
+      "pageErrors": [
+        {
+          "context": "studentB",
+          "t": 1789577326882,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577327388,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577328392,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577330396,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577351207,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577351712,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577352716,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577354720,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        },
+        {
+          "context": "studentB",
+          "t": 1789577359726,
+          "kind": "console",
+          "text": "WebSocket connection to 'wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo?<query redacted>' failed: Establishing a tunnel via proxy server failed."
+        }
+      ]
+    },
+    "notes": []
+  },
+  "extension-load": {
+    "startedAt": "2026-09-16T16:51:00.390Z",
+    "finishedAt": "2026-09-16T16:51:07.952Z",
+    "durationS": 8,
+    "git": {
+      "head": "95e045f964d91c5b83ae0929519f90b8586b86b2",
+      "branch": "qa/quality-bench",
+      "appSourceSha": "95e045f964d91c5b83ae0929519f90b8586b86b2",
+      "appSourceDirty": false
+    },
+    "relay": "wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo",
+    "build": {
+      "outDir": ".cache/qa/extension-build",
+      "ms": 209,
+      "relayUrlBaked": true
+    },
+    "options": {
+      "relay": "wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo",
+      "skipBuild": false,
+      "headed": false,
+      "noWrite": false,
+      "controlPort": 5185
+    },
+    "environment": {
+      "os": "Darwin 25.6.0 (arm64)",
+      "cpus": "10 x Apple M5",
+      "node": "v22.23.2",
+      "playwright": "1.63.0",
+      "chromium": "153.0.0.0",
+      "headless": true,
+      "launch": "launchPersistentContext, channel \"chromium\", --load-extension"
+    },
+    "summary": {
+      "pass": 9,
+      "fail": 3
+    },
+    "checks": [
+      {
+        "id": "X01",
+        "name": "Build output is a loadable MV3 directory",
+        "result": "PASS",
+        "detail": ".cache/qa/extension-build: manifest_version 3, service worker present, side_panel index.html, permissions [\"storage\",\"sidePanel\"], relay URL baked in: true"
+      },
+      {
+        "id": "X02",
+        "name": "Extension service worker registers and runs onInstalled",
+        "result": "PASS",
+        "detail": "id aohpmlfpjmfdacobcklgfphfhaehmkac; AccessLens 0.1.0; sidePanel.getPanelBehavior() = {\"openPanelOnActionClick\":true}"
+      },
+      {
+        "id": "X03",
+        "name": "Instructor view renders in the extension page",
+        "result": "PASS",
+        "detail": "rendered 73 ms after navigation; \"Open in a full tab\" -> chrome-extension://aohpmlfpjmfdacobcklgfphfhaehmkac/index.html; init scripts reached the page: true"
+      },
+      {
+        "id": "X04",
+        "name": "IBM Plex renders the page text in the extension (fonts bundled, no network)",
+        "result": "FAIL",
+        "detail": "extension page: body: system-ui 11.25px; p.muted (pack line): system-ui 14.25px; p[role=status] (instructor status): system-ui 15.3px; ol.steps li (how this works): system-ui 11.25px; h2 (heading): IBM Plex Sans 39px; button (Start): IBM Plex Sans 12.3px. IBM Plex Sans 1/5 faces used; 4 font files, all from chrome-extension://: true. Same build over http: body: IBM Plex Sans 15px; p.muted (pack line): IBM Plex Sans 14.25px; p[role=status] (instructor status): IBM Plex Sans 15.3px; ol.steps li (how this works): IBM Plex Sans 15px; h2 (heading): IBM Plex Sans 39px; button (Start): IBM Plex Sans 12.3px. See bug BUG-6"
+      },
+      {
+        "id": "X05",
+        "name": "OpenDyslexic renders the page text when \"Dyslexia-friendly text\" is on",
+        "result": "FAIL",
+        "detail": "data-reading=\"dyslexic\"; OpenDyslexic 2/2 faces used; extension page: body: system-ui 11.25px; p.muted (pack line): system-ui 14.25px; p[role=status] (instructor status): system-ui 15.3px; ol.steps li (how this works): system-ui 11.25px; h2 (heading): OpenDyslexic 39px; button (Start): OpenDyslexic 12.3px. Same build over http: body: OpenDyslexic 15px; p.muted (pack line): OpenDyslexic 14.25px; p[role=status] (instructor status): OpenDyslexic 15.3px; ol.steps li (how this works): OpenDyslexic 15px; h2 (heading): OpenDyslexic 39px; button (Start): OpenDyslexic 12.3px. See bug BUG-6"
+      },
+      {
+        "id": "X06",
+        "name": "WebSocket to the relay opens from the extension origin",
+        "result": "PASS",
+        "detail": "sockets opened: [\"wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo\"]; frames sent/received on the first: 3/2; relay issued join code KFHVYD in 427 ms; slide matched: true"
+      },
+      {
+        "id": "X07",
+        "name": "Student view renders, joins through the relay, and follows the instructor",
+        "result": "PASS",
+        "detail": "mode tabs [\"Focus\",\"Read\",\"Hear\",\"AR\"]; pill live: true; Read mode showed \"mitochondrion\" after the instructor indicated it: true"
+      },
+      {
+        "id": "X08",
+        "name": "AR mode loads its lazy chunk under the extension CSP",
+        "result": "PASS",
+        "detail": "AR view rendered with a WebGL canvas; highlighted \"Mitochondrion\""
+      },
+      {
+        "id": "X09",
+        "name": "Student mode choice persists in chrome.storage.local across a reload",
+        "result": "PASS",
+        "detail": "Read tab selected after reload: true; stored {\"accesslens.studentPreferences\":{\"captionsEnabled\":true,\"mode\":\"structured-text\",\"reducedMotion\":false,\"schemaVersion\":\"1.0\",\"textScale\":1}}"
+      },
+      {
+        "id": "X10",
+        "name": "No console errors or uncaught page errors",
+        "result": "PASS",
+        "detail": "none in the instructor or student tab"
+      },
+      {
+        "id": "X11",
+        "name": "No CSP violations",
+        "result": "FAIL",
+        "detail": "4 securitypolicyviolation events (script-src blocked eval at index-Bg96E-5I.js:9:52702): all from Zod v4's allowsEval probe (a caught `Function('')`); schema parsing falls back and still works (X07). See bug BUG-7; console CSP messages: 0"
+      },
+      {
+        "id": "X12",
+        "name": "No failed requests",
+        "result": "PASS",
+        "detail": "27 responses, none failed"
+      }
+    ],
+    "metrics": {
+      "extensionId": "aohpmlfpjmfdacobcklgfphfhaehmkac",
+      "serviceWorker": {
+        "url": "chrome-extension://aohpmlfpjmfdacobcklgfphfhaehmkac/service-worker.js",
+        "name": "AccessLens",
+        "version": "0.1.0",
+        "behavior": {
+          "openPanelOnActionClick": true
+        },
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
+      },
+      "fontsDefault": {
+        "faces": {
+          "IBM Plex Sans": {
+            "declaredFaces": 5,
+            "loadedFaces": 1,
+            "check": false
+          },
+          "IBM Plex Mono": {
+            "declaredFaces": 3,
+            "loadedFaces": 1,
+            "check": false
+          },
+          "OpenDyslexic": {
+            "declaredFaces": 2,
+            "loadedFaces": 0,
+            "check": false
+          }
+        },
+        "elements": {
+          "body": {
+            "family": "system-ui",
+            "size": "11.25px"
+          },
+          "p.muted (pack line)": {
+            "family": "system-ui",
+            "size": "14.25px"
+          },
+          "p[role=status] (instructor status)": {
+            "family": "system-ui",
+            "size": "15.3px"
+          },
+          "ol.steps li (how this works)": {
+            "family": "system-ui",
+            "size": "11.25px"
+          },
+          "h2 (heading)": {
+            "family": "IBM Plex Sans",
+            "size": "39px"
+          },
+          "button (Start)": {
+            "family": "IBM Plex Sans",
+            "size": "12.3px"
+          }
+        },
+        "reading": null
+      },
+      "fontsDyslexic": {
+        "faces": {
+          "IBM Plex Sans": {
+            "declaredFaces": 5,
+            "loadedFaces": 1,
+            "check": false
+          },
+          "IBM Plex Mono": {
+            "declaredFaces": 3,
+            "loadedFaces": 1,
+            "check": false
+          },
+          "OpenDyslexic": {
+            "declaredFaces": 2,
+            "loadedFaces": 2,
+            "check": true
+          }
+        },
+        "elements": {
+          "body": {
+            "family": "system-ui",
+            "size": "11.25px"
+          },
+          "p.muted (pack line)": {
+            "family": "system-ui",
+            "size": "14.25px"
+          },
+          "p[role=status] (instructor status)": {
+            "family": "system-ui",
+            "size": "15.3px"
+          },
+          "ol.steps li (how this works)": {
+            "family": "system-ui",
+            "size": "11.25px"
+          },
+          "h2 (heading)": {
+            "family": "OpenDyslexic",
+            "size": "39px"
+          },
+          "button (Start)": {
+            "family": "OpenDyslexic",
+            "size": "12.3px"
+          }
+        },
+        "reading": "dyslexic"
+      },
+      "fontFiles": [
+        {
+          "file": "ibm-plex-sans-latin-500-normal-6ng42L7E.woff2",
+          "status": 200,
+          "local": true
+        },
+        {
+          "file": "ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2",
+          "status": 200,
+          "local": true
+        },
+        {
+          "file": "opendyslexic-latin-700-normal-Bnmt45Ln.woff2",
+          "status": 200,
+          "local": true
+        },
+        {
+          "file": "opendyslexic-latin-400-normal-nUhe5EwG.woff2",
+          "status": 200,
+          "local": true
+        }
+      ],
+      "fontsHttpControl": {
+        "default": {
+          "faces": {
+            "IBM Plex Sans": {
+              "declaredFaces": 5,
+              "loadedFaces": 4,
+              "check": true
+            },
+            "IBM Plex Mono": {
+              "declaredFaces": 3,
+              "loadedFaces": 1,
+              "check": false
+            },
+            "OpenDyslexic": {
+              "declaredFaces": 2,
+              "loadedFaces": 0,
+              "check": false
+            }
+          },
+          "elements": {
+            "body": {
+              "family": "IBM Plex Sans",
+              "size": "15px"
+            },
+            "p.muted (pack line)": {
+              "family": "IBM Plex Sans",
+              "size": "14.25px"
+            },
+            "p[role=status] (instructor status)": {
+              "family": "IBM Plex Sans",
+              "size": "15.3px"
+            },
+            "ol.steps li (how this works)": {
+              "family": "IBM Plex Sans",
+              "size": "15px"
+            },
+            "h2 (heading)": {
+              "family": "IBM Plex Sans",
+              "size": "39px"
+            },
+            "button (Start)": {
+              "family": "IBM Plex Sans",
+              "size": "12.3px"
+            }
+          },
+          "reading": null
+        },
+        "dyslexic": {
+          "faces": {
+            "IBM Plex Sans": {
+              "declaredFaces": 5,
+              "loadedFaces": 4,
+              "check": true
+            },
+            "IBM Plex Mono": {
+              "declaredFaces": 3,
+              "loadedFaces": 1,
+              "check": false
+            },
+            "OpenDyslexic": {
+              "declaredFaces": 2,
+              "loadedFaces": 2,
+              "check": true
+            }
+          },
+          "elements": {
+            "body": {
+              "family": "OpenDyslexic",
+              "size": "15px"
+            },
+            "p.muted (pack line)": {
+              "family": "OpenDyslexic",
+              "size": "14.25px"
+            },
+            "p[role=status] (instructor status)": {
+              "family": "OpenDyslexic",
+              "size": "15.3px"
+            },
+            "ol.steps li (how this works)": {
+              "family": "OpenDyslexic",
+              "size": "15px"
+            },
+            "h2 (heading)": {
+              "family": "OpenDyslexic",
+              "size": "39px"
+            },
+            "button (Start)": {
+              "family": "OpenDyslexic",
+              "size": "12.3px"
+            }
+          },
+          "reading": "dyslexic"
+        }
+      },
+      "errors": {
+        "consoleErrors": [],
+        "pageErrors": [],
+        "csp": [],
+        "cspViolationEvents": [
+          {
+            "t": 1789577461471,
+            "directive": "script-src",
+            "blocked": "eval",
+            "source": "chrome-extension",
+            "line": 9,
+            "column": 52702,
+            "disposition": "enforce",
+            "bundle": "index-Bg96E-5I.js",
+            "zodAllowsEvalProbe": true
+          },
+          {
+            "t": 1789577461471,
+            "directive": "script-src",
+            "blocked": "eval",
+            "source": "chrome-extension",
+            "line": 9,
+            "column": 52702,
+            "disposition": "enforce",
+            "bundle": "index-Bg96E-5I.js",
+            "zodAllowsEvalProbe": true
+          },
+          {
+            "t": 1789577466760,
+            "directive": "script-src",
+            "blocked": "eval",
+            "source": "chrome-extension",
+            "line": 9,
+            "column": 52702,
+            "disposition": "enforce",
+            "bundle": "index-Bg96E-5I.js",
+            "zodAllowsEvalProbe": true
+          },
+          {
+            "t": 1789577466760,
+            "directive": "script-src",
+            "blocked": "eval",
+            "source": "chrome-extension",
+            "line": 9,
+            "column": 52702,
+            "disposition": "enforce",
+            "bundle": "index-Bg96E-5I.js",
+            "zodAllowsEvalProbe": true
+          }
+        ],
+        "failedRequests": []
+      },
+      "websockets": [
+        {
+          "page": "instructor",
+          "url": "wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo",
+          "opened": 1789577464235,
+          "framesSent": 7,
+          "framesReceived": 4,
+          "closed": 1789577466892,
+          "error": null
+        },
+        {
+          "page": "student",
+          "url": "wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo",
+          "opened": 1789577465277,
+          "framesSent": 1,
+          "framesReceived": 3,
+          "closed": null,
+          "error": null
+        }
+      ]
+    },
+    "notes": []
+  }
+}
