@@ -91,5 +91,19 @@ describe('AudioView', () => {
     await clickPlay();
     expect(utterances).toHaveLength(1);
     expect(utterances[0].rate).toBe(1.25);
+    // Not in a live session, so there is no Polly: the student is told how to get it.
+    expect(container!.querySelector('[role="status"]')!.textContent).toContain('join a live session to hear the Amazon Polly voice');
+  });
+
+  it('says when Amazon Polly failed and the browser voice took over', async () => {
+    const utterances: SpeechSynthesisUtterance[] = [];
+    vi.stubGlobal('SpeechSynthesisUtterance', class { rate = 1; constructor(readonly text: string) {} });
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: { cancel: vi.fn(), speak: (utterance: SpeechSynthesisUtterance) => utterances.push(utterance) } });
+    const speak = vi.fn(async () => { throw new Error('503'); });
+    render(<AudioView pack={bioPack} assetId={asset.assetId} regionId={region.regionId} speak={speak} createAudio={fakeAudio().create} />);
+    await clickPlay();
+    await act(async () => { await Promise.resolve(); });
+    expect(utterances).toHaveLength(1);
+    expect(container!.querySelector('[role="status"]')!.textContent).toContain('Amazon Polly did not answer');
   });
 });

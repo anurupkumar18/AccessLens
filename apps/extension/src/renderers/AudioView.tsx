@@ -14,6 +14,20 @@ interface Props {
   createAudio?: (url: string) => HTMLAudioElement;
 }
 
+type FallbackReason = 'not-in-session' | 'polly-failed' | 'recording-failed';
+
+/**
+ * Why the browser voice is reading instead of the AI voice. Amazon Polly is
+ * only spoken for someone in a live session (the gateway checks the relay's
+ * capability), so a student who presses Play before joining hears the browser
+ * voice, and should be told how to get the other one.
+ */
+const FALLBACK_MESSAGES: Record<FallbackReason, string> = {
+  'not-in-session': "Browser voice: join a live session to hear the Amazon Polly voice.",
+  'polly-failed': 'Browser voice: Amazon Polly did not answer.',
+  'recording-failed': 'Browser voice: the recorded audio did not load.',
+};
+
 function defaultCreateAudio(url: string): HTMLAudioElement {
   return new Audio(url);
 }
@@ -29,6 +43,7 @@ export function AudioView({ pack, assetId, regionId, speechRate = 1, speak, crea
     // MP3 per region next to the pack, so a published pack never needs live
     // synthesis. Speech is only for packs that ship no audio.
     const published = regionAudioUrl(pack, region);
+    let fallback: FallbackReason = speak ? 'polly-failed' : 'not-in-session';
     if (published) {
       try {
         await createAudio(published).play();
@@ -36,6 +51,7 @@ export function AudioView({ pack, assetId, regionId, speechRate = 1, speak, crea
         return;
       } catch {
         // Fall through: the same reviewed text, synthesized instead.
+        if (!speak) fallback = 'recording-failed';
       }
     }
     if (speak) {
@@ -50,10 +66,10 @@ export function AudioView({ pack, assetId, regionId, speechRate = 1, speak, crea
         // Fall through to the browser voice: same reviewed text, no network.
       }
     }
-    speakWithBrowser();
+    speakWithBrowser(fallback);
   }
 
-  function speakWithBrowser(): void {
+  function speakWithBrowser(reason: FallbackReason): void {
     if (!region) return;
     if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
       setMessage('Speech is unavailable here. The same description is shown as text.');
@@ -63,7 +79,7 @@ export function AudioView({ pack, assetId, regionId, speechRate = 1, speak, crea
     const utterance = new SpeechSynthesisUtterance(region.shortDescription);
     utterance.rate = speechRate;
     window.speechSynthesis.speak(utterance);
-    setMessage(`Playing description for ${region.regionId}.`);
+    setMessage(`${FALLBACK_MESSAGES[reason]} Playing description for ${region.regionId}.`);
   }
 
   if (!region) return <p role="status">Waiting for a reviewed audio description.</p>;
