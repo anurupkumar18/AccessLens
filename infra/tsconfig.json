@@ -1,14 +1,16 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "types": ["node"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "noEmit": true
+    "rootDir": "..",
+    "outDir": "cdk.out",
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
   },
-  "include": ["bin", "lib", "test"]
+  "include": [
+    "bin/**/*.ts",
+    "lib/**/*.ts",
+    "test/**/*.ts"
+  ]
 }

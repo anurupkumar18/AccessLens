@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT_DIR"
+
+# Instructors sign in with Google (D12, D13). The stack needs the OAuth web
+# client id the sign-in button uses, from the environment or from .env.local,
+# which this script rewrites below and keeps it in.
+if [[ -f .env.local ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.local
+  set +a
+fi
+: "${GOOGLE_CLIENT_ID:?Set GOOGLE_CLIENT_ID to the OAuth web client id from Google Cloud console (Credentials > OAuth client ID > Web application)}"
+
+# CloudFront serves the real viewer -- the page whose ?mode=harness check
+# gates every artifact -- so it is built fresh here rather than deployed from
+# whatever dist/ happens to be checked in.
+npx vite build --config apps/viewer/vite.config.ts
+
+# The hosted instructor/student shell: the extension's own source, built for
+# https://<distribution>/app/ with the endpoints in .env.local baked in.
+npx vite build --base /app/ --outDir dist-web
+
+# One CDK app carries both stacks, so synth needs Part 4's Lambda bundle
+# even when only AccessLensAuthoring is deployed (services/live-session/README.md:
+# "npm run build is not optional and not automatic").
+(cd services/live-session && npm ci --no-audit --no-fund && npm run build)
+npx --yes cdk deploy --app "npx tsx infra/bin/accesslens.ts" AccessLensAuthoring --require-approval never --outputs-file .cdk-outputs.json \
+  -c "googleClientId=$GOOGLE_CLIENT_ID"
+
+node --input-type=module <<'NODE'
+import { readFileSync, writeFileSync } from 'node:fs';
+const output = JSON.parse(readFileSync('.cdk-outputs.json', 'utf8'));
+const stackName = Object.keys(output)[0];
+if (!stackName) throw new Error('CDK returned no stack outputs');
+const values = output[stackName];
+const required = ['ApiUrl', 'ViewerUrl', 'AssetBaseUrl', 'GoogleClientId', 'VectorBucketName'];
+for (const name of required) if (!values[name]) throw new Error(`Missing CDK output ${name}`);
+import { existsSync } from 'node:fs';
+const preserved = new Map();
+// Keys and defaults from the example, then whatever this machine already had
+// set (the relay and AI URLs are not this stack's outputs), then the outputs.
+for (const file of ['.env.example', '.env.local']) {
+  if (!existsSync(file)) continue;
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/u)) {
+    const match = line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/u);
+    if (match) preserved.set(match[1], match[2]);
+  }
+}
+preserved.set('VITE_ACCESSLENS_API_URL', values.ApiUrl);
+preserved.set('VITE_ACCESSLENS_VIEWER_URL', values.ViewerUrl);
+preserved.set('VITE_ACCESSLENS_ASSET_BASE_URL', values.AssetBaseUrl);
+preserved.set('VITE_GOOGLE_CLIENT_ID', values.GoogleClientId);
+preserved.set('GOOGLE_CLIENT_ID', values.GoogleClientId);
+const env = [...preserved.entries()].map(([key, value]) => `${key}=${value}`).join('\n') + '\n';
+writeFileSync('.env.local', env, { mode: 0o600 });
+console.log(`API URL: ${values.ApiUrl}`);
+console.log(`Viewer URL: ${values.ViewerUrl}`);
+console.log(`Asset base URL: ${values.AssetBaseUrl}`);
+console.log(`Google client id: ${values.GoogleClientId}`);
+console.log(`Vector bucket: ${values.VectorBucketName}`);
+NODE

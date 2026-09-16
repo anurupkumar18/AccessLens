@@ -1,0 +1,105 @@
+{
+  "role": "pack-author",
+  "variant": "held-out",
+  "model": "us.anthropic.claude-sonnet-4-6",
+  "startedAt": "2026-09-16T04:23:20.764Z",
+  "cases": [
+    {
+      "caseId": "computer-science-01",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Sorting algorithm"
+      }
+    },
+    {
+      "caseId": "chemistry-02",
+      "subject": "chemistry",
+      "heldOut": true,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "regions": 2,
+        "title": "Titration curve"
+      }
+    },
+    {
+      "caseId": "economics-03",
+      "subject": "economics",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Supply and demand"
+      }
+    },
+    {
+      "caseId": "biology-04",
+      "subject": "biology",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Cell diagram"
+      }
+    },
+    {
+      "caseId": "history-05",
+      "subject": "history",
+      "heldOut": true,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Timeline"
+      }
+    },
+    {
+      "caseId": "physics-06",
+      "subject": "physics",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Circuit"
+      }
+    },
+    {
+      "caseId": "statistics-07",
+      "subject": "statistics",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Normal distribution"
+      }
+    },
+    {
+      "caseId": "geography-08",
+      "subject": "geography",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "regions": 3,
+        "title": "Map"
+      }
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "errored": 0,
+    "cleanRate": "8/8 (100%)",
+    "heldOutCleanRate": "7/7 (100%)",
+    "tunedCleanRate": "1/1 (100%)",
+    "meanAttempts": "1.25",
+    "violationsByRule": {}
+  }
+}

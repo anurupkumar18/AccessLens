@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { AccessPackSchema } from '../shared/contracts';
 import { validPack } from '../shared/fixtures';
 import { FocusView } from './FocusView';
-import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
+import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pack.json';
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
@@ -27,13 +27,13 @@ afterEach(() => {
 
 describe('FocusView', () => {
   it('shows the slide image and highlights the followed region where the pack says it is', () => {
-    const pack = AccessPackSchema.parse(hnswDraftPack);
+    const pack = AccessPackSchema.parse(reviewedBioPack);
     const asset = pack.assets[1];
     const region = asset.regions[0];
     render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} />);
 
     const img = container!.querySelector<HTMLImageElement>('img.slide-image')!;
-    expect(img.src).toMatch(/slide-02.*\.png$/);
+    expect(img.src).toMatch(/cell-slide-02.*\.png$/);
     expect(img.alt).toBe(asset.title);
 
     const highlight = container!.querySelector<HTMLElement>('.region-highlight')!;
@@ -47,7 +47,7 @@ describe('FocusView', () => {
   });
 
   it('renders an explicit semantic focus pointer only when the reviewed event includes one', () => {
-    const pack = AccessPackSchema.parse(hnswDraftPack);
+    const pack = AccessPackSchema.parse(reviewedBioPack);
     const asset = pack.assets[1];
     const region = asset.regions[0];
     render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} pointer={{ x: 0.42, y: 0.31 }} />);

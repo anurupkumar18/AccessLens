@@ -117,6 +117,11 @@
                 "label": {
                   "type": "string",
                   "minLength": 1
+                },
+                "audioUri": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Polly mp3 for this region's shortDescription. Optional: Hear mode falls back to local speech synthesis when absent."
                 }
               }
             }
@@ -182,6 +187,72 @@
                       "minLength": 1
                     }
                   }
+                }
+              }
+            }
+          },
+          "visualization": {
+            "type": "object",
+            "description": "Published interactive visualization for this slide. Identifiers only; the artifact code is fetched and run by the viewer's opaque-origin sandbox, never by an extension page.",
+            "required": [
+              "artifactId",
+              "artifactVersion",
+              "parameters"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "artifactId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "artifactVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "parameters": {
+                "type": "object"
+              },
+              "notes": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "regionMap": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "references": {
+            "type": "array",
+            "description": "Citations into the instructor's own course library. Every quote was verified as a verbatim substring of an excerpt the model was actually given.",
+            "items": {
+              "type": "object",
+              "required": [
+                "docId",
+                "title",
+                "page",
+                "quote"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "docId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "quote": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
                 }
               }
             }

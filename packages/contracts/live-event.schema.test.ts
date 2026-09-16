@@ -44,32 +44,32 @@ describe('live-event.schema.json contract matrix', () => {
     }
   );
 
-  it('accepts caption.appended scoped to an assetId with a bounded instructor-authored caption', () => {
-    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'Backside attack on the electrophile.', isFinal:true}})).toBe(true);
+  it('accepts caption.appended with caption text, with or without the slide it was spoken over', () => {
+    const caption = { text:'The mitochondrion releases usable energy.', isFinal:true };
+    expect(validate({...base, type:'caption.appended', caption})).toBe(true);
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption})).toBe(true);
   });
 
   it('rejects caption.appended missing a caption, never a silent empty caption', () => {
     expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03'})).toBe(false);
   });
 
-  it('rejects caption.appended missing an assetId', () => {
-    expect(validate({...base, type:'caption.appended', caption:{text:'x', isFinal:true}})).toBe(false);
-  });
-
-  it('rejects caption.appended carrying a pointer or arState', () => {
+  it('rejects caption.appended carrying a pointer, arState, or regionId', () => {
     expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x', isFinal:true}, pointer:{x:.1,y:.1}})).toBe(false);
+    expect(validate({...base, type:'caption.appended', caption:{ text:'x', isFinal:true }, regionId:'mitochondrion'})).toBe(false);
   });
 
-  it('rejects a caption text over 280 characters', () => {
-    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(281), isFinal:true}})).toBe(false);
+  it('rejects a caption text over 500 characters', () => {
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(501), isFinal:true}})).toBe(false);
   });
 
-  it('rejects a caption missing isFinal', () => {
+  it('rejects a caption missing isFinal, or carrying an extra field', () => {
     expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'}})).toBe(false);
+    expect(validate({...base, type:'caption.appended', caption:{ text:'x', isFinal:true, audio:'...' }})).toBe(false);
   });
 
   it('rejects a non-caption type carrying a caption field', () => {
-    expect(validate({...base, type:'session.started', caption:'x'})).toBe(false);
+    expect(validate({...base, type:'session.started', caption:{ text:'x', isFinal:true }})).toBe(false);
   });
 
   it('rejects an unknown top-level field', () => {

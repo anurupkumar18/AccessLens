@@ -4,7 +4,7 @@
  * `reference_event_check.py` says: "Keep the rule names stable: Part 4 has to
  * enforce the same rules server-side." A comment asking for that is a hope. This
  * runs both implementations over every reviewed fixture -- six ordered scenarios
- * plus ten single-fault negatives -- and fails on any disagreement, including
+ * plus twelve single-fault negatives -- and fails on any disagreement, including
  * the order the rules come back in.
  *
  * Why it matters beyond tidiness: Part 2 tests its matcher against the Python
@@ -60,7 +60,7 @@ describe('server-side rules match Part 5 reference', () => {
 
   it('trips the documented rule for each negative fixture', () => {
     const negatives = verdicts.filter(v => v.expectedRule !== undefined);
-    expect(negatives).toHaveLength(11);
+    expect(negatives).toHaveLength(12);
 
     const misses = negatives
       .map(v => ({

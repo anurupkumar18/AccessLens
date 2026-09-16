@@ -27,18 +27,25 @@ import {
   Stack,
   type StackProps,
 } from 'aws-cdk-lib';
-import { WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2';
-import { WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { CorsHttpMethod, HttpApi, HttpMethod, WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpLambdaIntegration, WebSocketLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
+import { WHISPER_ENDPOINT_NAME } from './whisper-stack.js';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // This package is ESM, so `__dirname` does not exist.
 const here = dirname(fileURLToPath(import.meta.url));
+
+export interface LiveSessionStackProps extends StackProps {
+  /** Public base URL of the published asset distribution (packs/<id>/<version>.json). */
+  packBaseUrl?: string;
+}
 // The Lambda source lives in services/, a sibling of infra/, so CDK needs the
 // repository root as the bundling project root rather than this package.
 const repoRoot = join(here, '../..');
@@ -46,7 +53,7 @@ const repoRoot = join(here, '../..');
 const CONNECTIONS_BY_SESSION_INDEX = 'connections-by-session';
 
 export class LiveSessionStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props?: LiveSessionStackProps) {
     super(scope, id, props);
 
     const sessions = new Table(this, 'Sessions', {
@@ -107,6 +114,9 @@ export class LiveSessionStack extends Stack {
         // Resolved at deployment, so the value lives in Secrets Manager and in
         // the function's environment -- never in the source or the template.
         CAPABILITY_SECRET: SecretValue.secretsManager(capabilitySecret.secretArn).unsafeUnwrap(),
+        // Where published packs live, so a session may teach any pack the
+        // authoring pipeline published and not only the one bundled here.
+        ...(props?.packBaseUrl ? { PACK_BASE_URL: props.packBaseUrl } : {}),
       },
     });
 
@@ -145,6 +155,76 @@ export class LiveSessionStack extends Stack {
     // API. Without it the relay validates everything correctly and delivers
     // nothing.
     api.grantManageConnections(handler);
+
+    // ---- AI routes (services/ai-gateway) -------------------------------------
+    //
+    // A plain HTTPS API beside the relay, not more WebSocket routes: these are
+    // request/response calls, and keeping them off the relay means a slow model
+    // call can never delay a live slide event. The function verifies the same
+    // HMAC role capability the relay issues, so it shares the relay's secret.
+    const aiLogs = new LogGroup(this, 'AiLogs', {
+      retention: RetentionDays.ONE_WEEK,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    const bedrockModelId = 'us.anthropic.claude-sonnet-4-6';
+    const aiHandler = new LambdaFunction(this, 'AiHandler', {
+      code: Code.fromAsset(join(repoRoot, 'services/ai-gateway/dist')),
+      handler: 'index.handler',
+      runtime: Runtime.NODEJS_22_X,
+      timeout: Duration.seconds(30),
+      memorySize: 512,
+      logGroup: aiLogs,
+      environment: {
+        CAPABILITY_SECRET: SecretValue.secretsManager(capabilitySecret.secretArn).unsafeUnwrap(),
+        BEDROCK_MODEL_ID: bedrockModelId,
+        // By name, not reference: the endpoint's stack is deployed only when wanted,
+        // and the route answers whisper-unavailable while it does not exist.
+        WHISPER_ENDPOINT_NAME,
+      },
+    });
+
+    // Least privilege per route. Bedrock: the one model this account can invoke
+    // (docs/AWS_ACCESS_VERIFICATION.md §3), through its cross-region inference
+    // profile, which also needs the underlying foundation model in each region
+    // the profile routes to. Polly and Transcribe streaming have no
+    // resource-level ARNs for these actions.
+    aiHandler.addToRolePolicy(new PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
+      resources: [
+        `arn:aws:bedrock:*:${this.account}:inference-profile/${bedrockModelId}`,
+        'arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6*',
+      ],
+    }));
+    aiHandler.addToRolePolicy(new PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }));
+    aiHandler.addToRolePolicy(new PolicyStatement({ actions: ['transcribe:StartStreamTranscriptionWebSocket'], resources: ['*'] }));
+    aiHandler.addToRolePolicy(new PolicyStatement({
+      actions: ['sagemaker:InvokeEndpoint'],
+      resources: [`arn:aws:sagemaker:${this.region}:${this.account}:endpoint/${WHISPER_ENDPOINT_NAME}`],
+    }));
+
+    const aiApi = new HttpApi(this, 'AiApi', {
+      apiName: 'accesslens-ai',
+      description: 'AccessLens grounded answers, reviewed-text speech, and caption stream authorization',
+      // Extension pages call from a chrome-extension:// origin that differs per
+      // install. Every route requires a signed capability in the body and no
+      // cookie is ever involved, so a wildcard origin grants nothing by itself.
+      corsPreflight: {
+        allowOrigins: ['*'],
+        allowMethods: [CorsHttpMethod.POST],
+        allowHeaders: ['content-type'],
+        maxAge: Duration.hours(1),
+      },
+    });
+    const aiIntegration = new HttpLambdaIntegration('AiIntegration', aiHandler);
+    for (const path of ['/ask', '/speak', '/transcribe-url']) {
+      aiApi.addRoutes({ path, methods: [HttpMethod.POST], integration: aiIntegration });
+    }
+
+    new CfnOutput(this, 'AiApiUrl', {
+      value: aiApi.apiEndpoint,
+      description: 'VITE_ACCESSLENS_AI_URL for .env.local',
+    });
 
     new CfnOutput(this, 'WebSocketUrl', {
       value: stage.url,

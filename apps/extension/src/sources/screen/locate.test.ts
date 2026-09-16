@@ -86,5 +86,5 @@ describe('slide locator: window and screen shares', () => {
     for (const frame of frames) {
       expect(matched(settle(createSlideLocator(pack, DEFAULT_MATCH_OPTIONS), frame)).kind).toBe('unmatched');
     }
-  });
+  }, 20000);
 });

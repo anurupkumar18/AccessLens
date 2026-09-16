@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "network-flow-explorer",
+  "artifactVersion": 1,
+  "title": "Network flow explorer",
+  "summary": "Adjust capacities and inspect how flow moves through a directed network from source to sink.",
+  "subjects": [
+    "computer-science",
+    "graph-theory"
+  ],
+  "tags": [
+    "network",
+    "flow",
+    "capacity",
+    "graph"
+  ],
+  "interaction": "explorer",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Adjust capacities and inspect how flow moves through a directed network from source to sink.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

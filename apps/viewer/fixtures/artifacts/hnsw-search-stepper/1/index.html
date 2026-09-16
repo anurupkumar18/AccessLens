@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HNSW search stepper</title>
+  <style>
+    :root { color: #172033; font: 16px/1.35 system-ui, sans-serif; }
+    body { margin: 0; padding: 1rem; background: #fff; }
+    .hnsw-card { max-width: 760px; margin: auto; }
+    .hnsw-toolbar { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-bottom: .5rem; }
+    button { border: 2px solid #334e9b; border-radius: .35rem; background: #eef2ff; color: #172033; padding: .4rem .7rem; font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 3px solid #e58b24; outline-offset: 2px; }
+    svg { display: block; width: 100%; height: auto; border: 1px solid #c7d0e0; border-radius: .4rem; }
+    .layer-label { font-weight: 700; fill: #172033; }
+    .edge { stroke: #a8b3c7; stroke-width: 2; }
+    .node { fill: #fff; stroke: #334e9b; stroke-width: 2; }
+    .node.visited { fill: #cad5ff; }
+    .node.current { fill: #f7bb65; stroke: #8b4b00; stroke-width: 4; }
+    .node.result { fill: #9ce1c2; stroke: #12663d; stroke-width: 3; }
+    .node.highlighted { stroke: #8b2bb3; stroke-width: 5; filter: drop-shadow(0 0 3px #8b2bb3); }
+    .node-label { fill: #172033; font-size: 13px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    .state { margin: .45rem 0; min-height: 1.4em; }
+  </style>
+</head>
+<body>
+  <section class="hnsw-card" aria-labelledby="hnsw-title">
+    <h1 id="hnsw-title">HNSW search, step by step</h1>
+    <div class="hnsw-toolbar">
+      <button id="step-button" type="button">Step search (Space)</button>
+      <span id="ef-value">ef: 32</span>
+      <span id="m-value">M: 16</span>
+    </div>
+    <p id="hnsw-state" class="state" aria-live="polite">Ready at the layer 2 entry point.</p>
+    <svg id="hnsw-graph" viewBox="0 0 720 430" role="img" aria-labelledby="hnsw-title hnsw-graph-description">
+      <desc id="hnsw-graph-description">Three horizontal layers of a small navigable graph. The orange node is the current search position, blue nodes have been visited, and green is the result.</desc>
+      <text class="layer-label" x="20" y="48">Layer 2 · entry</text>
+      <text class="layer-label" x="20" y="178">Layer 1 · candidates</text>
+      <text class="layer-label" x="20" y="318">Layer 0 · result set</text>
+      <g id="hnsw-edges" aria-hidden="true"></g>
+      <g id="hnsw-nodes"></g>
+    </svg>
+    <p class="visually-hidden" id="hnsw-instructions">Press Space to step through the search. Press the left and right arrow keys to adjust ef. Press the up and down arrow keys to adjust M.</p>
+  </section>
+  <div id="hnsw-live" class="visually-hidden" aria-live="polite"></div>
+  <script>
+    (function () {
+      'use strict';
+      var nodes = [
+        { id: 'L2-A', x: 170, y: 70, layer: 2 }, { id: 'L2-B', x: 470, y: 70, layer: 2 },
+        { id: 'L1-A', x: 110, y: 205, layer: 1 }, { id: 'L1-B', x: 270, y: 205, layer: 1 }, { id: 'L1-C', x: 450, y: 205, layer: 1 }, { id: 'L1-D', x: 610, y: 205, layer: 1 },
+        { id: 'L0-A', x: 75, y: 355, layer: 0 }, { id: 'L0-B', x: 190, y: 355, layer: 0 }, { id: 'L0-C', x: 320, y: 355, layer: 0 }, { id: 'L0-D', x: 450, y: 355, layer: 0 }, { id: 'L0-E', x: 575, y: 355, layer: 0 }, { id: 'L0-F', x: 670, y: 355, layer: 0 }
+      ];
+      var edges = [
+        ['L2-A', 'L2-B'], ['L2-A', 'L1-A'], ['L2-A', 'L1-B'], ['L2-B', 'L1-C'], ['L2-B', 'L1-D'],
+        ['L1-A', 'L1-B'], ['L1-B', 'L1-C'], ['L1-C', 'L1-D'], ['L1-A', 'L0-A'], ['L1-A', 'L0-B'], ['L1-B', 'L0-B'], ['L1-B', 'L0-C'], ['L1-C', 'L0-C'], ['L1-C', 'L0-D'], ['L1-D', 'L0-E'], ['L1-D', 'L0-F'],
+        ['L0-A', 'L0-B'], ['L0-B', 'L0-C'], ['L0-C', 'L0-D'], ['L0-D', 'L0-E'], ['L0-E', 'L0-F']
+      ];
+      var searchPath = ['L2-A', 'L1-B', 'L1-C', 'L0-C', 'L0-D'];
+      var step = 0;
+      var ef = 32;
+      var m = 16;
+      var initialized = false;
+      var nodeById = {};
+      nodes.forEach(function (node) { nodeById[node.id] = node; });
+      var edgeGroup = document.getElementById('hnsw-edges');
+      var nodeGroup = document.getElementById('hnsw-nodes');
+      var state = document.getElementById('hnsw-state');
+      var live = document.getElementById('hnsw-live');
+      var efValue = document.getElementById('ef-value');
+      var mValue = document.getElementById('m-value');
+      var stepButton = document.getElementById('step-button');
+      function svgElement(name) { return document.createElementNS('http://www.w3.org/2000/svg', name); }
+      function announce(message) { state.textContent = message; live.textContent = ''; window.setTimeout(function () { live.textContent = message; }, 0); }
+      function render() {
+        edgeGroup.textContent = '';
+        nodeGroup.textContent = '';
+        edges.forEach(function (edge) {
+          var from = nodeById[edge[0]], to = nodeById[edge[1]];
+          var line = svgElement('line'); line.setAttribute('x1', from.x); line.setAttribute('y1', from.y); line.setAttribute('x2', to.x); line.setAttribute('y2', to.y); line.setAttribute('class', 'edge'); edgeGroup.appendChild(line);
+        });
+        nodes.forEach(function (node) {
+          var circle = svgElement('circle');
+          var visited = searchPath.slice(0, step).indexOf(node.id) >= 0;
+          var current = searchPath[Math.min(step, searchPath.length - 1)] === node.id && step < searchPath.length;
+          var result = step >= searchPath.length && node.id === searchPath[searchPath.length - 1];
+          var highlighted = node.highlighted === true;
+          circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y); circle.setAttribute('r', '22'); circle.setAttribute('class', 'node' + (visited ? ' visited' : '') + (current ? ' current' : '') + (result ? ' result' : '') + (highlighted ? ' highlighted' : ''));
+          circle.setAttribute('aria-label', node.id + (current ? ', current search node' : visited ? ', visited' : ''));
+          nodeGroup.appendChild(circle);
+          var label = svgElement('text'); label.setAttribute('x', node.x); label.setAttribute('y', node.y); label.setAttribute('class', 'node-label'); label.textContent = node.id; nodeGroup.appendChild(label);
+        });
+        efValue.textContent = 'ef: ' + ef;
+        mValue.textContent = 'M: ' + m;
+      }
+      function stepSearch() {
+        if (step < searchPath.length) step += 1;
+        if (step >= searchPath.length) announce('Search complete: nearest result is L0-D. ef is ' + ef + ' and M is ' + m + '.');
+        else announce('Step ' + step + ': visiting ' + searchPath[step - 1] + '. ef is ' + ef + ' and M is ' + m + '.');
+        render();
+      }
+      function adjust(key) {
+        if (key === 'ArrowRight') ef = Math.min(512, ef + 1);
+        if (key === 'ArrowLeft') ef = Math.max(1, ef - 1);
+        if (key === 'ArrowUp') m = Math.min(64, m + 1);
+        if (key === 'ArrowDown') m = Math.max(2, m - 1);
+        announce('Search controls changed: ef is ' + ef + ' and M is ' + m + '.');
+        render();
+      }
+      window.accesslensInit = function (params, ctx) {
+        ef = Number(params.ef); m = Number(params.M); initialized = true; step = 0;
+        stepButton.onclick = stepSearch;
+        window.onkeydown = function (event) { if (event.key === ' ' || event.code === 'Space') { event.preventDefault(); stepSearch(); } else if (event.key.indexOf('Arrow') === 0) { event.preventDefault(); adjust(event.key); } };
+        announce('Ready at the layer 2 entry point. ' + (ctx.slideTitle || ''));
+        render();
+      };
+      window.accesslensHighlight = function (regionId) {
+        nodes.forEach(function (node) { if (node.id === regionId || ('layer-' + node.layer) === regionId) node.highlighted = true; });
+        announce('Highlighted ' + regionId + '.');
+        render();
+      };
+      render();
+    }());
+  </script>
+</body>
+</html>

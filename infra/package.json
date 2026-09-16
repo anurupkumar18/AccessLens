@@ -3,23 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "AccessLens Part 4 — CDK definition of the temporary AWS live plane.",
+  "description": "AccessLens CDK app: the Part 4 live plane and the Part 6 authoring pipeline as two stacks. Dependencies come from the repository root.",
   "scripts": {
     "synth": "cdk synth",
-    "deploy": "cdk deploy --require-approval never",
-    "destroy": "cdk destroy --force",
-    "typecheck": "tsc --noEmit",
+    "deploy": "cdk deploy AccessLensLiveSession --require-approval never",
+    "destroy": "cdk destroy AccessLensLiveSession --force",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "check": "npm run typecheck && npm run test"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.0",
-    "aws-cdk": "^2.1000.0",
-    "aws-cdk-lib": "^2.170.0",
-    "constructs": "^10.4.2",
-    "esbuild": "^0.24.2",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
   }
 }

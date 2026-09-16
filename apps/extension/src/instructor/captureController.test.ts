@@ -426,3 +426,39 @@ describe('capture controller: window and whole-screen shares', () => {
     expect(types(events)).toEqual(['session.started', 'source.unmatched']);
   });
 });
+
+describe('capture controller: live captions', () => {
+  it('sends caption text naming the matched slide, and without an asset when nothing is matched', async () => {
+    const { controller, stream, scheduler, events } = await sharing();
+    expect(controller.caption('Before any slide matches.', true)).toBe(true);
+    expect(events.at(-1)).toMatchObject({ type: 'caption.appended', caption: { text: 'Before any slide matches.', isFinal: true } });
+    expect(events.at(-1)).not.toHaveProperty('assetId');
+
+    stream.enqueue(demo('slide-03'));
+    scheduler.tick(1);
+    controller.caption('the mitochondrion  releases energy', false);
+    expect(events.at(-1)).toMatchObject({ type: 'caption.appended', assetId: 'slide-03', caption: { text: 'the mitochondrion releases energy', isFinal: false } });
+    for (const event of events) expect(LiveEventSchema.safeParse(event).success).toBe(true);
+  });
+
+  it('keeps the most recent words of an over-long caption, within the contract limit', async () => {
+    const { controller, events } = await sharing();
+    controller.caption(`${'early words '.repeat(60)}the end`, true);
+    const text = (events.at(-1) as { caption: { text: string } }).caption.text;
+    expect(text.length).toBeLessThanOrEqual(500);
+    expect(text.endsWith('the end')).toBe(true);
+    expect(text.startsWith('early') || text.startsWith('words')).toBe(true);
+  });
+
+  it('sends nothing without an open session, and hands out the instructor capability once one opens', async () => {
+    const { controller, events } = setup();
+    expect(controller.caption('hello', true)).toBe(false);
+    expect(controller.getCapability()).toBeNull();
+    expect(events).toEqual([]);
+    await controller.start();
+    expect(controller.getCapability()).toMatchObject({ role: 'instructor', sessionId: 'sess-1' });
+    controller.endSession();
+    expect(controller.getCapability()).toBeNull();
+    expect(controller.caption('after the end', true)).toBe(false);
+  });
+});

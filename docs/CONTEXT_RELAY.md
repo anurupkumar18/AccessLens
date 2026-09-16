@@ -52,16 +52,17 @@ Three rules that save the most time here:
 
 ## 2. Where each part stands
 
-Integration branch: `accesslens-extension-ar-pivot`. Nothing merges to `master`
-during the build.
+The AccessLens integration has now been merged to `master`; subsequent feature
+work is being made directly on `master` by explicit product-owner direction.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, AL-049's caption instructor input/student display, AL-050's server-side caption shape validation, AL-051's honest session-end-on-unmount fix, and AL-052's high-contrast fix are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
-| 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
+| 3. Student experience and AR | Prachi | merged as `7a199c0` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. Follow-up adds a Dyslexic-friendly mode and hardens capture gesture handling for tab/window/screen sharing. | `npm run typecheck`; targeted Vitest checks; `docs/NEXT_STEPS.md` |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
+| 6. Authoring pipeline and visualization | Jacob | `workstream/6-authoring` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, RL-060 |
 
 **The largest risk moved again, and it is no longer Part 4.** Parts 1, 2, 3, and
 5 are on the integration branch, and Part 4 now is too: the relay is built,
@@ -101,7 +102,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-11 | End-to-end suite. First slice landed now that `SessionClient` is frozen: `tests/e2e/fixture-replay.test.ts` covers fixture replay, reconnect idempotence, and session close. The rest — failure paths through a real UI, axe, screen-reader, rehearsals — still needs the student renderers. | Part 5 | Demo readiness | IN PROGRESS | `tests/e2e/fixture-replay.test.ts`, 7 tests |
 | T-12 | `codex/live-workspace-foundation` is 3 commits ahead and 64 behind, last touched 2026-08-28, from the superseded Evidence Engine product. Salvage or delete before the repo is handed over. | UNOWNED | Nothing | UNOWNED | `git log origin/codex/live-workspace-foundation` |
 | T-13 | Nobody owns merging `accesslens-extension-ar-pivot` into `master`, and no moment is defined for it. The build rule forbids merging to `master` during the hackathon, so this must happen deliberately at the end. | UNOWNED | Final handover | UNOWNED | `docs/PARALLEL_WORKSTREAMS.md`, merge and branch rules |
-| T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | CLOSED | AL-048 widens `caption.appended` to require `assetId` and `caption:{text,isFinal}` in both `contracts.ts` and `live-event.schema.json`; `check_contract_conformance.py` reports zero gaps; `docs/PART5_CONTRACT_CONFORMANCE.md` §3 marked Closed; `memory/episodic/0065-caption-appended-payload.md`. UI wiring (AL-049: instructor input, student display) and server-side shape validation (AL-050) are also landed. |
+| T-16 | `caption.appended` was base-only in the discriminated union, so a caption event could not carry a caption or name its asset. Stretch scope, so it blocked nothing, but the type existed in the enum without a payload. | Part 1 | Captions (stretch) | CLOSED | Closed 2026-09-16 in the conformance doc's suggested shape: `caption: {text, isFinal}` (text <= 500) plus optional `assetId`, in Zod, the JSON schema, the Python reference, and the relay, sharing the same `caption-*` rule names, with `fixtures/invalid/caption-with-audio-payload.json` and `fixtures/invalid/oversized-caption.json`; `check_contract_conformance.py` reports zero gaps; `docs/PART5_CONTRACT_CONFORMANCE.md` §3 marked Closed; the captions scenario validates end to end (`tests/e2e/fixture-replay.test.ts`, `KNOWN_REJECTED` empty); `memory/episodic/0065-caption-appended-payload.md`. UI wiring (AL-049: instructor input, student display) and server-side shape validation (AL-050) are also landed. |
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
 | T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. It has now bitten **five times**, and `19770f6` is a teammate hitting it independently and fixing it by hand. The proposal stands: make the pointer a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | `19770f6` plus four conflicts across PRs #4, #5, #7, and #9 |
 | T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | CLOSED | The session records `packId` and `packVersion` at create time and every event is compared against them; a mismatch is refused as `pack-version-mismatch`. Part 3 does not need to hold the version itself |
@@ -116,12 +117,23 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-30 | The agent-first delivery system is additive: ticket files, claims, immutable updates, generated context, and validation must not become a second mutable product or risk register. Its initial portfolio intentionally keeps current-MVP proof P0 and durable identity/content work deferred behind human decisions. | Part 1 | Agent handoffs and release evidence | OPEN | `docs/AGENT_OPERATING_CONTEXT.md`; `docs/work/`; `make work-board-check`; AL-090 is in review |
 | T-33 | A malformed event received from the live relay was schema-dropped without any diagnostic, leaving the student marked `live` even though the next update was not trustworthy. Local QA now exposes only a payload-free invalid-event signal and freezes the last reviewed state as `stale`; the signal must not expose raw payloads or reset to live on socket recovery alone. | Part 1 | T-21 live-status trust and AL-004 false-live evidence | IN PROGRESS | `2d04fad`; `liveRelayClient.test.ts`; `StudentExperience.test.tsx`; `liveState.test.ts` |
 | T-34 | Chrome capture may reject window or display sharing if `getDisplayMedia()` begins only after awaited session creation consumes the Start click's transient user activation. The controller now starts the explicit browser chooser first and has an order regression test; the physical Windows tab/window/display matrix is still required. AL-053 (integrated from `ui/blacksmith-revamp`) separately fixed a second window/display bug: the fingerprint matcher only ever recognized tab shares, since a window or screen frame's toolbar/menu bar/other windows pushed the whole-frame fingerprint past threshold. Both fixes are local-only; the physical Windows matrix is still required for either. | Part 2 + QA | AL-001 capture matrix and real-device demo proof | IN PROGRESS | `apps/extension/src/instructor/captureController.ts`; `captureController.test.ts`; `apps/extension/src/sources/screen/locate.ts` |
+| T-39 | **Remote audio needs a second human reviewer.** Instructor live captions stream microphone audio to Amazon Transcribe (charter A2 exception, off by default, consent text at the control). The charter's human review gate requires a second reviewer for remote media before merge. | Omar Rizwan | Merging `integ/ui-api`'s authoring pipeline (`docs/INTEGRATION_SWOT_20260916.md` §2) | OPEN | `docs/work/decisions/2026-09-16-transcribe-live-captions.md`; `services/ai-gateway/README.md` |
+| T-40 | **AI routes are built but not deployed.** `services/ai-gateway` (Bedrock Ask, Polly speech, Transcribe caption URLs) is in the CDK stack and passes its tests with fakes, but the hackathon credentials had expired, so nothing has been called against real AWS and `VITE_ACCESSLENS_AI_URL` is unset. | Omar Rizwan | Captions, Ask, Polly in the demo | CLOSED | Deployed 2026-09-16 (`AccessLensLiveSession.AiApiUrl`); `smoke-test.ts` all checks passed against the deployed routes (Ask answered with citation in 3.3 s, off-topic and injection declined, Polly mp3, Transcribe returned the spoken words); relay `integration-test.mjs` passed; deployed relay accepts text captions and rejects `caption-invalid` |
+| T-41 | **Browser sign-in needs the OAuth client id.** D12 replaced the shared bearer token with Google ID tokens (API Gateway JWT authorizer); the API accepts the Google Cloud SDK's client as a second audience, so scripts and `make smoke` work with `gcloud auth print-identity-token`, but the panel's Sign in with Google button needs the deployment's own OAuth web client id, which only the Google Cloud account owner can create. | Jacob | Any instructor using the upload panel in a browser | OPEN | Create the client (origins `http://localhost:5173` + viewer URL; redirect `https://<extension-id>.chromiumapp.org/`), set `GOOGLE_CLIENT_ID`, `make deploy`, then sign in from the panel |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. **The second shared-contract review is now done** (`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`): stop-retains-session and restart-resumes-session are confirmed, base-only is confirmed against media/identity/preference but **not** enforced relay-side for asset/region (T-31). The existing endpoint was independently re-probed and still rejects `capture.stopped` as `event-type-not-allowlisted`. `2d04fad` separately prevents an invalid inbound lifecycle event from silently leaving a student marked live (T-33, closed). Deployed-relay update and T-31/T-32 remain before closure. |
 | T-31 | `capture.stopped` is base-only in `LiveEventSchema` and `live-event.schema.json`, but neither `services/live-session/src/rules.ts` nor `reference_event_check.py` enforces that server-side. A `capture.stopped` carrying a real `assetId` and `regionId` is accepted and stored as the session's latest state, while the identical fields on `source.unmatched` are refused as `unmatched-event-names-content:*`. The media/identity/preference half is safe — `frameData`, `studentId`, and `preferences` all bounce off the `KNOWN_FIELDS` allowlist — so this is client-trust hardening, not a demo-blocking defect: the shipped controller's `Emittable` type cannot express it. But `rules.ts`'s own docstring states the principle it misses here, and charter A9 earned the guard for the sibling type. Fixing it is additive in two files plus a parity fixture. Same shape of gap AL-050 closed for `caption`'s field *contents* this session — this one is about `assetId`/`regionId` *pack membership* on `capture.stopped` specifically. | Part 4 + Part 5 | AL-003 deployment claim | OPEN | Verified by running `reference_event_check.check_event` directly; `docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md` |
 | T-32 | `Relay.resume()` and the `$connect` route that reaches it have **no test anywhere** — there is no `handler.test.ts`, and `relay.test.ts` never calls `resume`. This is not a dormant path: `WebSocketSessionClient` reconnects by presenting its stored capability as `$connect?sessionId=…&capability=…`, so every real network blip in the demo goes through untested code, and `resume` is also the only way a fresh connection can recover an **instructor** role. AL-004's bench does not cover it either — its "rejoining student" is a brand-new anonymous `join`, which is the other branch. AL-055 (integrated from `ui/blacksmith-revamp`) works around the specific symptom client-side — a reconnecting student now sends a fresh `join` rather than trusting `resume`'s catch-up, which the deployed relay posts during `$connect` before API Gateway can deliver it — but `resume` itself, and instructor-role reconnect recovery, remain untested. | Part 4 | Reconnect claims, AL-004 evidence | OPEN | `services/live-session/test/` has no handler test; `grep -rn '\.resume(' services/live-session/test` is empty; `webSocketSessionClient.ts` builds the capability query string |
 | T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | CLOSED | Pinned to 1 by the relay, matching Part 5's reference: `sequence: 0` is refused as `sequence-not-a-positive-integer` (`services/live-session/src/rules.ts`, asserted by the parity test). The shared Zod contract still permits 0, so a client can construct one — the relay is what refuses it |
+| T-42 | Part 6 needs two additive fields on the Access Pack asset (`visualization`, `references[]`) and one on the region (`audioUri`), plus a new `ArtifactManifest` contract, in `apps/extension/src/shared/contracts.ts` and `packages/contracts/`. Part 1 owns those files. Additive and optional only; `arScene` untouched; `LiveEvent` unchanged. | Part 1 + Part 6 | Part 6 V0/R0 and everything downstream | OPEN | `docs/VISUALIZATION_SYSTEM.md` §5, §9.5, §4 |
+| T-43 | Part 6 needs `apps/extension/src/shared/packMedia.ts` to resolve `mediaUri` and `audioUri` through a published-pack loader when a pack was published by the authoring pipeline, keeping the bundled path for checked-in packs. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V6 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12 |
+| T-44 | Part 6 needs `apps/extension/src/student/StudentExperience.tsx` to gain a Visualize tab and a "From your course materials" references list in Read mode. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V9, R4 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12, §9.5 |
+| T-45 | Part 6 needs an instructor authoring entry point in `apps/extension/src/shell/App.tsx` and `RoleNav.tsx`. Part 1 owns those files. | Part 1 + Part 6 | Part 6 V5 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §11 |
+| T-35 | Part 6 creates `infra/` because Part 4 (AWS live relay) is unowned. The CDK stack `AccessLensAuthoring` is the authoring plane only; the live relay is not built here. If Part 4 is claimed, the stack is shared and the split is negotiated here. | Part 6 | Part 4 | CLOSED | Resolved 2026-09-16: one CDK app (`infra/bin/accesslens.ts`) with two stacks, `AccessLensLiveSession` (Part 4) and `AccessLensAuthoring` (Part 6); `make deploy`/`make destroy` name the authoring stack only. |
+| T-36 | Part 6's `references[].quote` cap (300 characters, charter-adjacent: a student is never shown more of a professor's textbook than a citation needs) is expressed as `maxLength` in `access-pack.schema.json`, a keyword Part 5's `check_contract_conformance.py` did not implement. Its unsupported-keyword guard did its job and stopped rather than passing quietly. The checker now implements `maxLength`, with mutation tests in `tests/access_pack/test_conformance_maxlength.py`. | Part 5 + Part 6 | Nothing | CLOSED | `packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py`; `tests/access_pack/test_conformance_maxlength.py` (8 tests, mutation plus control); checker exit status unchanged from baseline |
+| T-37 | `docs/VISUALIZATION_SYSTEM.md` calls the slide fingerprint `dhash-v1` throughout (§3, §5, §8 stage 1), but the shared module, Part 5's reviewed pack, and Part 2's matcher all use the identifier `dhash12`. Documents beat code on this project, but implementing the document here would change the algorithm id inside a pack that has already been reviewed and would break recognition for it, so Part 6's ingest reads `FINGERPRINT_ALGORITHM` from the shared module instead of hardcoding either spelling — which is what the spec actually asks for in substance ("the fingerprint comes from the shared screen-source module so packs and the matcher cannot drift"). The spec prose is what should change. | Part 5 + Part 6 | Nothing | OPEN | `apps/extension/src/sources/screen/fingerprint.ts` (`dhash12`); `packs/hnsw/pack.draft.json`; `docs/VISUALIZATION_SYSTEM.md` §3 |
+| T-38 | Two branches each wrote a relay entry numbered RL-025: `workstream/6-authoring` (Part 6 claim, this branch) and `origin/accesslens-extension-ar-pivot` (cross-cutting, which continues through RL-028 and carries the IBM Plex interface rebuild, the Part 4 relay wiring, and T-28/T-29). Neither branch has a PR open. Whichever merges second must renumber, and `relay_check.py` will refuse a duplicate id. | Part 6 + cross-cutting | The merge of either branch into the other | CLOSED | Resolved 2026-09-16 by the master merge: Part 6 renumbered to RL-036/037 and T-31..T-38. |
 
 ---
 
@@ -1280,3 +1292,341 @@ a source of truth over this file.
 **Next agent needs to know:** read `docs/INTEGRATION_SWOT_20260916.md` §6 for
 the actual priority order before picking up new work. The three P0 items
 are all one team decision or one available person away, not more code.
+### RL-057 — 2026-09-16 — Part 3 — Prachi
+
+**Landed:** direct master-branch follow-up for the student experience. Added a
+student-local Dyslexic-friendly reading tab with an explicit style toggle and
+keyboard-reachable semantics. Hardened instructor capture so
+`getDisplayMedia()` is invoked before awaited session creation, preserving the
+browser's transient user activation for tab, window, and full-screen sharing;
+the captured stream now waits for metadata before playback and keeps the chooser
+source unconstrained. Added `docs/NEXT_STEPS.md` with the staged Canvas/RAG,
+quality, Bedrock-agent, privacy-preserving session context, and asynchronous
+review plans; camera and AWS remain explicit follow-ups.
+
+**Checks:** typecheck and targeted capture/student/renderer tests pass. Full test
+execution still has the repository's Windows `python3` launcher and generated
+pack line-ending issues to resolve separately; no model or camera behavior was
+claimed by this slice.
+
+**Threads touched:** none.
+
+**Next agent needs to know:** the local preview should be run from `master` after
+`npm ci`. The two teammate documentation edits are intentionally kept in the
+stash while product work proceeds directly on `master`.
+### RL-058 — 2026-09-16 — Part 1 — Codex
+
+**Landed:** added `docs/ADVANCED_FEATURES.md`, defining a non-recording Review
+Mode built from approved documents and semantic lesson summaries; live focus,
+repeat, captions, and bookmarks; private accessibility-safe quests; and a future
+instructor/shared-device camera source for non-screen-shareable labs. The document
+includes an organic-chemistry gesture-to-semantic-event example and explicitly
+keeps camera input feeding Focus, Read, Hear, Dyslexic, and AR rather than adding
+a camera-only student mode.
+
+**Next agent needs to know:** these are future features, not current MVP claims.
+Review Mode must not replay a professor or require raw recordings. Camera work
+needs mentor/accessibility validation, explicit consent, local processing where
+practical, and a manual camera-free fallback.
+
+**Threads touched:** none.
+
+### RL-059 — 2026-09-15 — Part 6 — Jacob
+
+**Landed:** `workstream/6-authoring` branched from `workstream/2-pack-driven-rendering`.
+Claims Part 6, the authoring pipeline and visualization system specified in
+`docs/VISUALIZATION_SYSTEM.md`: one instructor upload produces one draft Access
+Pack (slide PNGs, fingerprints, regions, descriptions, Polly audio, an
+interactive visualization where one fits, and citations into the professor's
+own course library), the instructor reviews and publishes, and the student
+modes render from the published pack. The pipeline is an HTTP API first;
+the extension is its first client. Adds `infra/` (CDK stack
+`AccessLensAuthoring`), `services/`, `apps/viewer/`, `scripts/catalog/`, and
+`docs/prompts/viz/`. AR is out of scope for this pipeline and `arScene` is
+never written by it.
+**Threads touched:** T-42, T-43, T-44, T-45, T-35 opened — the four cross-part
+edits Part 6 needs (Part 1 contracts, Part 3 `packMedia.ts` and
+`StudentExperience.tsx`, Part 1 shell entry point) and Part 6's creation of
+`infra/` in Part 4's absence. Nothing closed.
+**Next agent needs to know:** the pack contract changes are strictly additive
+and optional (`visualization` and `references[]` per asset, `audioUri` per
+region, plus a new standalone `ArtifactManifest` contract). `LiveEventSchema`
+gains no types; `asset.changed` and `region.changed` already carry everything
+the Visualize mode needs. Part 5's `check_contract_conformance.py` is kept
+passing in the same commit as every schema change.
+
+### RL-060 — 2026-09-16 — Part 6 — Jacob
+
+**Landed:** the authoring API is a working product on AWS. Stack
+`AccessLensAuthoring` (`us-east-1`): API Gateway + bearer token, S3 decks /
+packs / catalog / artifacts, DynamoDB jobs, CloudFront serving packs, media
+and the viewer sandbox, and a Step Functions Standard workflow
+(`services/publish/workflow.ts`) over an ingest container (LibreOffice +
+Poppler), the deck analyst, the pack author and Polly audio, five slides at
+a time. Seven real jobs were run; the last (`9ec32fb5-918f-49f0-ad9f-30b7db5eff85`)
+went upload → `review` in 42 s, was reviewed and published through the API,
+and its execution ended `SUCCEEDED` at 77 s. Pack `hnsw-explainer` versions 1
+and 2 are on CloudFront with every slide image and audio file answering 200,
+and the extension's student view renders version 2 through the Part 2
+renderers (`apps/extension/src/shell/App.published.test.tsx`, run live).
+Model-behaviour evals on Bedrock: pack author 8/8 tuned and 7/7 held-out;
+planner chooses `none` on title slides and `retrieve` elsewhere. Local
+gates: `make check` green.
+**Fixed on the way, each by a real invocation, not a guess:** ingest bundle
+had to be CommonJS (V3); the Map died on an absent `instructorHint` (V4);
+pack author, audio and publish Lambdas built no default AWS client (V3/V4);
+the workflow never wrote slides onto the job record so review rejected every
+asset (V4/V5); and two publishers (the route and a workflow stage) could
+have written a second version from a poll race, now one publisher, the
+route, with `PutObject` only under `packs/`, `media/`, `artifacts/` (D10).
+**Not deployed:** the visualization branch (planner, route, adapter,
+generator, critic, harness) — implemented, unit- and eval-tested, wired
+conditionally in the workflow, held back because the catalog it retrieves
+from is one template stamped 150 times (D6) and the harness Lambda's
+Chromium image is unbuilt. Every slide reports `visualizationStatus:
+"no-visual"`, the spec's designed absence.
+**Threads touched:** T-42, T-43, T-45 exercised (contracts additive, remote
+pack loader in `packMedia.ts` under D7, no shell entry point built since the
+product is API-only under D2). T-35 escalated to D9: `origin/master` now
+carries Part 4's own `infra/` CDK app and the IBM Plex interface rebuild
+(merged directly, no PR). The user decided D9 and this branch merged
+master: one CDK app (`infra/bin/accesslens.ts`) now carries both the Part 4
+`AccessLensLiveSession` stack and Part 6's `AccessLensAuthoring`; Part 6's
+threads were renumbered from T-25..T-32 to T-31..T-38 and its log entries
+from RL-025/026 to RL-036/037 because master used those ids for other
+threads. T-35 (Part 6 owning `infra/`) and T-38 (the RL-025 collision) are
+closed by that merge. PR #12 also claims T-31..T-33 and must renumber when
+it lands after this. D5 and D6 still await the user.
+**2026-09-16 update, integrating onto `codex/demo-proof-sprint-qa`:** hit the
+same collision a second time -- this branch's own T-31..T-38 and RL-034..043
+were already taken by unrelated `codex/demo-proof-sprint-qa` threads/entries.
+Renumbered again on the way in: threads to T-42..T-45 (see the register in
+section 3) and log entries RL-034..043 to RL-057..066 below. T-17/T-24/T-38
+already named this exact failure mode; a third collision on the next
+cross-branch merge should not be a surprise.
+**Next agent needs to know:** `docs/VIZ_HANDOFF.md` is the runbook for
+picking this up; `docs/DEPLOY.md` §5 has the measured timings; every user
+decision is in `docs/VIZ_DECISIONS.md`. The stack is `RemovalPolicy.DESTROY`
+throughout and `make destroy` removes it (the authoring stack only; the
+live-session stack is Part 4's to destroy).
+
+### RL-061 — 2026-09-16 — Part 1 + Part 3 — Omar Rizwan
+
+**Landed:** the extension UI now follows Blacksmith's site layout, not just its
+tokens: yellow masthead with a pixel wordmark (`shell/Wordmark.tsx`, drawn from a
+5x5 bitmap, not their logo), `/ LABEL ■` section rules, pill buttons, window cards
+with hard shadows, bento mode tabs, halftone fields. `shell/ThemeToggle.tsx` adds a
+light/dark switch that pins `<html data-theme>`; dark-only values are now tokens.
+WCAG AA text contrast measured in a real browser: zero failures in both themes.
+No button text, id, or role that tests query changed; `make check` green.
+**Threads touched:** none opened or closed. T-25 note: `VITE_ACCESSLENS_WS_URL` in
+a local `.env.local` is enough to put the dev server on the deployed relay
+(integration test 12/12 on 2026-09-16); committed `dist/` is still built without it.
+**Next agent needs to know:** the HNSW draft pack's slides 04 and 05 are 16 bits
+apart, under the 2x-margin (28) rule `validate_pack.py` enforces for the bio pack,
+so it would show Unmatched between those two on a real capture. Demo on the bio pack.
+
+### RL-062 — 2026-09-16 — Part 2 + Part 1 — Omar Rizwan
+
+**Landed:** window and whole-screen shares now sync. Reproduced first: on the
+reviewed pack the whole-frame fingerprint of a slide in a viewer window was 31
+bits from itself and a slide in half a screen 47-55, against a threshold of 26,
+so only tab shares ever matched. `sources/screen/locate.ts` searches window and
+screen frames for the slide rectangle when the browser reports those surfaces;
+tabs keep the old path. Measured on synthesized frames: reviewed pack 25/25,
+0 false matches in 117 non-slide frames (guards in the screen README). The host
+now caps sampling at 1280 px wide, excludes AccessLens's own tab from the
+chooser, offers "share this tab instead", and reports the surface, which the
+instructor banner names with a fix-it hint on Unmatched. Also a header switch
+for dyslexia-friendly text (bundled OpenDyslexic, sentence case, wider line
+spacing), stored in localStorage only — the font half of AL-010.
+**Threads touched:** T-25 and AL-001/AL-002 still OPEN: none of this has run
+against a real `getDisplayMedia()` window or screen; the unit tests use
+composed frames.
+**Next agent needs to know:** the synthetic test pack's slides are simple enough
+to be found inside `unknown-01` in a window share, so window-share tests use the
+reviewed pack. The HNSW draft misses 9/40 located cases (pale slides, 04/05
+near-duplicates). Run the AL-001 matrix with Window and Entire Screen before
+claiming this in the demo.
+
+### RL-063 — 2026-09-16 — Part 4 + Part 1 + Part 3 — Omar Rizwan
+
+**Landed:** AWS models in the live product. `services/ai-gateway` (new package,
+deployed by the existing CDK stack as an HTTP API beside the relay) verifies the
+relay's HMAC capabilities and serves: `/ask`, grounded answers from reviewed
+packs only via Claude Sonnet 4.6 on Bedrock (BM25 retrieval, forced strict tool,
+citations checked after the call, declines instead of guessing, nothing logged);
+`/speak`, reviewed region text through Polly (never free text); and
+`/transcribe-url`, instructor-only presigned Transcribe streaming URLs. The
+extension gains instructor live captions with voice-driven region sync
+(`sources/voice/`, `instructor/LiveCaptions.tsx`), student captions, "Ask this
+class", and Polly in Hear mode. T-16 closed: `caption.appended` carries text.
+`make check` green (extension 328, relay 53, gateway 19).
+**Threads touched:** T-16 closed; T-39 opened (remote audio needs a second
+reviewer); T-40 opened (built, not deployed: credentials expired).
+**Next agent needs to know:** Bedrock, Polly and Transcribe have only been
+exercised with fakes and a mocked browser run. Refresh credentials, build both
+services, `cdk deploy`, set `VITE_ACCESSLENS_AI_URL`, then run the smoke test,
+which streams Polly speech through Transcribe with the extension's own framing.
+Chrome does not show a microphone prompt in the side panel; captions must be
+started from "Open in a full tab".
+
+### RL-064 — 2026-09-16 — Part 4 + Part 1 — Omar Rizwan
+
+**Landed:** the AI routes and the caption-carrying relay are deployed to the
+hackathon account (`cdk deploy AccessLensLiveSession`, added only the AI API,
+Lambda, role, and log group; relay code updated in place). Verified against real
+AWS: `services/ai-gateway/scripts/smoke-test.ts` and the relay
+`integration-test.mjs` both pass, and the deployed relay delivers a text
+`caption.appended` to a student while refusing one carrying audio.
+`services/ai-gateway/scripts/local-server.ts` runs the Lambda's handler on
+127.0.0.1 for testing before a deploy. Build fix: Vite inlined the caption audio
+worklet as a `data:` URL, which the extension CSP blocks (confirmed in Chromium
+with the unpacked extension), so `vite.config.ts` now never inlines
+`*.worklet.js`, and the extension-assets plugin honours `--outDir`.
+**Threads touched:** T-40 closed; T-39 still open (second reviewer for remote
+audio before merge).
+**Next agent needs to know:** captions worked on `npx vite` but would have failed
+only inside the installed extension; test voice features from the unpacked
+build, not just the dev server. Build a demo copy with endpoints via
+`npx vite build --outDir .cache/demo-extension` (gitignored) and keep the
+committed `dist/` free of endpoints. Hackathon credentials last a few hours.
+
+### RL-065 — 2026-09-16 — Part 6 + Part 1 — Jacob
+
+**Landed:** the shared authoring bearer token is gone (D12). The HTTP API's
+authorizer is now API Gateway's JWT authorizer against Google
+(`https://accounts.google.com`; audiences: the deployment's OAuth web client
+id from `GOOGLE_CLIENT_ID` plus the Google Cloud SDK's public client so
+`gcloud auth print-identity-token` works for scripts). Every route but health
+then applies `ACCESSLENS_INSTRUCTORS` (emails and `@domains`, deployed as
+`INSTRUCTOR_ALLOWLIST`) in `services/api/identity.ts`: 403
+`not_an_instructor` otherwise, nobody when empty. Jobs carry `ownerSub`; the
+job routes answer 404 for another instructor's job. Deleted: the bearer
+Lambda authorizer, the SSM token custom resource, the `BearerToken` /
+`TokenParameterName` outputs, and the dead copies of the draft/review/publish
+handlers in `operations.ts`. The instructor panel signs in with Google
+(`apps/extension/src/shared/googleSignIn.ts`: `chrome.identity` implicit
+flow inside the extension, Google Identity Services button on a web page),
+keeps the ID token in localStorage until expiry, and drops it on a 401.
+`make deploy` refuses to run without `GOOGLE_CLIENT_ID` and
+`ACCESSLENS_INSTRUCTORS`; `make smoke` and `docs/DEPLOY.md` use
+`gcloud auth print-identity-token`. The OpenAPI contract's security scheme
+now says Google ID token and documents 403.
+
+**Not deployed yet:** the stack change is proven by synth only (JWT
+authorizer on 17/17 routes, allowlist env on the 17 route Lambdas). Deploying
+needs the OAuth client id from Google Cloud console, which only the account
+owner can create; until then the live API still runs the bearer build.
+
+**Next agent needs to know:** the OAuth client needs `http://localhost:5173`
+and the CloudFront viewer URL as authorized JavaScript origins, and
+`https://<extension-id>.chromiumapp.org/` as a redirect URI for the installed
+extension. Old job records have no `ownerSub`, so nobody can read them
+through the API after the deploy; they expire on their own TTL.
+
+**Threads touched:** T-41 opened (Google sign-in built, not deployed: needs
+the OAuth client id). T-39 still open.
+
+### RL-066 — 2026-09-16 — Part 6 + Part 1 — Jacob
+
+**Landed:** two roles and the course library (D13). Students never sign in;
+any verified Google account is an instructor, and `GET /v1/me` creates the
+account record (`instructors` table) on first call, no allowlist (D12's
+allowlist is deleted). Spec section 9 is wired for real: the seven profile,
+document and search routes answer instead of 501, each scoped to the
+owning instructor; `services/library/src/handler.ts` is the indexer (rides
+in the ingest image, `library.handler`; Poppler, LibreOffice for PPTX and
+DOCX, Titan v2, S3 Vectors, page-one verification); `retrieveHandler.ts`
+is the retrieval Lambda the workflow calls before the analyst (three deck
+windows, k 8) and before each slide's pack author (k 4) when the job names
+a profile. Stack: `AWS::S3Vectors::VectorBucket`, `Instructors` table,
+`Profiles` with `ownerSub-index`, `LibraryDocuments` keyed by `docId` with
+`profileId-index` (replaces the old profileId/docId table), per-route
+grants; `make destroy` deletes vector indexes first. Panel: course library
+(create course, add and remove materials, watch indexing) and a course
+picker on the deck form. `make check` green (658 tests).
+
+**Proven live (deploy 2026-09-16, placeholder client id, gcloud ID
+token):** `GET /v1/me` without a token 401; with one, created the
+instructor record. `POST /v1/profiles` created `72b989fa…` with its own
+vector index. `lec05-slides.pdf` (30 pages) registered and `ready` in about
+10 s; search "minimax search over a game tree with an adversary" returned
+page 12 (0.718), 16 (0.508), 18 (0.461) with verbatim text. Job `618f2ac0`
+against that profile: the execution shows `RetrieveForDeck` once and
+`RetrieveForSlide` eight times, the draft has zero references, which is
+right (an HNSW deck against an adversarial-search lecture clears nothing).
+With the HNSW deck registered as "last year's slides" (8 pages, ready in
+5 s), job `9bb663c0` produced six of eight assets with page-cited verbatim
+quotes. First deploy failed verify with `s3vectors:GetVectors` missing
+(QueryVectors with metadata needs it); granted and redeployed.
+
+**Threads touched:** T-41 narrowed (API usable with gcloud tokens; only
+the browser button waits on the client id). T-39 still open.
+
+**Next agent needs to know:** the indexer bundles from the ingest
+Dockerfile, so a change there rebuilds both images (same asset, one build).
+The documents table changed its key schema, which CloudFormation does by
+replacement: a deploy over the bearer build drops the old (empty)
+`Documents` table. A deck job always sends `profileId` (null when none);
+the retrieval Choice states depend on that field being present.
+
+### RL-067 — 2026-09-16 — cross-cutting — Claude (integrated from `origin/integ/ui-api` and `origin/ui/blacksmith-revamp`, at Anurup's explicit direction)
+
+**Landed:** merged `integ/ui-api` (111 commits: the Part 6 authoring/RAG
+pipeline, Google sign-in, course library, artifact viewer, catalog, the AI
+gateway) onto this branch in full, plus `ui/blacksmith-revamp`'s Whisper-on-
+SageMaker captioning path (the one piece of its own AI gateway not already
+covered by integ's). This is the model-invocation, Canvas/course-content-
+adjacent, and remote-audio work `docs/INTEGRATION_SWOT_20260916.md` §2
+explicitly flagged as needing institutional approval before merging, done
+here anyway because the repository owner directed it, in chat, after being
+told exactly that. Recorded so it is not mistaken for a team decision: no
+team conversation happened, and `docs/TEAM_ALIGNMENT_CHECK.md`'s open items
+are unaffected.
+
+Conflict resolution kept both branches' functionality rather than picking a
+winner: `caption.appended` now accepts an optional `assetId` and a 500-char
+cap (widening 280/required-assetId), `AudioView` supports both the
+student-selected `speechRate` fallback and the Polly/`speak` gateway path,
+`captureController` keeps `sendCaption` (manual) and gained `caption`/
+`getCapability` (streaming), and `App.tsx`/`StudentExperience.tsx` carry
+both branches' UI (camera control, review surface, and captions-preference
+toggle alongside authoring panel, sign-in, and the Visualize/Dyslexic tabs).
+Two duplications were found and left unresolved rather than decided
+unilaterally: `StudentExperience` now renders **both** the toggleable
+caption track and `LiveCaptionsView` (independently built, still separate);
+blacksmith's own AI gateway was skipped entirely as redundant with integ's
+(same routes, same design) except for Whisper, which integ's did not have.
+
+Fixed the "Dyslexic" tab landing from `integ/ui-api` on the way in — the
+same AGENTS.md violation `docs/INTEGRATION_SWOT_20260916.md` §3 flagged for
+`master` and `ui/blacksmith-revamp` — by renaming the visible label and copy
+to "Reading spacing" (mode id and file name left as `dyslexic`/
+`DyslexicTextView`, internal only, not shown to a student).
+
+Renumbered a second `docs/CONTEXT_RELAY.md` collision (T-17/T-24/T-38's own
+failure mode, hit again): integ's own T-31..T-34 and RL-034..043 already
+collided with this branch's unrelated threads/entries of the same numbers.
+Threads renumbered to T-42..T-45; log entries to RL-057..066.
+
+`make check` is green except `services/ingest`'s PPTX acceptance test,
+which needs a `soffice` (LibreOffice) binary this machine does not have —
+an environment gap, not a regression; typecheck, build, and every other
+test (758) pass. `infra` typechecks with the new `AccessLensWhisper` stack
+wired in (`infra/bin/accesslens.ts`); not deployed.
+
+**Threads touched:** T-39, T-40, T-41 (integ's own, renumbering not
+needed — no collision), T-42, T-43, T-44, T-45 opened (was integ's own
+T-31..34). No existing thread closed.
+
+**Next agent needs to know:** this is a QA/integration checkpoint, not a
+merge to `master` and not a team sign-off on Bedrock/Canvas/remote-audio
+capability. Before anything here reaches a demo or `master`: (1) the team
+needs the §2/§3 conversation `docs/INTEGRATION_SWOT_20260916.md` recommended
+as P0 — it is now more urgent, not less, since the capability is one branch
+closer to shipping; (2) T-39 (remote-audio second reviewer) is still open;
+(3) the caption-UI duplication (toggleable track + `LiveCaptionsView`) needs
+an actual product decision, not two widgets left running side by side;
+(4) `AccessLensWhisper` is unreviewed, undeployed CDK — do not `cdk deploy`
+it without the same review any other AWS spend would get.

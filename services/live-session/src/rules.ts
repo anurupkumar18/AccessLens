@@ -47,13 +47,16 @@ export const REQUIRED_FIELDS = [
   'sentAt',
 ] as const;
 
+/** Mirrors CAPTION_MAX_LENGTH in reference_event_check.py and the Zod contract. */
+export const CAPTION_MAX_LENGTH = 500;
+
 /**
  * Mirrors KNOWN_FIELDS in reference_event_check.py, `caption` included.
  *
- * T-16 closed: `caption.appended` now carries `assetId` and a
- * `caption: {text, isFinal}` object in the shared Zod/JSON Schema contract.
- * This flat allowlist did not need a code change for that -- it already
- * accepted `caption` by name in anticipation, same as Part 5's reference.
+ * `caption` carries an instructor-authored or streamed caption on
+ * `caption.appended` (T-16, closed): `{text, isFinal}` and nothing else,
+ * `assetId` when there is a current match, checked below with the same rule
+ * names as the Python reference.
  *
  * Anything *not* in this set is refused by name. That is what makes
  * `frameData`, `studentId`, and `masteryEstimate` bounce: not a blocklist of
@@ -209,14 +212,17 @@ export function checkEvent(
   // non-conforming client cannot bypass. Charter A2/A9: never forward an
   // unbounded or malformed value to every student in the session.
   const caption = event.caption as Record<string, unknown> | undefined | null;
-  if (caption !== undefined && caption !== null) {
+  if (type !== 'caption.appended') {
+    if (caption !== undefined && caption !== null) broken.push('caption-on-wrong-event-type');
+  } else if (caption !== undefined && caption !== null) {
     if (typeof caption !== 'object' || Array.isArray(caption)) {
       broken.push('caption-not-an-object');
     } else {
       const text = caption.text;
       if (typeof text !== 'string' || text.length < 1) broken.push('caption-text-missing');
-      else if (text.length > 280) broken.push('caption-text-too-long');
+      else if (text.length > CAPTION_MAX_LENGTH) broken.push('caption-text-too-long');
       if (typeof caption.isFinal !== 'boolean') broken.push('caption-isfinal-not-boolean');
+      if (Object.keys(caption).some(key => key !== 'text' && key !== 'isFinal')) broken.push('caption-invalid');
     }
   }
 

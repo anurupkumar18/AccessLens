@@ -1,0 +1,22 @@
+{
+  "fixture": "caption-with-audio-payload",
+  "mustBeRejected": true,
+  "lastDeliveredSequence": 3,
+  "expectedRule": "caption-invalid",
+  "reason": "A caption smuggling the instructor's recorded audio. Captions are text only; the microphone stream never travels on the live contract (charter A2).",
+  "event": {
+    "schemaVersion": "1.0",
+    "type": "caption.appended",
+    "sessionId": "sess-demo-0001",
+    "packId": "bio-cell-demo",
+    "packVersion": 1,
+    "assetId": "cell-slide-03",
+    "caption": {
+      "text": "The mitochondrion releases usable energy.",
+      "isFinal": true,
+      "audio": "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA="
+    },
+    "sequence": 4,
+    "sentAt": "2026-09-15T15:00:24Z"
+  }
+}

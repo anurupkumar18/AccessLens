@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "1.0",
+  "passed": true,
+  "reports": [
+    {
+      "artifactId": "anatomy-hotspot",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "binary-search-visualizer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "binary-tree-traversal",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "bubble-sort-visualizer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "cell-structure-hotspot",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "derivative-plotter",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "finite-state-machine",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "geologic-time-timeline",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "heart-circulation-diagram",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "historical-timeline",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "logic-gate-explorer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "map-overlay-explorer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "market-shift-explorer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "merge-sort-visualizer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "molecular-structure-diagram",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "nearest-neighbor-graph-stepper",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "network-flow-explorer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "normal-distribution-explorer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "pendulum-simulation",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "periodic-table-explorer",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "plate-tectonics-map",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "production-possibility-curve",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "projectile-motion-simulation",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "quadratic-function-plotter",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "reaction-energy-diagram",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "sampling-distribution-simulator",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "series-circuit-diagram",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "sine-function-plotter",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "supply-demand-curves",
+      "artifactVersion": 1,
+      "passed": true
+    },
+    {
+      "artifactId": "wave-interference-simulation",
+      "artifactVersion": 1,
+      "passed": true
+    }
+  ]
+}

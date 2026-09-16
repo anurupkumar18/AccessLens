@@ -12,7 +12,8 @@ export type LiveStatus =
 
 /** Instructor speech, never a pack description or raw audio (charter A2). */
 export interface StudentCaption {
-  assetId: string;
+  /** The slide it was spoken over, when there is a current match. */
+  assetId?: string;
   text: string;
   isFinal: boolean;
 }

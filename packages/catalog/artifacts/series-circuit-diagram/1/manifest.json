@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "series-circuit-diagram",
+  "artifactVersion": 1,
+  "title": "Series circuit diagram",
+  "summary": "Trace current through a series circuit and inspect the role of each resistor.",
+  "subjects": [
+    "electrical-engineering",
+    "physics"
+  ],
+  "tags": [
+    "circuit",
+    "resistor",
+    "electricity",
+    "diagram"
+  ],
+  "interaction": "diagram",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Trace current through a series circuit and inspect the role of each resistor.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

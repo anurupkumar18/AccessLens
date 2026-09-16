@@ -73,6 +73,8 @@ Root-level `.strict()` rejects four blocks.
 
 ## 3. `caption.appended` cannot carry a caption — **Closed** (2026-09-16, AL-047/T-16)
 
+Closed in the suggested shape: `caption.appended` now carries `caption: {text, isFinal}` (text at most 500 characters) and may name its `assetId` when there is a current match. Both captions fixture events validate, the gaps below no longer occur, and the relay and Python reference share the same `caption-*` rule names. Kept below as history.
+
 Was base-only in the discriminated union, so neither the caption text nor the
 asset it belongs to could be sent.
 

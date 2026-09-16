@@ -51,15 +51,15 @@ const scenarios: Fixture[] = readdirSync(FIXTURES)
  * Events the shared contract rejects today, and why. Not a workaround -- kept
  * as an explicit allowlist so a new gap cannot appear silently. T-16 (the
  * `caption.appended` payload) closed on 2026-09-16: `caption.appended` now
- * carries `assetId` and `caption: {text, isFinal}`, so every fixture event is
- * expected to validate.
+ * carries `caption: {text, isFinal}` and an `assetId` when there is a current
+ * match, so every fixture event is expected to validate.
  */
 const KNOWN_REJECTED = new Set<string>([]);
 
 const key = (scenario: string, event: Record<string, unknown>) => `${scenario}#${event.sequence}`;
 
 describe('fixture replay through InMemorySessionClient', () => {
-  it('accepts every event in the fixtures', () => {
+  it('accepts every event in every reviewed scenario', () => {
     const rejected = new Set<string>();
     for (const fixture of scenarios) {
       for (const event of fixture.events) {

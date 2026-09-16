@@ -42,13 +42,17 @@ const SESSION = 'sess-demo-0001';
 /** Events posted to each connection, so a test can assert who saw what. */
 type Inbox = Map<string, Record<string, unknown>[]>;
 
-function harness() {
+/** A pack the relay does not ship: same slides, different id and version, as if the pipeline published it. */
+const publishedPack = indexPack({ ...JSON.parse(readFileSync(join(packDir, 'pack.json'), 'utf8')), packId: 'published-pack', version: 3 });
+
+function harness(resolvePack?: (packId: string, version: number) => Promise<ReturnType<typeof indexPack> | undefined>) {
   const store = new MemorySessionStore();
   const inbox: Inbox = new Map();
   const gone = new Set<string>();
   const relay = new Relay({
     store,
     pack,
+    resolvePack,
     secret: SECRET,
     post: async (connectionId, payload) => {
       if (gone.has(connectionId)) return false;
@@ -87,6 +91,35 @@ describe('relay', () => {
     expect(sequences('student-1')).toEqual(happy.map(e => e.sequence));
     expect(sequences('student-2')).toEqual(happy.map(e => e.sequence));
     expect(h.inbox.get('instructor-1')).toBeUndefined();
+  });
+
+  it('relays a session teaching a published pack it does not ship, and pins the session to it', async () => {
+    const asked: string[] = [];
+    h = harness(async (packId, version) => { asked.push(`${packId}@${version}`); return packId === 'published-pack' && version === 3 ? publishedPack : undefined; });
+    await h.relay.create('instructor-1', SESSION);
+    await h.relay.join('student-1', SESSION, 'student');
+    const published: Record<string, unknown>[] = happy.map(e => ({ ...e, packId: 'published-pack', packVersion: 3 }));
+
+    for (const event of published) {
+      expect(await h.relay.publish('instructor-1', event), String(event.sequence)).toMatchObject({ status: 'ok' });
+    }
+    expect((h.inbox.get('student-1') ?? []).map(e => e.sequence)).toEqual(happy.map(e => e.sequence));
+    expect(asked).toEqual(['published-pack@3']);
+    expect(h.store.sessions.get(SESSION)).toMatchObject({ packId: 'published-pack', packVersion: 3 });
+
+    // Once pinned, the shipped pack is a different lesson and is refused.
+    const stale = { ...happy[0]!, sequence: 999 };
+    const refused = await h.relay.publish('instructor-1', stale);
+    expect(refused.status).toBe('rejected');
+    expect((refused as { rules: string[] }).rules).toEqual(expect.arrayContaining(['pack-id-mismatch', 'pack-version-mismatch']));
+  });
+
+  it('refuses events for a pack it cannot resolve', async () => {
+    h = harness(async () => undefined);
+    await h.relay.create('instructor-1', SESSION);
+    const outcome = await h.relay.publish('instructor-1', { ...happy[0]!, packId: 'nobody-published-this', packVersion: 1 });
+    expect(outcome).toEqual({ status: 'rejected', rules: ['pack-not-found'] });
+    expect(h.store.sessions.get(SESSION)).toMatchObject({ packId: '' });
   });
 
   it('refuses a student publisher', async () => {

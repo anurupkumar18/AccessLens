@@ -72,8 +72,19 @@ function build(endpoint: string): { relay: Relay; post: Post } {
     }
   };
 
+  // Packs the authoring pipeline published live at packs/<id>/<version>.json
+  // under the asset distribution; the relay reads them the way students do.
+  const packBase = process.env.PACK_BASE_URL?.replace(/\/+$/u, '');
+  const resolvePack = packBase
+    ? async (packId: string, version: number): Promise<PackIndex | undefined> => {
+        const response = await fetch(`${packBase}/packs/${encodeURIComponent(packId)}/${version}.json`);
+        if (!response.ok) return undefined;
+        return indexPack((await response.json()) as Parameters<typeof indexPack>[0]);
+      }
+    : undefined;
+
   cached = {
-    relay: new Relay({ store, pack, secret: required('CAPABILITY_SECRET'), post }),
+    relay: new Relay({ store, pack, resolvePack, secret: required('CAPABILITY_SECRET'), post }),
     pack,
     post,
   };

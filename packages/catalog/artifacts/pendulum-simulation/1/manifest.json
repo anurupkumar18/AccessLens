@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "pendulum-simulation",
+  "artifactVersion": 1,
+  "title": "Pendulum simulation",
+  "summary": "Adjust pendulum length and release angle to observe periodic motion over time.",
+  "subjects": [
+    "physics",
+    "mechanics"
+  ],
+  "tags": [
+    "physics",
+    "pendulum",
+    "oscillation",
+    "simulation"
+  ],
+  "interaction": "simulation",
+  "provenance": {
+    "kind": "catalog",
+    "sourceUrl": "https://github.com/anurupkumar18/Mind-Machine",
+    "license": "CC0-1.0"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 20
+      }
+    }
+  },
+  "defaultParameters": {
+    "step": 0
+  },
+  "libraries": [],
+  "accessibility": {
+    "description": "Adjust pendulum length and release angle to observe periodic motion over time.",
+    "keyboard": "Right arrow or Space advances; Left arrow goes back; Tab reaches each node.",
+    "semanticOutline": [
+      "Visual diagram",
+      "Current selection",
+      "Step readout"
+    ]
+  },
+  "render": {
+    "entry": "index.html",
+    "minWidth": 480,
+    "minHeight": 320
+  }
+}

@@ -53,29 +53,38 @@ describe('AccessLens contracts',()=>{
       }
     );
 
+    it('caption.appended carries caption text only, capped, and optionally the slide it was spoken over (T-16)', () => {
+      const caption = { text:'The mitochondrion releases usable energy.', isFinal:false };
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption}).success).toBe(true);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption}).success).toBe(true);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended'}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{ text:'', isFinal:true }}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{ text:'x'.repeat(501), isFinal:true }}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{ text:'x', isFinal:true, audio:'UklGR' }}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption, regionId:'mitochondrion'}).success).toBe(false);
+    });
+
     it('rejects source.unmatched carrying a regionId or pointer, never inventing a match', () => {
       expect(LiveEventSchema.safeParse({...base, type:'source.unmatched', regionId:'mitochondrion'}).success).toBe(false);
       expect(LiveEventSchema.safeParse({...base, type:'source.unmatched', pointer:{x:.1,y:.1}}).success).toBe(false);
     });
 
-    it('accepts caption.appended scoped to an assetId with a bounded instructor-authored caption', () => {
-      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'Backside attack on the electrophile.', isFinal:true}}).success).toBe(true);
+    it('accepts caption.appended with caption text, with or without the slide it was spoken over', () => {
+      const cap = {text:'Backside attack on the electrophile.', isFinal:true};
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:cap}).success).toBe(true);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:cap}).success).toBe(true);
     });
 
     it('rejects caption.appended missing a caption, never a silent empty caption', () => {
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03'}).success).toBe(false);
     });
 
-    it('rejects caption.appended missing an assetId', () => {
-      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{text:'x', isFinal:true}}).success).toBe(false);
-    });
-
     it('rejects caption.appended carrying a pointer or arState', () => {
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x', isFinal:true}, pointer:{x:.1,y:.1}}).success).toBe(false);
     });
 
-    it('rejects a caption text over 280 characters', () => {
-      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(281), isFinal:true}}).success).toBe(false);
+    it('rejects a caption text over 500 characters', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(501), isFinal:true}}).success).toBe(false);
     });
 
     it('rejects a non-caption type carrying a caption field', () => {

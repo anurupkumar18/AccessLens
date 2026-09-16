@@ -1,0 +1,28 @@
+{
+  "name": "@accesslens/ai-gateway",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AccessLens AWS model gateway: grounded Ask-this-class answers (Bedrock), reviewed-text speech (Polly), and live-caption stream authorization (Transcribe).",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "esbuild src/handler.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.mjs --external:@aws-sdk/* --loader:.json=json --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.33.6",
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/client-polly": "^3.1133.0",
+    "@aws-sdk/client-sagemaker-runtime": "^3.1133.0",
+    "@aws-sdk/credential-provider-node": "^3.972.83",
+    "@smithy/protocol-http": "^5.6.2",
+    "@smithy/signature-v4": "^5.7.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.3",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  }
+}
