@@ -71,9 +71,11 @@ the failure fallback is recorded and honest about which side is simulated.
 
 ## 3. Integrate camera input for embodied and accessible learning (later phase)
 
-**Goal:** let students use a camera as an additional source of interaction for
-AR, object/gesture activities, demonstrations, and real-world examples while
-preserving a camera-free path for every activity.
+**Goal:** let students use a camera as an additional real-time source when the
+lesson cannot be screen-shared—such as a lab experiment, physical model,
+handwritten work, or classroom demonstration. Camera input feeds the same
+Focus, Read, Hear, Dyslexic, and AR experiences; it is not a separate
+camera-only mode.
 
 **Plan:**
 
@@ -84,7 +86,9 @@ preserving a camera-free path for every activity.
   needed by the active activity (for example, `object-selected`, `gesture-done`,
   or `diagram-aligned`).
 - Feed those semantic events into the same real-time event contract used by
-  screen capture so Focus, Read, Hear, Dyslexic, and AR stay synchronized.
+  screen capture so Focus, Read, Hear, Dyslexic, and AR stay synchronized. For
+  example, a camera-observed lab step can produce readable text, spoken audio,
+  focus guidance, dyslexic-friendly text, and an AR overlay from one event.
 - Support AR anchoring and spatial overlays from camera input, with equivalent
   text, keyboard, voice, and reduced-movement alternatives when a camera or
   precise movement is unavailable.
@@ -103,7 +107,19 @@ network inspection shows no continuous video upload; every camera-derived event
 has an explicit confidence/fallback state; privacy copy and permission controls
 are visible and tested.
 
-## 4. Connect AWS models and Bedrock agents (placeholder)
+## 4. Validate the problem and design with mentors
+
+**Goal:** confirm that the workflow solves a real access barrier before adding
+more features.
+
+- Show the live screen-share and camera-for-labs concept to hackathon mentors,
+  instructors, accessibility staff, and students.
+- Ask which lessons cannot be screen-shared, which accommodations are missing,
+  and whether the camera-free alternatives are genuinely usable.
+- Record the top workflow changes, choose one camera-based lab scenario, and
+  update the demo acceptance criteria before implementation.
+
+## 5. Connect AWS models and Bedrock agents (placeholder)
 
 **Goal:** add model-backed capabilities such as approved descriptions, voice,
 translation, and course-grounded explanations without putting an LLM in the live
@@ -135,7 +151,7 @@ interface BedrockAgentGateway {
   model output has provenance and review state; no student identity, preference,
   raw frame, or private conversation is sent to Bedrock by default.
 
-## 5. Record useful context from each session
+## 6. Record useful context from each session
 
 **Goal:** improve AccessLens over time without building a student surveillance
 database.
@@ -160,7 +176,7 @@ database.
   records; no names, IDs, emails, diagnoses, grades, raw media, or private chats are
   present in the export; the privacy statement and retention period are visible.
 
-## 6. Add an asynchronous student view
+## 7. Add an asynchronous student view
 
 **Goal:** support students who review the lesson later, not only students attending
   the live session.
@@ -190,5 +206,6 @@ database.
 4. Complete Canvas approval and the read-only CourseMaterialProvider adapter.
 5. Add opt-in anonymous research export with privacy review.
 6. Build Review mode after the live demo is stable.
-7. Implement the camera integration only after the live pipeline is reliable,
-   beginning with one AR/object-interaction activity and its camera-free fallback.
+7. Gather mentor/user feedback, then implement the camera integration after the
+   live pipeline is reliable, beginning with one lab/object-interaction activity
+   and its camera-free fallback.
