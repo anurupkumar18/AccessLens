@@ -47,9 +47,20 @@ export interface CaseResult {
 
 export interface StageReport {
   role: AgentRole;
+  /**
+   * Distinguishes two runs of the same role over different case sets -- the
+   * tuned deck and the held-out deck -- so they land in separate report files
+   * instead of the second one silently overwriting the first.
+   */
+  variant?: string;
   model: string;
   startedAt: string;
   cases: CaseResult[];
+}
+
+/** The report's filename stem and its heading, role plus variant when there is one. */
+export function reportName(report: StageReport): string {
+  return report.variant ? `${report.role}-${report.variant}` : report.role;
 }
 
 /**
@@ -96,7 +107,7 @@ export function countRules(violations: Violation[]): Record<string, number> {
 export function writeReport(report: StageReport): string {
   const dir = process.env.EVAL_REPORT_DIR ?? join(process.cwd(), 'tests', 'evals', 'reports');
   mkdirSync(dir, { recursive: true });
-  const path = join(dir, `${report.role}.json`);
+  const path = join(dir, `${reportName(report)}.json`);
   writeFileSync(path, JSON.stringify({ ...report, summary: summariseStage(report) }, null, 2) + '\n');
   return path;
 }
@@ -104,7 +115,7 @@ export function writeReport(report: StageReport): string {
 export function renderStageTable(report: StageReport): string {
   const s = summariseStage(report);
   const lines = [
-    `## ${report.role} (${report.model})`,
+    `## ${reportName(report)} (${report.model})`,
     ``,
     `| metric | value |`,
     `| --- | --- |`,

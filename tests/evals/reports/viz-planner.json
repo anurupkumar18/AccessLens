@@ -1,7 +1,7 @@
 {
   "role": "viz-planner",
   "model": "us.anthropic.claude-sonnet-4-6",
-  "startedAt": "2026-09-16T03:55:57.141Z",
+  "startedAt": "2026-09-16T04:16:53.492Z",
   "cases": [
     {
       "caseId": "slide-01",
@@ -12,7 +12,7 @@
       "facts": {
         "decision": "none",
         "concept": "Title slide — How HNSW Works",
-        "rationale": "This is a title/cover slide containing only the course brand, section label (\"Engineering Explainer\"), the deck title (\""
+        "rationale": "This is a title slide. It contains only a title (\"How HNSW Works\"), a subtitle label (\"Engineering Explainer\"), a one-se"
       }
     },
     {
@@ -23,32 +23,32 @@
       "violations": [],
       "facts": {
         "decision": "retrieve",
-        "concept": "nearest neighbor search: brute-force O(N·d) vs approximate O(log N) with interactive query point and distance comparisons",
-        "rationale": "The slide's core instructional claim is that brute-force search requires computing distances to every single vector (O(N"
+        "concept": "nearest neighbor search brute force vs approximate comparison",
+        "rationale": "The slide's core instructional point is the cost contrast between brute-force O(N·d) and approximate HNSW ~O(log N) near"
       }
     },
     {
       "caseId": "slide-03",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 2,
+      "attempts": 1,
       "violations": [],
       "facts": {
         "decision": "retrieve",
         "concept": "skip list search stepper",
-        "rationale": "The slide's instructional payload is the step-by-step traversal of a skip list: start at L2, jump to 25, drop to L1, att"
+        "rationale": "The slide's entire instructional payload is the *process* of a skip-list search: start at the top express lane, take big"
       }
     },
     {
       "caseId": "slide-04",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 2,
+      "attempts": 1,
       "violations": [],
       "facts": {
         "decision": "retrieve",
         "concept": "HNSW layered graph structure",
-        "rationale": "The slide's core message — HNSW stacks progressively sparser proximity graphs, nodes promoted upward with exponentially "
+        "rationale": "The slide explains the hierarchical multi-layer graph at the heart of HNSW: every vector lives in layer 0 (dense proximi"
       }
     },
     {
@@ -59,8 +59,8 @@
       "violations": [],
       "facts": {
         "decision": "retrieve",
-        "concept": "HNSW greedy search traversal across layers",
-        "rationale": "The slide teaches a 4-step sequential algorithm: enter at the top layer, greedily hop to the closest neighbor, drop down"
+        "concept": "HNSW greedy layer search stepper",
+        "rationale": "The slide depicts a 4-step algorithm: enter at the top layer, greedily hop to the nearest neighbor, drop down when no cl"
       }
     },
     {
@@ -71,8 +71,8 @@
       "violations": [],
       "facts": {
         "decision": "retrieve",
-        "concept": "HNSW vector insertion stepper: random level draw from exponential distribution and greedy layer-by-layer search linking new node to M nearest neighbors",
-        "rationale": "This slide teaches a two-phase algorithm — (1) draw a random top level via exponential distribution and (2) descend thro"
+        "concept": "HNSW vector insertion stepper: random level draw from exponential distribution, then greedy search down layers and link to M nearest neighbors with degree-capped pruning",
+        "rationale": "This slide describes a two-phase algorithmic process (1) draw a random top level via exponential/coin-flip distribution,"
       }
     },
     {
@@ -83,8 +83,8 @@
       "violations": [],
       "facts": {
         "decision": "generate",
-        "concept": "HNSW tuning: M (links/node), efConstruction (build-time beam width), efSearch (query-time beam width) — sliders showing recall, memory, and latency trade-offs",
-        "rationale": "The slide lists three HNSW parameters (M, efConstruction, efSearch) with their trade-offs described in text. An interact"
+        "concept": "HNSW tuning: M (links/node), efConstruction (build beam width), efSearch (query beam width) — sliders showing trade-offs",
+        "rationale": "The slide lists three knobs (M, efConstruction, efSearch) and describes directional trade-offs for each, but a static ca"
       }
     },
     {
@@ -95,8 +95,8 @@
       "violations": [],
       "facts": {
         "decision": "retrieve",
-        "concept": "HNSW recall vs latency operating curve: efSearch sweep plot",
-        "rationale": "The slide's central teaching point is that efSearch is a continuous dial: increasing it raises recall (concave, saturati"
+        "concept": "HNSW recall vs latency operating curve: efSearch sweep",
+        "rationale": "The slide's central teaching point is that efSearch is a continuous dial whose sweep traces a concave recall curve and a"
       }
     }
   ],
@@ -106,7 +106,7 @@
     "cleanRate": "8/8 (100%)",
     "heldOutCleanRate": "n/a",
     "tunedCleanRate": "8/8 (100%)",
-    "meanAttempts": "1.38",
+    "meanAttempts": "1.13",
     "violationsByRule": {}
   }
 }

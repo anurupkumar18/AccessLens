@@ -1,0 +1,113 @@
+{
+  "role": "viz-planner",
+  "variant": "held-out",
+  "model": "us.anthropic.claude-sonnet-4-6",
+  "startedAt": "2026-09-16T04:23:20.764Z",
+  "cases": [
+    {
+      "caseId": "computer-science-01",
+      "subject": "computer-science",
+      "heldOut": false,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "Selection sort algorithm stepper",
+        "rationale": "The slide introduces a sorting algorithm with the concrete array [4, 2, 3, 1] and the rule \"scan left to right; move the"
+      }
+    },
+    {
+      "caseId": "chemistry-02",
+      "subject": "chemistry",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "titration curve",
+        "rationale": "The slide states two key ideas: pH rises as base is added, and the equivalence point sits near the steep part of the cur"
+      }
+    },
+    {
+      "caseId": "economics-03",
+      "subject": "economics",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "supply and demand curve",
+        "rationale": "The slide's core claim — \"demand slopes down while supply slopes up; their crossing is equilibrium\" — is a canonical two"
+      }
+    },
+    {
+      "caseId": "biology-04",
+      "subject": "biology",
+      "heldOut": true,
+      "attempts": 2,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "animal cell diagram with labelled organelles",
+        "rationale": "The slide presents a cell diagram with three key structures: nucleus, membrane, and mitochondria, and notes that the cel"
+      }
+    },
+    {
+      "caseId": "history-05",
+      "subject": "history",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "Historical timeline with chronological events arranged left to right",
+        "rationale": "The slide introduces the concept of a timeline — events arranged from earlier (left) to later (right) across years 1900–"
+      }
+    },
+    {
+      "caseId": "physics-06",
+      "subject": "physics",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "simple series circuit: battery → resistor → LED with current flow",
+        "rationale": "The slide presents a simple series circuit (battery → resistor → LED) and describes a closed loop carrying current. A ci"
+      }
+    },
+    {
+      "caseId": "statistics-07",
+      "subject": "statistics",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "Normal distribution",
+        "rationale": "The slide states three core ideas: the mean sits at the center, tails extend at both ends, and most values cluster near "
+      }
+    },
+    {
+      "caseId": "geography-08",
+      "subject": "geography",
+      "heldOut": true,
+      "attempts": 1,
+      "violations": [],
+      "facts": {
+        "decision": "retrieve",
+        "concept": "map with north arrow, river, and labeled towns",
+        "rationale": "The slide presents a map containing a north arrow, a river, and three labeled towns — spatial features that gain instruc"
+      }
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "errored": 0,
+    "cleanRate": "8/8 (100%)",
+    "heldOutCleanRate": "7/7 (100%)",
+    "tunedCleanRate": "1/1 (100%)",
+    "meanAttempts": "1.13",
+    "violationsByRule": {}
+  }
+}

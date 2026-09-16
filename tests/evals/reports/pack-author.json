@@ -1,13 +1,13 @@
 {
   "role": "pack-author",
   "model": "us.anthropic.claude-sonnet-4-6",
-  "startedAt": "2026-09-16T03:51:26.558Z",
+  "startedAt": "2026-09-16T04:17:41.494Z",
   "cases": [
     {
       "caseId": "slide-01",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 1,
+      "attempts": 2,
       "violations": [],
       "facts": {
         "regions": 4,
@@ -19,7 +19,7 @@
       "caseId": "slide-02",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 1,
+      "attempts": 2,
       "violations": [],
       "facts": {
         "regions": 5,
@@ -31,10 +31,10 @@
       "caseId": "slide-03",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 2,
+      "attempts": 3,
       "violations": [],
       "facts": {
-        "regions": 5,
+        "regions": 4,
         "title": "Skip Lists",
         "references": 0
       }
@@ -43,7 +43,7 @@
       "caseId": "slide-04",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 3,
+      "attempts": 2,
       "violations": [],
       "facts": {
         "regions": 2,
@@ -55,7 +55,7 @@
       "caseId": "slide-05",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 2,
+      "attempts": 1,
       "violations": [],
       "facts": {
         "regions": 3,
@@ -70,7 +70,7 @@
       "attempts": 1,
       "violations": [],
       "facts": {
-        "regions": 5,
+        "regions": 6,
         "title": "Inserting a Vector",
         "references": 0
       }
@@ -91,21 +91,22 @@
       "caseId": "slide-08",
       "subject": "computer-science",
       "heldOut": false,
-      "attempts": 3,
+      "attempts": 2,
       "violations": [],
       "facts": {
-        "attemptIssues": "[[\"regions: was sent as a text string containing incomplete JSON. Send regions as a real JSON array of objects, not as a string, and keep it short enough to finish.\"],[\"regions.2.shortDescription: shortDescription is 65 words; the cap is 60. Rewrite it shorter.\"],[\"regions.2.shortDescription: shortDescription is 63 words; the cap is 60. Rewrite it shorter.\"]]"
-      },
-      "error": "pack-author produced no schema-valid output in 3 attempts for slide-08"
+        "regions": 3,
+        "title": "Recall vs. Speed",
+        "references": 0
+      }
     }
   ],
   "summary": {
     "total": 8,
-    "errored": 1,
-    "cleanRate": "7/7 (100%)",
+    "errored": 0,
+    "cleanRate": "8/8 (100%)",
     "heldOutCleanRate": "n/a",
-    "tunedCleanRate": "7/7 (100%)",
-    "meanAttempts": "1.57",
+    "tunedCleanRate": "8/8 (100%)",
+    "meanAttempts": "1.75",
     "violationsByRule": {}
   }
 }

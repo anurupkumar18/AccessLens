@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summariseStage, countRules, renderStageTable, HELD_OUT_SUBJECTS, type StageReport, type CaseResult } from './harness';
+import { summariseStage, countRules, renderStageTable, reportName, HELD_OUT_SUBJECTS, type StageReport, type CaseResult } from './harness';
 
 const c = (over: Partial<CaseResult>): CaseResult => ({
   caseId: 'slide-01', subject: 'computer-science', heldOut: false, attempts: 1, violations: [], facts: {}, ...over,
@@ -69,5 +69,23 @@ describe('renderStageTable', () => {
 describe('the held-out set', () => {
   it('holds at least two subjects out, as the spec\'s anti-pattern section requires', () => {
     expect(HELD_OUT_SUBJECTS.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('reportName', () => {
+  // Two runs of the same role over different case sets -- packs/hnsw and the
+  // held-out deck -- used to collide on one filename, and the second silently
+  // overwrote the first. The held-out evidence is the whole point of running
+  // twice, so losing it to a filename collision loses the measurement.
+  it('is the bare role when there is no variant', () => {
+    expect(reportName(report([c({})]))).toBe('pack-author');
+  });
+
+  it('separates a variant run from the tuned run', () => {
+    expect(reportName({ ...report([c({})]), variant: 'held-out' })).toBe('pack-author-held-out');
+  });
+
+  it('puts the variant in the rendered heading too', () => {
+    expect(renderStageTable({ ...report([c({})]), variant: 'held-out' })).toContain('## pack-author-held-out');
   });
 });
