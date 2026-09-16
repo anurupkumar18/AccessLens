@@ -510,6 +510,7 @@ input[type='range'] { accent-color: var(--ink); }
 .slide-figure { position: relative; margin: 0; border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden; background: var(--ink); }
 .slide-image { display: block; width: 100%; height: auto; }
 .region-highlight { position: absolute; box-sizing: border-box; border: 3px solid var(--focus); border-radius: 4px; box-shadow: 0 0 0 200vmax rgb(32 32 32 / 55%); pointer-events: none; }
+.focus-pointer { position: absolute; width: 1rem; height: 1rem; box-sizing: border-box; border: 3px solid white; border-radius: 50%; background: var(--focus); box-shadow: 0 0 0 3px rgb(0 0 0 / 60%); pointer-events: none; transform: translate(-50%, -50%); }
 @media (prefers-reduced-motion: no-preference) { .region-highlight { transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; } }
 
 .ar-view { background: var(--card); }

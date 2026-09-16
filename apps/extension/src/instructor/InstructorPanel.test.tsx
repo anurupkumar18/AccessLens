@@ -107,14 +107,18 @@ describe('InstructorPanel', () => {
     expect(status()).toContain('nucleolus');
   });
 
-  it('indicating a region on the current asset emits region.changed', async () => {
+  it('indicating a region on the current asset emits its reviewed center pointer', async () => {
     const { stream, scheduler, events } = render();
     await click('Start');
     stream.enqueue(loadDemoFrame('slide-05'));
     act(() => scheduler.tick(1));
     select('indicate-region', 'reticulum');
     await click('Indicate region');
-    expect(events.at(-1)).toMatchObject({ type: 'region.changed', assetId: 'slide-05', regionId: 'reticulum' });
+    const region = pack.assets.find((asset) => asset.assetId === 'slide-05')!.regions.find((candidate) => candidate.regionId === 'reticulum')!;
+    expect(events.at(-1)).toMatchObject({
+      type: 'region.changed', assetId: 'slide-05', regionId: 'reticulum',
+      pointer: { x: region.bounds.x + region.bounds.width / 2, y: region.bounds.y + region.bounds.height / 2 },
+    });
     expect(status()).toContain('reticulum');
   });
 

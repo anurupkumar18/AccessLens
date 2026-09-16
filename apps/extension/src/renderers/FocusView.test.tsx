@@ -46,6 +46,20 @@ describe('FocusView', () => {
     expect(container!.querySelector('.cell-membrane')).toBeNull();
   });
 
+  it('renders an explicit semantic focus pointer only when the reviewed event includes one', () => {
+    const pack = AccessPackSchema.parse(hnswDraftPack);
+    const asset = pack.assets[1];
+    const region = asset.regions[0];
+    render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} pointer={{ x: 0.42, y: 0.31 }} />);
+    const pointer = container!.querySelector<HTMLElement>('.focus-pointer')!;
+    expect(pointer.style.left).toBe('42%');
+    expect(pointer.style.top).toBe('31%');
+
+    act(() => root!.unmount());
+    render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} />);
+    expect(container!.querySelector('.focus-pointer')).toBeNull();
+  });
+
   it('uses the region label as the heading when the pack provides one, else the id', () => {
     const labelled = { ...validPack, assets: [{ ...validPack.assets[0], regions: [{ ...validPack.assets[0].regions[0], label: 'Mitochondrion' }] }] };
     render(<FocusView pack={labelled} assetId="cell-slide-03" regionId="mitochondrion" />);

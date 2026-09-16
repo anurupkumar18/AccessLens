@@ -13,6 +13,7 @@ describe('student live state', () => {
       packVersion: 1,
       assetId: 'cell-slide-03',
       regionId: 'mitochondrion',
+      pointer: { x: 0.42, y: 0.31 },
       arState: { hotspotId: 'mitochondrion-hotspot', action: 'focus' },
       sequence: 1,
       sentAt: '2026-09-15T15:00:00Z',
@@ -22,6 +23,7 @@ describe('student live state', () => {
       status: 'live',
       assetId: 'cell-slide-03',
       regionId: 'mitochondrion',
+      pointer: { x: 0.42, y: 0.31 },
       hotspotId: 'mitochondrion-hotspot',
       lastSequence: 1,
     });

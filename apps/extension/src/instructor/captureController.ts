@@ -74,7 +74,7 @@ export const SHARING_REQUIRED_MESSAGE =
 
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
   | { type: 'asset.changed'; assetId: string }
-  | { type: 'region.changed'; assetId: string; regionId: string };
+  | { type: 'region.changed'; assetId: string; regionId: string; pointer?: { x: number; y: number } };
 
 export function createCaptureController(options: ControllerOptions): CaptureController {
   const { client, pack, host } = options;
@@ -128,6 +128,22 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     const asset = pack.assets.find(a => a.assetId === assetId);
     if (!asset) throw new Error(`Asset ${assetId} is not in pack ${pack.packId}`);
     return asset;
+  }
+
+  /**
+   * Pointer support is semantic, not a stream of cursor positions. Derive one
+   * bounded focus point from reviewed pack geometry so the relay never learns
+   * where somebody moved a real mouse on the shared source.
+   */
+  function reviewedRegionCenter(region: { regionId: string; bounds: { x: number; y: number; width: number; height: number } }): { x: number; y: number } {
+    const pointer = {
+      x: region.bounds.x + (region.bounds.width / 2),
+      y: region.bounds.y + (region.bounds.height / 2),
+    };
+    if (pointer.x < 0 || pointer.x > 1 || pointer.y < 0 || pointer.y > 1) {
+      throw new Error(`Reviewed region ${region.regionId} cannot produce a normalized focus pointer`);
+    }
+    return pointer;
   }
 
   function resetRecognition(): void {
@@ -285,11 +301,12 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot indicate a region while ${phase}`);
       if (current.kind !== 'matched') throw new Error('No current asset to indicate a region on');
       const asset = findAsset(current.assetId);
-      if (!asset.regions.some(r => r.regionId === regionId)) {
+      const region = asset.regions.find(candidate => candidate.regionId === regionId);
+      if (!region) {
         throw new Error(`Region ${regionId} is not on asset ${current.assetId}`);
       }
       current = { ...current, regionId };
-      emit({ type: 'region.changed', assetId: current.assetId, regionId });
+      emit({ type: 'region.changed', assetId: current.assetId, regionId, pointer: reviewedRegionCenter(region) });
       notify();
     },
 

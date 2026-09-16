@@ -6,6 +6,8 @@ interface Props {
   pack: AccessPack;
   assetId?: string;
   regionId?: string;
+  /** Reviewed semantic focus point, normalized to the asset. */
+  pointer?: { x: number; y: number };
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * from the reviewed descriptions. A pack that ships no image gets the text
  * alone; nothing here knows what any particular lesson is about.
  */
-export function FocusView({ pack, assetId, regionId }: Props): React.ReactElement {
+export function FocusView({ pack, assetId, regionId, pointer }: Props): React.ReactElement {
   const asset = pack.assets.find((candidate) => candidate.assetId === assetId) ?? pack.assets[0];
   const region = asset?.regions.find((candidate) => candidate.regionId === regionId) ?? asset?.regions[0];
 
@@ -37,6 +39,13 @@ export function FocusView({ pack, assetId, regionId }: Props): React.ReactElemen
             aria-hidden="true"
             style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${width * 100}%`, height: `${height * 100}%` }}
           />
+          {pointer && (
+            <div
+              className="focus-pointer"
+              aria-hidden="true"
+              style={{ left: `${pointer.x * 100}%`, top: `${pointer.y * 100}%` }}
+            />
+          )}
         </figure>
       )}
       <p>{region.plainLanguage}</p>

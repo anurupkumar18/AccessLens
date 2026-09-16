@@ -17,6 +17,8 @@ export interface StudentLiveState {
   lastSequence: number;
   assetId?: string;
   regionId?: string;
+  /** A reviewed semantic focus point, never a captured cursor location. */
+  pointer?: { x: number; y: number };
   hotspotId?: string;
   message: string;
 }
@@ -56,6 +58,7 @@ export function applyLiveEvent(
         lastSequence: event.sequence,
         assetId: event.assetId,
         regionId: event.regionId,
+        pointer: event.pointer,
         hotspotId: event.arState?.action === 'clear' ? undefined : event.arState?.hotspotId,
         message: `Following ${event.regionId} on ${event.assetId}.`,
       };

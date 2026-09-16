@@ -148,7 +148,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       </div>
 
       <div className="student-content" id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
-        {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} pointer={live.pointer} /> : null}
         {activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} speechRate={preferences.speechRate} /> : null}
         {activeMode === 'ar' ? (
