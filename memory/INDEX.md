@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0062-disabled-course-material-provider.md` (Part 1/course boundary: strict no-network Canvas/RAG placeholder is review-ready; no provider is enabled)
 - `episodic/0061-review-keyboard-format-navigation.md` (Part 1/Review accessibility: keyboard-equivalent format tabs are review-ready; physical QA remains open)
 - `episodic/0060-explicit-local-review-progress.md` (Part 1/self-paced Review: explicit private concept markers are local-only and non-assessment)
 - `episodic/0059-disabled-bedrock-gateway.md` (Part 1/model boundary: strict no-network Bedrock placeholder is review-ready; no provider is enabled)
