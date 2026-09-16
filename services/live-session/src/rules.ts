@@ -202,6 +202,24 @@ export function checkEvent(
     }
   }
 
+  // T-16's caption payload has no pack-membership fact to check against, but
+  // its shape is not covered by the generic REQUIRED_FIELDS/KNOWN_FIELDS
+  // checks above (those only ask whether the field name is known, not what
+  // it contains) -- and this relay-side layer is the only one a hostile or
+  // non-conforming client cannot bypass. Charter A2/A9: never forward an
+  // unbounded or malformed value to every student in the session.
+  const caption = event.caption as Record<string, unknown> | undefined | null;
+  if (caption !== undefined && caption !== null) {
+    if (typeof caption !== 'object' || Array.isArray(caption)) {
+      broken.push('caption-not-an-object');
+    } else {
+      const text = caption.text;
+      if (typeof text !== 'string' || text.length < 1) broken.push('caption-text-missing');
+      else if (text.length > 280) broken.push('caption-text-too-long');
+      if (typeof caption.isFinal !== 'boolean') broken.push('caption-isfinal-not-boolean');
+    }
+  }
+
   // Charter A9. `source.unmatched` is base-only in the discriminated union, so
   // a conforming client cannot express this -- but the relay does not get to
   // assume the client is conforming.

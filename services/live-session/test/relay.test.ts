@@ -132,6 +132,17 @@ describe('relay', () => {
     }
   });
 
+  it('refuses an oversized caption rather than broadcasting it to every student', async () => {
+    // The relay is the only layer a client that skips the extension's own
+    // Zod validation cannot get past -- this proves it actually enforces the
+    // bound, not just that the shared contract asks nicely for one.
+    const { event, expectedRule } = invalid('oversized-caption.json');
+    await h.relay.create('instructor-1', SESSION);
+    const outcome = await h.relay.publish('instructor-1', event);
+    expect(outcome.status).toBe('rejected');
+    expect((outcome as { rules: string[] }).rules).toContain(expectedRule);
+  });
+
   it('refuses stale and reordered events', async () => {
     await h.relay.create('instructor-1', SESSION);
     await h.relay.join('student-1', SESSION, 'student');

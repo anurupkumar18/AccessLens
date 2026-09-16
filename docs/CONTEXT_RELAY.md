@@ -57,7 +57,7 @@ during the build.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, and AL-049's caption instructor input/student display are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
+| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, AL-049's caption instructor input/student display, and AL-050's server-side caption shape validation are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
 | 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
@@ -1069,3 +1069,32 @@ which is a human step no session here can do.
 **Next agent needs to know:** if someone runs this kit, fill in
 `docs/DEMO_PROOF_SPRINT.md`'s reviewer table directly; AL-007 is the separate
 decision about whether the feedback changes scope or claims.
+
+### RL-049 — 2026-09-16 — Part 1 / security — Codex
+
+**Landed:** AL-050. Dispatched a security-review subagent against this
+session's full branch diff (per the `/goal` directive's "final privacy,
+security, accessibility, and guardrail testing" item); it found one
+MEDIUM/8 finding, independently verified: `services/live-session/src/rules.ts`
+-- which the file's own docstring calls the only server-side gate a hostile
+client cannot bypass -- checked `pointer` and `arState` shape/bounds but only
+checked that `caption` was a *known field name*, never its shape. A client
+speaking the relay's WebSocket protocol directly (not the vetted extension,
+which does validate client-side) could have sent an oversized or malformed
+`caption` and had it broadcast unbounded to every student. Fixed by mirroring
+four new rules (`caption-not-an-object`, `caption-text-missing`,
+`caption-text-too-long`, `caption-isfinal-not-boolean`) in
+`reference_event_check.py` and `rules.ts`, same order; added negative fixture
+`oversized-caption.json` and a `relay.test.ts` integration test proving the
+actual publish path rejects it, not just the rule function.
+**Threads touched:** none new; this is a hardening fix within T-16's scope,
+found and closed before either AL-048 or AL-049 merged, let alone before any
+real deployment carried a caption.
+**Next agent needs to know:** the general lesson, recorded in
+`memory/episodic/0067-server-side-caption-shape-validation.md`: when a new
+field with a non-trivial (object) shape gets added to `KNOWN_FIELDS`, add its
+shape check to `rules.ts`/`reference_event_check.py` in the *same* change,
+not as a follow-up someone else has to find. The security-review subagent
+also checked the camera consent lifecycle, the disabled Bedrock/course-
+material gateways, and `preferences.ts` and found nothing else above the
+reporting bar.

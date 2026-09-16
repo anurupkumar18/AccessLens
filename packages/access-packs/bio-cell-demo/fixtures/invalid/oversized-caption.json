@@ -1,0 +1,21 @@
+{
+  "fixture": "oversized-caption",
+  "mustBeRejected": true,
+  "lastDeliveredSequence": 6,
+  "expectedRule": "caption-text-too-long",
+  "reason": "The relay is the only layer a non-conforming client cannot bypass; an unbounded caption must not be forwarded to every student in the session (charter A2/A9).",
+  "event": {
+    "schemaVersion": "1.0",
+    "type": "caption.appended",
+    "sessionId": "sess-demo-0001",
+    "packId": "bio-cell-demo",
+    "packVersion": 1,
+    "assetId": "cell-slide-03",
+    "caption": {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "isFinal": true
+    },
+    "sequence": 7,
+    "sentAt": "2026-09-15T15:00:42Z"
+  }
+}

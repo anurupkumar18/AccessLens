@@ -60,7 +60,7 @@ describe('server-side rules match Part 5 reference', () => {
 
   it('trips the documented rule for each negative fixture', () => {
     const negatives = verdicts.filter(v => v.expectedRule !== undefined);
-    expect(negatives).toHaveLength(10);
+    expect(negatives).toHaveLength(11);
 
     const misses = negatives
       .map(v => ({

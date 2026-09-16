@@ -114,6 +114,25 @@ def check_event(event: dict, pack: dict, last_sequence: int = 0) -> list[str]:
         elif region_id is not None and hotspot["regionId"] != region_id:
             broken.append("hotspot-region-mismatch")
 
+    # T-16's caption payload has no pack-membership fact to check against, but
+    # its shape is not covered by the generic REQUIRED_FIELDS/KNOWN_FIELDS
+    # checks above (those only ask whether the field name is known, not what
+    # it contains) -- and this relay-side layer is the only one a hostile or
+    # non-conforming client cannot bypass. Charter A2/A9: never forward an
+    # unbounded or malformed value to every student in the session.
+    caption = event.get("caption")
+    if caption is not None:
+        if not isinstance(caption, dict):
+            broken.append("caption-not-an-object")
+        else:
+            text = caption.get("text")
+            if not isinstance(text, str) or len(text) < 1:
+                broken.append("caption-text-missing")
+            elif len(text) > 280:
+                broken.append("caption-text-too-long")
+            if not isinstance(caption.get("isFinal"), bool):
+                broken.append("caption-isfinal-not-boolean")
+
     if event.get("type") == "source.unmatched":
         for field in ("assetId", "regionId"):
             if event.get(field) is not None:
