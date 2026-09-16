@@ -136,7 +136,9 @@
 :root[data-theme='light'] { color-scheme: light; }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); }
+/* Chrome gives extension pages `body { font-family: system-ui; font-size: 75% }`;
+   inheriting keeps the :root font (and the dyslexia font) on running text. */
+body { margin: 0; background: var(--paper); font: inherit; }
 
 .visually-hidden {
   position: absolute;
@@ -356,7 +358,7 @@ button.primary:hover:not(:disabled),
 button.quiet { border-color: transparent; color: var(--muted); }
 button.quiet:hover:not(:disabled) { background: transparent; color: var(--ink); border-color: var(--ink); }
 button.stop { border-color: var(--warn); color: var(--warn); }
-button.stop::before { content: '\25A0\2002'; }
+button.stop::before { content: '\25A0\2002' / ''; }
 button.stop:hover:not(:disabled) { background: var(--warn); border-color: var(--warn); color: var(--paper); }
 
 :focus-visible {
@@ -467,7 +469,7 @@ input[type='range'] { accent-color: var(--ink); }
   border: 1px solid var(--on-accent);
   font-size: .9rem;
 }
-.draft-note::before { content: '\26A0\FE0E\2002'; }
+.draft-note::before { content: '\26A0\FE0E\2002' / ''; }
 .draft-note code { font: 500 .88em var(--mono); }
 
 .pack-picker {
@@ -492,11 +494,11 @@ input[type='range'] { accent-color: var(--ink); }
   white-space: nowrap;
 }
 /* A leading glyph so the state is legible without colour. */
-.connection-pill::before { content: '\25CF\2002'; }
+.connection-pill::before { content: '\25CF\2002' / ''; }
 .connection-pill.live { background: #202020; border-color: var(--pill-live-border); color: var(--accent); }
 .connection-pill.paused, .connection-pill.stale, .connection-pill.unmatched { background: var(--accent); border-color: var(--on-accent); color: var(--on-accent); }
-.connection-pill.paused::before, .connection-pill.stale::before, .connection-pill.unmatched::before { content: '\25B2\2002'; }
-.connection-pill.ended::before, .connection-pill.incompatible::before { content: '\25A0\2002'; }
+.connection-pill.paused::before, .connection-pill.stale::before, .connection-pill.unmatched::before { content: '\25B2\2002' / ''; }
+.connection-pill.ended::before, .connection-pill.incompatible::before { content: '\25A0\2002' / ''; }
 
 .join-form { margin-top: 2rem; max-width: 640px; }
 .join-form > label { margin-top: 0; }
@@ -544,7 +546,7 @@ input[type='range'] { accent-color: var(--ink); }
   font-weight: 600;
 }
 [role='tab'][aria-selected='true']::before,
-[aria-pressed='true']::before { content: '\25A0\2002'; }
+[aria-pressed='true']::before { content: '\25A0\2002' / ''; }
 [role='tabpanel'] { border: 1px solid var(--rule); border-top: 0; }
 [role='tabpanel']:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .mode-panel { padding: var(--pad); }

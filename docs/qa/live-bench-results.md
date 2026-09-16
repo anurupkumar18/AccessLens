@@ -23,14 +23,14 @@ set `PLAYWRIGHT_PATH` if it is not resolvable. Exit code 0 means no FAIL rows.
 
 | Field | Value |
 | --- | --- |
-| Date | 2026-09-16T16:48:09.209Z (171 s) |
-| Git HEAD | `95e045f964d91c5b83ae0929519f90b8586b86b2` on `qa/quality-bench` |
-| App source commit | `95e045f964d91c5b83ae0929519f90b8586b86b2` |
+| Date | 2026-09-16T17:00:12.255Z (124 s) |
+| Git HEAD | `ba9025a00c527789f90788f076d364b8f51779ee` on `ui/blacksmith-revamp` |
+| App source commit | `fa41582473f3d6b70ad07a5d08044724f1e8e08a` (**uncommitted app changes present**) |
 | Relay | `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo` |
 | Environment | Darwin 25.6.0 (arm64); 10 x Apple M5; Node v22.23.2; Playwright 1.63.0; Chromium 153.0.8010.12 (headless) |
 | Contexts | instructor, studentA (own proxy), studentB (own proxy), plus window/screen instructors and a late student |
 | Capture | Fake `getDisplayMedia`: `canvas.captureStream(5)` of the reviewed PNGs; `displaySurface` reported as browser / window / monitor |
-| Result | **33 PASS, 6 FAIL, 4 MEASURED, 0 INCONCLUSIVE** |
+| Result | **34 PASS, 4 FAIL, 4 MEASURED, 0 INCONCLUSIVE** |
 
 Rerun: `node scripts/qa/live-bench.cjs` (see the top of this file for setup).
 
@@ -40,46 +40,45 @@ Rerun: `node scripts/qa/live-bench.cjs` (see the top of this file for setup).
 | --- | --- | --- | --- |
 | C01 | No capture before Start (charter A1) | **PASS** | getDisplayMedia calls before any click: 0 |
 | C02 | Permission denial is handled | **PASS** | status "Sharing is required for live sync. Click Start and choose a tab, window, or screen."; join code shown: false; Start offered again: true |
-| C03 | Tab share: join code issued and first slide matched | **PASS** | code V6UKB6 after 154 ms; "The Animal Cell" matched 700 ms after Start; status "Sharing a tab. Current slide: The Animal Cell. Region: none." |
-| C04 | getDisplayMedia runs inside the Start click's user activation | **PASS** | userActivation.isActive=true; called 124 ms after the click (the relay create() round trip runs first); options {"video":{"frameRate":{"ideal":5,"max":15}},"audio":false,"selfBrowserSurface":"exclude","surfaceSwitching":"include","monitorTypeSurfaces":"include"} |
-| C05 | Students A and B join with the code and reach live | **PASS** | A live in 473 ms, B live in 418 ms; caught-up view A "The Animal Cell\|", B "The Animal Cell\|" |
+| C03 | Tab share: join code issued and first slide matched | **PASS** | code KQVZSK after 152 ms; "The Animal Cell" matched 709 ms after Start; status "Sharing a tab. Current slide: The Animal Cell. Region: none." |
+| C04 | getDisplayMedia runs inside the Start click's user activation | **PASS** | userActivation.isActive=true; called 137 ms after the click (the relay create() round trip runs first); options {"video":{"frameRate":{"ideal":5,"max":15}},"audio":false,"selfBrowserSurface":"exclude","surfaceSwitching":"include","monitorTypeSurfaces":"include"} |
+| C05 | Students A and B join with the code and reach live | **PASS** | A live in 471 ms, B live in 366 ms; caught-up view A "The Animal Cell\|", B "The Animal Cell\|" |
 | D01 | Delivery: 30 ordered region changes reach both students | **PASS** | emitted 30/30; A rendered 30/30 (received 30); B rendered 30/30 (received 30); relay rejections/errors to instructor: 0 |
 | D02 | Order preserved (arrival and render) | **PASS** | A arrival ordered true, render ordered true, duplicates 0; B arrival ordered true, render ordered true, duplicates 0 |
-| D03 | Event-to-render latency, student A (click to DOM commit) | **MEASURED** | p50 143 ms, p95 197 ms, max 268 ms (n=30); network share p50 141 ms, app share p50 1 ms |
-| D04 | Event-to-render latency, student B (click to DOM commit) | **MEASURED** | p50 136 ms, p95 181 ms, max 263 ms (n=30); network share p50 134 ms, app share p50 1 ms |
-| D05 | Inter-student render skew \|A - B\| | **MEASURED** | p50 3 ms, p95 60 ms, max 61 ms (n=30) |
-| D06 | Tab share: slide change to instructor match | **MEASURED** | 12 switches; p50 429 ms, max 589 ms (sampler runs every 500 ms) |
-| R01 | Silent stall (context.setOffline 5 s): B pill shows a non-live state | **FAIL** | pill values while offline: ["live"]; socket closes: 0; 5 of 5 instructor events were held (not delivered) while offline |
-| R02 | Silent stall: no false "live" while offline | **FAIL** | B's pill read "live" for 4019 of 4019 ms while 5 events were held back. The socket never closed and the client has no heartbeat, so nothing noticed. See bug BUG-1 |
+| D03 | Event-to-render latency, student A (click to DOM commit) | **MEASURED** | p50 128 ms, p95 248 ms, max 373 ms (n=30); network share p50 127 ms, app share p50 1 ms |
+| D04 | Event-to-render latency, student B (click to DOM commit) | **MEASURED** | p50 130 ms, p95 228 ms, max 373 ms (n=30); network share p50 129 ms, app share p50 1 ms |
+| D05 | Inter-student render skew \|A - B\| | **MEASURED** | p50 2 ms, p95 11 ms, max 20 ms (n=30) |
+| D06 | Tab share: slide change to instructor match | **MEASURED** | 12 switches; p50 430 ms, max 601 ms (sampler runs every 500 ms) |
+| R01 | Silent stall (context.setOffline 5 s): B pill shows a non-live state | **FAIL** | pill values while offline: ["live"]; socket closes: 0; 3 of 5 instructor events were held (not delivered) while offline; attempt 2 (attempt 1 held nothing) |
+| R02 | Silent stall: no false "live" while offline | **FAIL** | B's pill read "live" for 2010 of 2010 ms while 3 events were held back. The socket never closed and the client has no heartbeat, so nothing noticed. See bug BUG-1 |
 | R03 | Silent stall: pill is live after restore | **PASS** | live 0 ms after restore (it never left live) |
-| R04 | Silent stall: B converges to the instructor's current region after restore | **PASS** | B went from "Mitochondria and Energy\|mitochondrion" to the instructor's "Mitochondria and Energy\|cytoplasm" 3 ms after restore; 5 held events arrived late, first 1 ms after restore |
+| R04 | Silent stall: B converges to the instructor's current region after restore | **PASS** | B went from "Mitochondria and Energy\|cytoplasm" to the instructor's "Mitochondria and Energy\|mitochondrion" 1 ms after restore; 3 held events arrived late, first 1 ms after restore |
 | R05 | Silent stall: student A unaffected | **PASS** | A rendered 5/5 events emitted during B's outage |
-| H01 | Hard drop (TCP reset, 5 s): B pill shows a non-live state | **PASS** | "stale" 2 ms after the drop; pill values while down: ["stale"] |
+| H01 | Hard drop (TCP reset, 5 s): B pill shows a non-live state | **PASS** | "stale" 2 ms after the drop; pill values while down: ["live","stale"] |
 | H02 | Hard drop: no false "live" while down | **PASS** | pill read "live" for 0 ms of the outage (after the first second) |
-| H03 | Hard drop: B reconnects and returns to live | **PASS** | live 4034 ms after the network returned; resumed socket: true |
-| H04 | Hard drop: B converges to the instructor's current region with no new event (latest-state catch-up) | **FAIL** | 15 s after reconnect B still shows "Mitochondria and Energy\|cytoplasm" while the instructor is at "Mitochondria and Energy\|mitochondrion"; events received after reconnect: 0. See bug BUG-2 |
-| H05 | Hard drop: live delivery resumes on the next instructor event | **PASS** | B rendered the next region 125 ms after it was sent |
+| H03 | Hard drop: B reconnects and returns to live | **PASS** | live 4004 ms after the network returned; resumed socket: true |
+| H04 | Hard drop: B converges to the instructor's current region with no new event (latest-state catch-up) | **PASS** | B shows "Mitochondria and Energy\|cytoplasm" 93 ms after reconnect |
+| H05 | Hard drop: live delivery resumes on the next instructor event | **PASS** | B rendered the next region 150 ms after it was sent |
 | H06 | Hard drop: student A unaffected | **PASS** | A rendered 5/5 events emitted during B's outage |
-| E01 | Extended drop (15 s): B reconnects on its own after the network returns | **FAIL** | still "stale" 30 s after restore; 5 connection attempts, the last 8771 ms after the drop, none after the network returned. See bug BUG-3 |
-| E02 | Extended drop: pressing Join again recovers B | **PASS** | live 306 ms; converged to "Mitochondria and Energy\|mitochondrion": true |
+| E01 | Extended drop (15 s): B reconnects on its own after the network returns | **PASS** | live 4088 ms after restore |
 | P01 | Relay: a student resuming with its capability gets the latest state | **FAIL** | join catch-up: asset.changed (sent via $default); resume catch-up within 8 s: NONE; next live event on resumed socket: true |
 | P02 | Relay accepts every event type the extension emits | **PASS** | all 8 accepted: session.started, asset.changed, region.changed, source.unmatched, capture.paused, capture.resumed, capture.stopped, session.ended |
-| P03 | Relay: session.ended reaches students when the client closes right after sending it (End Session) | **FAIL** | 2/6 trials delivered session.ended to the student; the other trials' events were lost to the close that follows in the same tick. See bug BUG-5 |
-| S01 | Window share: slide found inside toolbar and margins | **PASS** | "The Animal Cell" matched 1079 ms after the share started; status "Sharing a window. Current slide: The Animal Cell. Region: none." |
-| S02 | Window share: slide change followed | **PASS** | "Building and Shipping Proteins" matched 510 ms after the change; asset.changed sent for ["cell-slide-01","cell-slide-04"]; relay rejections 0 |
-| S03 | Window share: unreviewed slide reads Unmatched, no invented match | **PASS** | Unmatched 1605 ms after the change; false matches: 0; status "Sharing a window. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow." |
-| S11 | Whole-screen share: slide found inside desktop, menu bar, dock, other window | **PASS** | "The Animal Cell" matched 1061 ms after the share started; status "Sharing your screen. Current slide: The Animal Cell. Region: none." |
-| S12 | Whole-screen share: slide change followed | **PASS** | "Building and Shipping Proteins" matched 566 ms after the change; asset.changed sent for ["cell-slide-01","cell-slide-04"]; relay rejections 0 |
-| S13 | Whole-screen share: unreviewed slide reads Unmatched, no invented match | **PASS** | Unmatched 1541 ms after the change; false matches: 0; status "Sharing your screen. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow." |
-| L01 | Tab share: unreviewed slide -> instructor Unmatched, both students "unmatched" | **PASS** | instructor Unmatched in 1413 ms; A "unmatched", B "unmatched" |
-| L02 | Correction: both students follow the corrected slide and region; correction sticks | **PASS** | A 154 ms, B 155 ms; A "live", B "live"; instructor still on the correction 2 s later with the unreviewed slide on screen: true |
-| L03 | After a correction, moving to a reviewed slide resumes automatic matching | **PASS** | instructor matched "Mitochondria and Energy" 213 ms; A true, B true |
+| P03 | Relay: session.ended reaches students when the client closes right after sending it (End Session) | **FAIL** | 4/6 trials delivered session.ended to the student; the other trials' events were lost to the close that follows in the same tick. See bug BUG-5 |
+| S01 | Window share: slide found inside toolbar and margins | **PASS** | "The Animal Cell" matched 1123 ms after the share started; status "Sharing a window. Current slide: The Animal Cell. Region: none." |
+| S02 | Window share: slide change followed | **PASS** | "Building and Shipping Proteins" matched 487 ms after the change; asset.changed sent for ["cell-slide-01","cell-slide-04"]; relay rejections 0 |
+| S03 | Window share: unreviewed slide reads Unmatched, no invented match | **PASS** | Unmatched 1589 ms after the change; false matches: 0; status "Sharing a window. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow." |
+| S11 | Whole-screen share: slide found inside desktop, menu bar, dock, other window | **PASS** | "The Animal Cell" matched 1067 ms after the share started; status "Sharing your screen. Current slide: The Animal Cell. Region: none." |
+| S12 | Whole-screen share: slide change followed | **PASS** | "Building and Shipping Proteins" matched 555 ms after the change; asset.changed sent for ["cell-slide-01","cell-slide-04"]; relay rejections 0 |
+| S13 | Whole-screen share: unreviewed slide reads Unmatched, no invented match | **PASS** | Unmatched 1552 ms after the change; false matches: 0; status "Sharing your screen. Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below. Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow." |
+| L01 | Tab share: unreviewed slide -> instructor Unmatched, both students "unmatched" | **PASS** | instructor Unmatched in 1408 ms; A "unmatched", B "unmatched" |
+| L02 | Correction: both students follow the corrected slide and region; correction sticks | **PASS** | A 155 ms, B 155 ms; A "live", B "live"; instructor still on the correction 2 s later with the unreviewed slide on screen: true |
+| L03 | After a correction, moving to a reviewed slide resumes automatic matching | **PASS** | instructor matched "Mitochondria and Energy" 219 ms; A true, B true |
 | L04 | Pause: both students show "paused"; slide changes are not sent while paused | **PASS** | A "paused", B "paused"; instructor paused: true; events sent after a slide change while paused: 0; relay replies: ["accepted"] |
 | L05 | Resume: both students live again and follow the slide changed during pause | **PASS** | A "live", B "live"; A on "Breaking Down and Storing\|", B on "Breaking Down and Storing\|" |
-| L06 | Source closed by the browser ("Stop sharing" bar): students leave "live", session stays open | **PASS** | instructor "Stopped sharing. The session is still open: Start again to share, or End Session to close it."; A "stopped", B "stopped" 10 s later; sent ["63:capture.stopped"]; relay replied ["accepted"]; join code kept: true |
-| L07 | Start again on the same code: students follow without rejoining | **PASS** | matched 598 ms after Start; same code: true; A "live", B "live"; instructor now "Sharing a tab. Current slide: Inside the Nucleus. Region: none." |
-| L08 | Stop button: students leave "live" (show "stopped") | **PASS** | instructor "Stopped sharing. The session is still open: Start again to share, or End Session to close it."; A "stopped", B "stopped" 10 s later; sent ["66:capture.stopped"]; relay replied ["accepted"] |
-| L09 | End Session: both students "ended" | **PASS** | instructor ended: true; sent ["67:session.ended"]; A "ended", B "ended"; A received ["session.ended"], B received ["session.ended"] |
+| L06 | Source closed by the browser ("Stop sharing" bar): students leave "live", session stays open | **PASS** | instructor "Stopped sharing. The session is still open: Start again to share, or End Session to close it."; A "stopped", B "stopped" 10 s later; sent ["68:capture.stopped"]; relay replied ["accepted"]; join code kept: true |
+| L07 | Start again on the same code: students follow without rejoining | **PASS** | matched 601 ms after Start; same code: true; A "live", B "live"; instructor now "Sharing a tab. Current slide: Inside the Nucleus. Region: none." |
+| L08 | Stop button: students leave "live" (show "stopped") | **PASS** | instructor "Stopped sharing. The session is still open: Start again to share, or End Session to close it."; A "stopped", B "stopped" 10 s later; sent ["71:capture.stopped"]; relay replied ["accepted"] |
+| L09 | End Session: both students "ended" | **PASS** | instructor ended: true; sent ["72:session.ended"]; A "ended", B "ended"; A received ["session.ended"], B received ["session.ended"] |
 | L10 | A late join to the ended code is refused | **PASS** | join message "Could not join this session. Check the code and try again."; pill "waiting" |
 
 MEASURED rows have no pass/fail budget: neither AL-004 nor `docs/SYSTEM_DESIGN.md` defines a latency or skew target, so the numbers are recorded, not graded. INCONCLUSIVE means the simulated condition did not take effect, so there was nothing to grade.
@@ -90,14 +89,14 @@ How the network is shaped: students A and B each reach the relay through their o
 
 | Series | n | p50 | p95 | max |
 | --- | --- | --- | --- | --- |
-| Student A: click to render | 30 | 143 ms | 197 ms | 268 ms |
-| Student B: click to render | 30 | 136 ms | 181 ms | 263 ms |
-| Student A: instructor send to socket receive | 30 | 141 ms | 194 ms | 266 ms |
-| Student B: instructor send to socket receive | 30 | 134 ms | 180 ms | 261 ms |
-| Student A: socket receive to render | 30 | 1 ms | 2 ms | 4 ms |
-| Student B: socket receive to render | 30 | 1 ms | 2 ms | 4 ms |
-| Skew between A and B renders | 30 | 3 ms | 60 ms | 61 ms |
-| Tab share: slide change to instructor match | 12 | 429 ms | 589 ms | 589 ms |
+| Student A: click to render | 30 | 128 ms | 248 ms | 373 ms |
+| Student B: click to render | 30 | 130 ms | 228 ms | 373 ms |
+| Student A: instructor send to socket receive | 30 | 127 ms | 248 ms | 371 ms |
+| Student B: instructor send to socket receive | 30 | 129 ms | 227 ms | 371 ms |
+| Student A: socket receive to render | 30 | 1 ms | 2 ms | 3 ms |
+| Student B: socket receive to render | 30 | 1 ms | 2 ms | 2 ms |
+| Skew between A and B renders | 30 | 2 ms | 11 ms | 20 ms |
+| Tab share: slide change to instructor match | 12 | 430 ms | 601 ms | 601 ms |
 
 Delivered: A 30/30, B 30/30. Order preserved: A true, B true. Per-event numbers are in the JSON (`liveBench.metrics.orderedDelivery.perEvent`).
 
@@ -113,45 +112,33 @@ after the network returns. Likely files: `services/live-session/src/client/webSo
 T-28 removed the content-silence timer because it raised false "stale" alarms; a relay-answered ping with a timeout
 would detect a dead link without that problem.
 
-**BUG-2: A reconnecting student is not caught up with the latest state (checks H04, P01).**
-Steps: B is live; B's connection drops (TCP reset); the instructor indicates a region while B is down; the network
-returns and the client reconnects with its stored capability; the instructor sends nothing else.
-Expected: the relay posts the session's `latestState` on resume and B shows the instructor's current region.
-Actual: B's pill returns to "live" but B keeps showing the pre-outage view until the instructor's next event. The
-protocol-level probe (P01) shows the same thing with no browser: a join gets its catch-up event, a resume gets none.
-Likely cause: `Relay.resume()` (`services/live-session/src/relay.ts`) posts the catch-up from the `$connect` route
-(`services/live-session/src/handler.ts`), where, as that file's own comment says, posting to the connection is not yet
-possible. `post()` returns false and the result is ignored. The pill reading "live" over a stale view makes this a
-false-live state too.
+**BUG-2: The relay's resume catch-up never arrives (check P01; the extension works around it, check H04).**
+Steps (protocol level, no browser): a student joins, then connects again presenting its capability in the `$connect`
+query string, and sends nothing.
+Expected: the relay posts the session's `latestState` on resume.
+Actual: a join gets its catch-up event; a resume gets none. `Relay.resume()` (`services/live-session/src/relay.ts`)
+posts from the `$connect` route (`services/live-session/src/handler.ts`), where, as that file's own comment says,
+posting to the connection is not yet possible; `post()` returns false and the result is ignored.
+Workaround in place: `WebSocketSessionClient` sends `join` again when a student's connection reopens, which returns
+the latest view through the frozen protocol, so the extension converges (H04). Any other client of the relay still
+needs to do the same, or the relay needs a catch-up path after `$connect`.
 
-**BUG-3: The client stops reconnecting after five failed attempts (check E01).**
-Steps: B is live; B's network is down for 15 s; the network returns.
-Expected: B reconnects on its own soon after the network returns.
-Actual: B stays "stale" indefinitely. `scheduleReconnect()` in `webSocketSessionClient.ts` gives up once
-`attempt >= backoffMs.length` (250, 500, 1000, 2000, 5000 ms: roughly 9-11 s of trying) and nothing restarts it: no
-`online` listener, no periodic retry. Pressing Join again recovers (E02). The pill honestly says "stale", so this
-is a recovery bug, not a false-live one.
+**BUG-5: The relay refuses `session.ended` when the client's close lands first (check P03; the extension works around it, check L09).**
+Steps (protocol level, no browser): the instructor sends `session.ended` and `{kind: 'close'}` in the same tick.
+Expected: students receive `session.ended`.
+Actual: API Gateway invokes the Lambda for each message independently, so `Relay.close()` can mark the session closed
+before `Relay.publish()` checks it, and the event is refused as `session-not-open`.
+Workaround in place: `WebSocketSessionClient.close()` now waits (up to 2 s) for the relay to accept or reject events
+still in flight before sending `close`, so End Session from the extension reaches students (L09; 6/6 trials through
+the client against the deployed relay on 2026-09-16, against 2/6 before). A client that sends both at once still loses
+the event; the relay could instead treat `close` after `session.ended` as a no-op.
 
-**BUG-5: End Session can be lost, so students never see "ended" (checks L09, P03).**
-Steps: instructor shares, students are live; the instructor clicks End Session.
-Expected: both students show "ended" ("The instructor ended this session.").
-Actual: intermittently, neither student receives `session.ended` and both keep their previous pill ("stopped" after
-Stop, or "live" if the instructor ends while sharing) indefinitely; a late join to the same code is refused (L10), so
-the session really is closed. P03 repeats the wire sequence without a browser and counts
-how often `session.ended` arrives. Cause: `CaptureController.endSession()`
-(`apps/extension/src/instructor/captureController.ts`) emits `session.ended` and immediately calls `client.close()`;
-`WebSocketSessionClient.close()` (`services/live-session/src/client/webSocketSessionClient.ts`) sends
-`{kind: 'close'}` in the same tick and closes the socket. API Gateway invokes the Lambda for each message
-independently, so `Relay.close()` can mark the session closed before `Relay.publish()` checks it, and the event is
-refused as `session-not-open` with nobody left to hear the refusal. Options: have the relay's close broadcast
-`session.ended` itself, or have the client wait for `accepted` before sending `close`.
-
-Known bugs whose checks all passed in this run: BUG-4, the deployed relay refused capture.stopped (P02, L06, L08); it reproduced in every run on 2026-09-16 until the relay was redeployed at about 16:35 UTC.
+Known bugs whose checks all passed in this run: BUG-3, the client stops reconnecting after five failed attempts (E01). BUG-4, the deployed relay refused capture.stopped (P02, L06, L08); it reproduced in every run on 2026-09-16 until the relay was redeployed at about 16:35 UTC.
 
 ### Observations
 
-- Accessibility: CSS `content` glyphs end up in accessible names. The capture controls read `button "■ Stop"` to assistive technology (`button.stop::before` in `apps/extension/src/style.css`; the same pattern is on `[aria-pressed='true']::before` and `.connection-pill::before`). CSS alt text (`content: '\25A0\2002' / ''`) would keep the glyph visual only.
-- Console and page errors: 9 in total. 9 are student B's reconnect attempts failing while its network was deliberately down (`WebSocket connection to ... failed`), which is expected. No other errors in any context.
+- Capture control accessible names contain no decorative glyphs.
+- Console and page errors: 10 in total. 10 are student B's reconnect attempts failing while its network was deliberately down (`WebSocket connection to ... failed`), which is expected. No other errors in any context.
 
 ### Not automated here
 
@@ -169,13 +156,13 @@ Known bugs whose checks all passed in this run: BUG-4, the deployed relay refuse
 
 | Field | Value |
 | --- | --- |
-| Date | 2026-09-16T16:51:00.390Z (8 s) |
-| Git HEAD | `95e045f964d91c5b83ae0929519f90b8586b86b2` on `qa/quality-bench` |
-| App source commit | `95e045f964d91c5b83ae0929519f90b8586b86b2` |
+| Date | 2026-09-16T16:56:25.346Z (8 s) |
+| Git HEAD | `ba9025a00c527789f90788f076d364b8f51779ee` on `ui/blacksmith-revamp` |
+| App source commit | `fa41582473f3d6b70ad07a5d08044724f1e8e08a` (**uncommitted app changes present**) |
 | Relay | `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo` |
 | Environment | Darwin 25.6.0 (arm64); Node v22.23.2; Playwright 1.63.0; Chromium 153.0.0.0 (headless); launchPersistentContext, channel "chromium", --load-extension |
-| Extension id | `aohpmlfpjmfdacobcklgfphfhaehmkac` |
-| Result | **9 PASS, 3 FAIL** |
+| Extension id | `pbdnlliielnnjhpepiecnjlalhjnoakm` |
+| Result | **12 PASS, 0 FAIL** |
 
 Rerun: `node scripts/qa/extension-load.cjs`.
 
@@ -184,39 +171,23 @@ Rerun: `node scripts/qa/extension-load.cjs`.
 | ID | Check | Result | Observed |
 | --- | --- | --- | --- |
 | X01 | Build output is a loadable MV3 directory | **PASS** | .cache/qa/extension-build: manifest_version 3, service worker present, side_panel index.html, permissions ["storage","sidePanel"], relay URL baked in: true |
-| X02 | Extension service worker registers and runs onInstalled | **PASS** | id aohpmlfpjmfdacobcklgfphfhaehmkac; AccessLens 0.1.0; sidePanel.getPanelBehavior() = {"openPanelOnActionClick":true} |
-| X03 | Instructor view renders in the extension page | **PASS** | rendered 73 ms after navigation; "Open in a full tab" -> chrome-extension://aohpmlfpjmfdacobcklgfphfhaehmkac/index.html; init scripts reached the page: true |
-| X04 | IBM Plex renders the page text in the extension (fonts bundled, no network) | **FAIL** | extension page: body: system-ui 11.25px; p.muted (pack line): system-ui 14.25px; p[role=status] (instructor status): system-ui 15.3px; ol.steps li (how this works): system-ui 11.25px; h2 (heading): IBM Plex Sans 39px; button (Start): IBM Plex Sans 12.3px. IBM Plex Sans 1/5 faces used; 4 font files, all from chrome-extension://: true. Same build over http: body: IBM Plex Sans 15px; p.muted (pack line): IBM Plex Sans 14.25px; p[role=status] (instructor status): IBM Plex Sans 15.3px; ol.steps li (how this works): IBM Plex Sans 15px; h2 (heading): IBM Plex Sans 39px; button (Start): IBM Plex Sans 12.3px. See bug BUG-6 |
-| X05 | OpenDyslexic renders the page text when "Dyslexia-friendly text" is on | **FAIL** | data-reading="dyslexic"; OpenDyslexic 2/2 faces used; extension page: body: system-ui 11.25px; p.muted (pack line): system-ui 14.25px; p[role=status] (instructor status): system-ui 15.3px; ol.steps li (how this works): system-ui 11.25px; h2 (heading): OpenDyslexic 39px; button (Start): OpenDyslexic 12.3px. Same build over http: body: OpenDyslexic 15px; p.muted (pack line): OpenDyslexic 14.25px; p[role=status] (instructor status): OpenDyslexic 15.3px; ol.steps li (how this works): OpenDyslexic 15px; h2 (heading): OpenDyslexic 39px; button (Start): OpenDyslexic 12.3px. See bug BUG-6 |
-| X06 | WebSocket to the relay opens from the extension origin | **PASS** | sockets opened: ["wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo"]; frames sent/received on the first: 3/2; relay issued join code KFHVYD in 427 ms; slide matched: true |
+| X02 | Extension service worker registers and runs onInstalled | **PASS** | id pbdnlliielnnjhpepiecnjlalhjnoakm; AccessLens 0.1.0; sidePanel.getPanelBehavior() = {"openPanelOnActionClick":true} |
+| X03 | Instructor view renders in the extension page | **PASS** | rendered 173 ms after navigation; "Open in a full tab" -> chrome-extension://pbdnlliielnnjhpepiecnjlalhjnoakm/index.html; init scripts reached the page: true |
+| X04 | IBM Plex renders the page text in the extension (fonts bundled, no network) | **PASS** | extension page: body: IBM Plex Sans 15px; p.muted (pack line): IBM Plex Sans 14.25px; p[role=status] (instructor status): IBM Plex Sans 15.3px; ol.steps li (how this works): IBM Plex Sans 15px; h2 (heading): IBM Plex Sans 39px; button (Start): IBM Plex Sans 12.3px. IBM Plex Sans 4/5 faces used; 7 font files, all from chrome-extension://: true. Same build over http: body: IBM Plex Sans 15px; p.muted (pack line): IBM Plex Sans 14.25px; p[role=status] (instructor status): IBM Plex Sans 15.3px; ol.steps li (how this works): IBM Plex Sans 15px; h2 (heading): IBM Plex Sans 39px; button (Start): IBM Plex Sans 12.3px. See bug BUG-6 |
+| X05 | OpenDyslexic renders the page text when "Dyslexia-friendly text" is on | **PASS** | data-reading="dyslexic"; OpenDyslexic 2/2 faces used; extension page: body: OpenDyslexic 15px; p.muted (pack line): OpenDyslexic 14.25px; p[role=status] (instructor status): OpenDyslexic 15.3px; ol.steps li (how this works): OpenDyslexic 15px; h2 (heading): OpenDyslexic 39px; button (Start): OpenDyslexic 12.3px. Same build over http: body: OpenDyslexic 15px; p.muted (pack line): OpenDyslexic 14.25px; p[role=status] (instructor status): OpenDyslexic 15.3px; ol.steps li (how this works): OpenDyslexic 15px; h2 (heading): OpenDyslexic 39px; button (Start): OpenDyslexic 12.3px. See bug BUG-6 |
+| X06 | WebSocket to the relay opens from the extension origin | **PASS** | sockets opened: ["wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo"]; frames sent/received on the first: 3/2; relay issued join code WMS294 in 410 ms; slide matched: true |
 | X07 | Student view renders, joins through the relay, and follows the instructor | **PASS** | mode tabs ["Focus","Read","Hear","AR"]; pill live: true; Read mode showed "mitochondrion" after the instructor indicated it: true |
 | X08 | AR mode loads its lazy chunk under the extension CSP | **PASS** | AR view rendered with a WebGL canvas; highlighted "Mitochondrion" |
 | X09 | Student mode choice persists in chrome.storage.local across a reload | **PASS** | Read tab selected after reload: true; stored {"accesslens.studentPreferences":{"captionsEnabled":true,"mode":"structured-text","reducedMotion":false,"schemaVersion":"1.0","textScale":1}} |
 | X10 | No console errors or uncaught page errors | **PASS** | none in the instructor or student tab |
-| X11 | No CSP violations | **FAIL** | 4 securitypolicyviolation events (script-src blocked eval at index-Bg96E-5I.js:9:52702): all from Zod v4's allowsEval probe (a caught `Function('')`); schema parsing falls back and still works (X07). See bug BUG-7; console CSP messages: 0 |
-| X12 | No failed requests | **PASS** | 27 responses, none failed |
+| X11 | No CSP violations | **PASS** | none (securitypolicyviolation events and console both checked) |
+| X12 | No failed requests | **PASS** | 32 responses, none failed |
 
 ### Bugs reproduced in this run
 
-**BUG-6: In the installed extension, page text is not IBM Plex, and the dyslexia-friendly font does not reach it (checks X04, X05).**
-Steps: load the unpacked build, open the side panel or `chrome-extension://<id>/index.html`; then switch on "Dyslexia-friendly text".
-Expected: running text (the pack line, the status sentence, the step list, student text) renders in IBM Plex Sans at the
-15 px base size, and in OpenDyslexic once the switch is on, as it does when the same build is served over http.
-Actual: in the extension page `body` computes to `system-ui, sans-serif` at 11.25 px, and every element that
-inherits its font from `body` renders in the system font, with or without the switch. Only elements that set
-`font-family` themselves (headings, buttons) get Plex or OpenDyslexic. Over http the same elements compute to IBM Plex Sans
-and OpenDyslexic (X04/X05 detail). Likely cause, read from those computed values (no such rule is in the app CSS): Chrome applies its built-in extension-page stylesheet (in Chromium, `extension_fonts.css`),
-`body { font-family: system-ui, sans-serif; font-size: 75% }`. `apps/extension/src/style.css` sets the font on
-`:root` (`font: 400 15px/1.5 var(--sans)`) and relies on inheritance, which that `body` rule interrupts. Setting
-`font` on `body` as well would fix it. For the dyslexia switch this matters most: the text people read does not change.
+None of the known extension bugs reproduced.
 
-**BUG-7 (low): Zod reports CSP violations on every extension page load (check X11).**
-Steps: load the unpacked build and open `index.html` with a `securitypolicyviolation` listener (or DevTools Issues).
-Expected: no CSP violations under the MV3 default policy.
-Actual: `script-src` violations with blocked URI `eval`, all at the bundled Zod v4 `allowsEval` probe, which runs
-`new Function('')` and swallows the error. Parsing still works (X07), so the impact is noise that looks alarming in a
-review or a CSP report. `z.config({ jitless: true })` before any schema is used (for example in
-`apps/extension/src/shared/contracts.ts`) skips the probe.
+Known bugs whose checks all passed in this run: BUG-6 (X04, X05); BUG-7 (X11).
 
 Not covered: the side panel opened from the toolbar button (automation cannot click browser UI), and real `getDisplayMedia` from the side panel. The page is the same `index.html`, opened as a full extension tab; capture uses the same fake canvas stream as the live bench.
 <!-- qa:extension-load:end -->

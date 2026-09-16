@@ -875,16 +875,16 @@ after the network returns. Likely files: \`services/live-session/src/client/webS
 \`onConnectionChange\` fires only on socket open and close) and \`apps/extension/src/student/StudentExperience.tsx\`.
 T-28 removed the content-silence timer because it raised false "stale" alarms; a relay-answered ping with a timeout
 would detect a dead link without that problem.` },
-  { id: 'BUG-2', title: 'a reconnecting student is not caught up with the latest state', checks: ['H04', 'P01'], text: `**BUG-2: A reconnecting student is not caught up with the latest state (checks H04, P01).**
-Steps: B is live; B's connection drops (TCP reset); the instructor indicates a region while B is down; the network
-returns and the client reconnects with its stored capability; the instructor sends nothing else.
-Expected: the relay posts the session's \`latestState\` on resume and B shows the instructor's current region.
-Actual: B's pill returns to "live" but B keeps showing the pre-outage view until the instructor's next event. The
-protocol-level probe (P01) shows the same thing with no browser: a join gets its catch-up event, a resume gets none.
-Likely cause: \`Relay.resume()\` (\`services/live-session/src/relay.ts\`) posts the catch-up from the \`$connect\` route
-(\`services/live-session/src/handler.ts\`), where, as that file's own comment says, posting to the connection is not yet
-possible. \`post()\` returns false and the result is ignored. The pill reading "live" over a stale view makes this a
-false-live state too.` },
+  { id: 'BUG-2', title: "the relay's resume catch-up never arrives", checks: ['P01'], text: `**BUG-2: The relay's resume catch-up never arrives (check P01; the extension works around it, check H04).**
+Steps (protocol level, no browser): a student joins, then connects again presenting its capability in the \`$connect\`
+query string, and sends nothing.
+Expected: the relay posts the session's \`latestState\` on resume.
+Actual: a join gets its catch-up event; a resume gets none. \`Relay.resume()\` (\`services/live-session/src/relay.ts\`)
+posts from the \`$connect\` route (\`services/live-session/src/handler.ts\`), where, as that file's own comment says,
+posting to the connection is not yet possible; \`post()\` returns false and the result is ignored.
+Workaround in place: \`WebSocketSessionClient\` sends \`join\` again when a student's connection reopens, which returns
+the latest view through the frozen protocol, so the extension converges (H04). Any other client of the relay still
+needs to do the same, or the relay needs a catch-up path after \`$connect\`.` },
   { id: 'BUG-3', title: 'the client stops reconnecting after five failed attempts', checks: ['E01'], text: `**BUG-3: The client stops reconnecting after five failed attempts (check E01).**
 Steps: B is live; B's network is down for 15 s; the network returns.
 Expected: B reconnects on its own soon after the network returns.
@@ -901,19 +901,15 @@ false-live state. Cause: deployment drift, not the source. \`capture.stopped\` w
 \`services/live-session/src/rules.ts\` (and to \`VIEW_BEARING\` in \`relay.ts\`) by commit 94cd2a3 on 2026-09-16, after the
 relay was deployed on 2026-09-15. Fix: rebuild and redeploy the relay (\`services/live-session\` \`npm run build\`, then
 \`infra\` \`cdk deploy\`), then rerun this bench. P02 checks the whole allowlist directly.` },
-  { id: 'BUG-5', title: 'End Session can be lost', checks: ['L09', 'P03'], text: `**BUG-5: End Session can be lost, so students never see "ended" (checks L09, P03).**
-Steps: instructor shares, students are live; the instructor clicks End Session.
-Expected: both students show "ended" ("The instructor ended this session.").
-Actual: intermittently, neither student receives \`session.ended\` and both keep their previous pill ("stopped" after
-Stop, or "live" if the instructor ends while sharing) indefinitely; a late join to the same code is refused (L10), so
-the session really is closed. P03 repeats the wire sequence without a browser and counts
-how often \`session.ended\` arrives. Cause: \`CaptureController.endSession()\`
-(\`apps/extension/src/instructor/captureController.ts\`) emits \`session.ended\` and immediately calls \`client.close()\`;
-\`WebSocketSessionClient.close()\` (\`services/live-session/src/client/webSocketSessionClient.ts\`) sends
-\`{kind: 'close'}\` in the same tick and closes the socket. API Gateway invokes the Lambda for each message
-independently, so \`Relay.close()\` can mark the session closed before \`Relay.publish()\` checks it, and the event is
-refused as \`session-not-open\` with nobody left to hear the refusal. Options: have the relay's close broadcast
-\`session.ended\` itself, or have the client wait for \`accepted\` before sending \`close\`.` },
+  { id: 'BUG-5', title: 'the relay refuses session.ended when close lands first', checks: ['P03'], text: `**BUG-5: The relay refuses \`session.ended\` when the client's close lands first (check P03; the extension works around it, check L09).**
+Steps (protocol level, no browser): the instructor sends \`session.ended\` and \`{kind: 'close'}\` in the same tick.
+Expected: students receive \`session.ended\`.
+Actual: API Gateway invokes the Lambda for each message independently, so \`Relay.close()\` can mark the session closed
+before \`Relay.publish()\` checks it, and the event is refused as \`session-not-open\`.
+Workaround in place: \`WebSocketSessionClient.close()\` now waits (up to 2 s) for the relay to accept or reject events
+still in flight before sending \`close\`, so End Session from the extension reaches students (L09; 6/6 trials through
+the client against the deployed relay on 2026-09-16, against 2/6 before). A client that sends both at once still loses
+the event; the relay could instead treat \`close\` after \`session.ended\` as a no-op.` },
 ];
 
 const LIMITS = `### Not automated here
