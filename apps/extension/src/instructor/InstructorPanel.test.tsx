@@ -5,7 +5,7 @@ import { act } from 'react-dom/test-utils';
 import { describe, it, expect, afterEach } from 'vitest';
 import { AccessPackSchema, InMemorySessionClient, type LiveEvent } from '../shared/contracts';
 import { InstructorPanel } from './index';
-import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, testPack } from '../sources/screen/fixtures';
+import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, solidFrame, testPack } from '../sources/screen/fixtures';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -87,7 +87,7 @@ describe('InstructorPanel', () => {
   it('reads Unmatched after three unknown frames', async () => {
     const { stream, scheduler, events } = render();
     await click('Start');
-    stream.enqueue(loadSlideFrame('unknown-01'), loadSlideFrame('unknown-01'), loadSlideFrame('unknown-01'));
+    stream.enqueue(solidFrame(1440, 900, 40), solidFrame(1440, 900, 40), solidFrame(1440, 900, 40));
     act(() => scheduler.tick(3));
     expect(status()).toContain('Unmatched');
     expect(events.map(e => e.type)).toEqual(['session.started', 'source.unmatched']);
@@ -162,5 +162,16 @@ describe('InstructorPanel', () => {
       const named = (label?.textContent?.trim() || control.getAttribute('aria-label') || '').length > 0;
       expect(named, `${control.tagName}#${control.id} has no label`).toBe(true);
     }
+  });
+
+  it('says what is being shared and, when a window or screen shows no reviewed slide, how to fix it', async () => {
+    const host = new FakeCaptureHost();
+    host.stream.surface = 'window';
+    const { stream, scheduler } = render(host);
+    await click('Start');
+    expect(status()).toContain('Sharing a window.');
+    await act(async () => { stream.enqueue(solidFrame(1440, 900, 40), solidFrame(1440, 900, 40), solidFrame(1440, 900, 40)); scheduler.tick(3); });
+    expect(status()).toContain('Unmatched');
+    expect(status()).toMatch(/make the slide bigger/i);
   });
 });

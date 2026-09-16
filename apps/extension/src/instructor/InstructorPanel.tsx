@@ -16,13 +16,23 @@ type Tone = 'idle' | 'live' | 'ok' | 'warn';
 
 interface Banner { glyph: string; label: string; tone: Tone; sentence: string }
 
+const SURFACE_NAMES = { browser: 'a tab', window: 'a window', monitor: 'your screen' } as const;
+
 /** One banner per state: glyph and label carry the meaning, colour only reinforces it. */
 function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
+  // Windows and whole screens carry toolbars and other windows around the
+  // slide, so when nothing matches there, say what usually fixes it.
+  const unmatchedHint = state.surface === 'window' || state.surface === 'monitor'
+    ? ' Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow.'
+    : '';
   const where = state.current.kind === 'matched'
     ? ` Current slide: ${state.current.title}. Region: ${state.current.regionId ?? 'none'}.`
     : state.current.kind === 'unmatched'
-      ? ' Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below.'
-      : ' Looking for a reviewed slide.';
+      ? ` Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below.${unmatchedHint}`
+      : state.surface === 'window' || state.surface === 'monitor'
+        ? ' Looking for a reviewed slide anywhere in what you shared.'
+        : ' Looking for a reviewed slide.';
+  const sharing = state.surface ? `Sharing ${SURFACE_NAMES[state.surface]}.` : 'Sharing.';
   switch (state.phase) {
     case 'idle':
       return {
@@ -36,7 +46,7 @@ function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
         glyph: state.current.kind === 'unmatched' ? '⚠' : state.current.kind === 'matched' ? '●' : '◉',
         label: state.current.kind === 'unmatched' ? 'Sharing · Unmatched' : state.current.kind === 'matched' ? 'Sharing · Synced' : 'Sharing',
         tone: state.current.kind === 'unmatched' ? 'warn' : state.current.kind === 'matched' ? 'ok' : 'live',
-        sentence: `Sharing.${where}`,
+        sentence: `${sharing}${where}`,
       };
     case 'paused':
       return { glyph: '❙❙', label: 'Paused', tone: 'warn', sentence: `Paused. Students see the last shared moment.${where}` };
@@ -97,7 +107,7 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
   }
 
   const steps = [
-    'Click Start and pick the window or tab showing your slides.',
+    'Click Start and pick the tab, window, or screen showing your slides.',
     'Read the join code to students. They enter it in their AccessLens.',
     'Present. Reviewed slides are recognised on this device and synced; fix a wrong match below.',
   ];

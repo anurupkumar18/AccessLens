@@ -11,7 +11,12 @@ export interface Frame {
   data: Uint8ClampedArray;
 }
 
+/** What the instructor picked in the browser's chooser, when the browser says. */
+export type DisplaySurface = 'browser' | 'window' | 'monitor';
+
 export interface CaptureStream {
+  /** Tab, window, or whole screen. Undefined when the browser does not report it. */
+  readonly surface?: DisplaySurface;
   /** Returns the current frame, or null when none is available yet. */
   sampleFrame(): Frame | null;
   /** Releases the underlying media tracks. Idempotent. */

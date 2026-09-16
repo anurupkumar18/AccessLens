@@ -1,4 +1,4 @@
-import type { CaptureStream } from './captureHost';
+import type { CaptureStream, Frame } from './captureHost';
 import { fingerprintFrame } from './fingerprint';
 import { cropToAspect } from './letterbox';
 
@@ -25,18 +25,23 @@ export interface Sampler {
   readonly running: boolean;
 }
 
+/** Whole-frame fingerprint after trimming letterbox bars: right for a shared tab or a full-screen deck. */
+export const wholeFrameFingerprint = (frame: Frame): string => fingerprintFrame(cropToAspect(frame));
+
 /**
  * Bounded-rate loop over a CaptureStream. Each tick samples one frame,
- * crops any letterbox or pillarbox bars down to the slide aspect,
- * fingerprints it, and drops it: the frame never leaves this function's
- * stack. Only the fingerprint string (or null when no frame was available)
- * reaches the callback.
+ * fingerprints it (by default the whole frame minus letterbox bars; the
+ * controller passes a slide locator so window and screen shares work too),
+ * and drops it: the frame never leaves this function's stack. Only the
+ * fingerprint string (or null when no frame was available) reaches the
+ * callback.
  */
 export function createSampler(
   stream: CaptureStream,
   scheduler: Scheduler,
   onSample: (fingerprint: string | null) => void,
   intervalMs: number = DEFAULT_SAMPLE_INTERVAL_MS,
+  fingerprint: (frame: Frame) => string = wholeFrameFingerprint,
 ): Sampler {
   let handle: SchedulerHandle | null = null;
   let running = false;
@@ -45,8 +50,7 @@ export function createSampler(
     if (!running) return;
     handle = null;
     const frame = stream.sampleFrame();
-    const fingerprint = frame ? fingerprintFrame(cropToAspect(frame)) : null;
-    onSample(fingerprint);
+    onSample(frame ? fingerprint(frame) : null);
     if (running && handle === null) handle = scheduler.schedule(tick, intervalMs);
   }
 

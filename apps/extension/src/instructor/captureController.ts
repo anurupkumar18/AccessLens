@@ -1,8 +1,8 @@
 import type { AccessPack, LiveEvent, SessionClient } from '../shared/contracts';
 import {
-  assertPackFingerprints, createSampler, hammingDistance, matchFingerprint, timeoutScheduler,
+  assertPackFingerprints, createSampler, createSlideLocator, hammingDistance, matchFingerprint, timeoutScheduler, wholeFrameFingerprint,
   DEFAULT_MATCH_OPTIONS, DEFAULT_SAMPLE_INTERVAL_MS,
-  type CaptureHost, type CaptureStream, type MatchOptions, type Sampler, type Scheduler,
+  type CaptureHost, type CaptureStream, type DisplaySurface, type MatchOptions, type Sampler, type Scheduler,
 } from '../sources/screen';
 
 /** Injected time source; production uses the system clock. */
@@ -36,6 +36,8 @@ export interface ControllerSnapshot {
   message: string | null;
   current: CurrentState;
   sequence: number;
+  /** Tab, window, or whole screen while sharing; null when not sharing or unreported. */
+  surface: DisplaySurface | null;
 }
 
 export interface Correction { assetId: string; regionId?: string }
@@ -84,6 +86,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   const intervalMs = options.sampleIntervalMs ?? DEFAULT_SAMPLE_INTERVAL_MS;
   const matchOptions = options.match ?? DEFAULT_MATCH_OPTIONS;
   assertPackFingerprints(pack);
+  const locator = createSlideLocator(pack, matchOptions);
 
   const listeners = new Set<(state: ControllerSnapshot) => void>();
   let phase: CapturePhase = 'idle';
@@ -102,7 +105,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   let correctionAnchor: string | null = null;
 
   function snapshot(): ControllerSnapshot {
-    return { phase, sessionId, message, current: { ...current }, sequence };
+    return { phase, sessionId, message, current: { ...current }, sequence, surface: stream?.surface ?? null };
   }
   function notify(): void {
     const state = snapshot();
@@ -214,7 +217,9 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
         message = null;
         resetRecognition();
         emit({ type: 'session.started' });
-        sampler = createSampler(granted, scheduler, onSample, intervalMs);
+        // A tab is the slide itself; a window or screen has other things around it to search past.
+        const searchable = granted.surface === 'window' || granted.surface === 'monitor';
+        sampler = createSampler(granted, scheduler, onSample, intervalMs, searchable ? frame => locator.fingerprint(frame) : wholeFrameFingerprint);
         sampler.start();
       } catch {
         if (openedHere) sessionId = null;

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import type { CaptureHost, CaptureStream, Frame } from '../captureHost';
+import type { CaptureHost, CaptureStream, DisplaySurface, Frame } from '../captureHost';
 import type { Scheduler, SchedulerHandle } from '../sampler';
 import testPackJson from './test-pack.json';
 
@@ -43,6 +43,63 @@ export function solidFrame(width: number, height: number, value: number): Frame 
   return { width, height, data };
 }
 
+/** Nearest-neighbour scale; enough for fingerprint tests, which see block means. */
+export function scaleFrame(frame: Frame, width: number, height: number): Frame {
+  const out = solidFrame(width, height, 0);
+  for (let y = 0; y < height; y++) {
+    const sy = Math.min(frame.height - 1, Math.floor((y * frame.height) / height));
+    for (let x = 0; x < width; x++) {
+      const sx = Math.min(frame.width - 1, Math.floor((x * frame.width) / width));
+      const si = (sy * frame.width + sx) * 4;
+      out.data.set(frame.data.subarray(si, si + 4), (y * width + x) * 4);
+    }
+  }
+  return out;
+}
+
+/** Copies `source` onto `target` at (left, top), clipped to the target. Mutates `target`. */
+export function pasteFrame(target: Frame, source: Frame, left: number, top: number): Frame {
+  for (let y = 0; y < source.height; y++) {
+    const ty = y + top;
+    if (ty < 0 || ty >= target.height) continue;
+    for (let x = 0; x < source.width; x++) {
+      const tx = x + left;
+      if (tx < 0 || tx >= target.width) continue;
+      const si = (y * source.width + x) * 4;
+      target.data.set(source.data.subarray(si, si + 4), (ty * target.width + tx) * 4);
+    }
+  }
+  return target;
+}
+
+/**
+ * A slide as a desktop viewer shows it in a shared *window*: a light toolbar
+ * with controls across the top, grey margins, and the slide centred in what
+ * is left. The frame the browser hands over for a window share looks like this.
+ */
+export function slideInWindow(slide: Frame, width: number, height: number): Frame {
+  const window = solidFrame(width, height, 232);
+  pasteFrame(window, solidFrame(width, 52, 246), 0, 0);
+  pasteFrame(window, solidFrame(width, 1, 190), 0, 52);
+  pasteFrame(window, solidFrame(180, 20, 90), 90, 16);
+  pasteFrame(window, solidFrame(24, 24, 120), width - 160, 14);
+  pasteFrame(window, solidFrame(24, 24, 120), width - 120, 14);
+  const areaWidth = width - 40;
+  const areaHeight = height - 53 - 40;
+  let slideWidth = areaWidth;
+  let slideHeight = Math.round((slideWidth * 9) / 16);
+  if (slideHeight > areaHeight) { slideHeight = areaHeight; slideWidth = Math.round((slideHeight * 16) / 9); }
+  return pasteFrame(window, scaleFrame(slide, slideWidth, slideHeight), Math.round((width - slideWidth) / 2), 53 + Math.round((height - 53 - slideHeight) / 2));
+}
+
+/** A whole-screen share: `wallpaper` filling the display, a menu bar, a dock, and `window` placed at (left, top). */
+export function screenWith(wallpaper: Frame, window: Frame, left: number, top: number, width = 1440, height = 900): Frame {
+  const screen = scaleFrame(wallpaper, width, height);
+  pasteFrame(screen, solidFrame(width, 26, 30), 0, 0);
+  pasteFrame(screen, window, left, top);
+  return pasteFrame(screen, solidFrame(Math.round(width * 0.45), 54, 70), Math.round(width * 0.27), height - 54);
+}
+
 // ---- Test doubles -------------------------------------------------------
 
 export class FakeCaptureStream implements CaptureStream {
@@ -50,6 +107,8 @@ export class FakeCaptureStream implements CaptureStream {
   private queue: Frame[] = [];
   private endedListeners = new Set<() => void>();
   stopped = false;
+  /** Set before Start to simulate picking a tab, window, or whole screen in the chooser. */
+  surface?: DisplaySurface;
 
   /** Queue frames in the order the sampler should see them. */
   enqueue(...frames: Frame[]): void { this.queue.push(...frames); }
