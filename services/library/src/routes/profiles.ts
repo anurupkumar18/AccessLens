@@ -31,9 +31,11 @@ export async function deleteProfile(input: ProfilePath, deps: LibraryRouteDeps):
   await requireProfile(input.profileId, deps);
   for (const document of (await storeValues(deps.documents, input.profileId)).filter(item => item.profileId === input.profileId)) {
     if (document.profileId !== input.profileId) continue;
-    await deps.s3.deletePrefix(`library/${input.profileId}/${document.docId}/`);
+    // Read the manifest before deleting its S3 prefix; the exact vector keys
+    // are needed to remove a document without disturbing sibling documents.
     const keys = deps.listChunkKeys ? await deps.listChunkKeys(document.docId) : [];
     if (keys.length > 0) await deps.vectors.delete(keys, input.profileId);
+    await deps.s3.deletePrefix(`library/${input.profileId}/${document.docId}/`);
     await storeDelete(deps.documents, document.docId);
   }
   await deps.s3.deletePrefix(`library/${input.profileId}/`);
@@ -49,7 +51,8 @@ export async function registerDocument(input: RegisterDocumentInput, deps: Libra
 
   // The upload id is a deterministic document identity for this API surface.
   // Re-registration replaces the prior record and removes its vectors first.
-  const docId = upload.docId ?? deps.id();
+  const docId = upload.profileDocIds?.[input.profileId] ?? upload.docId ?? deps.id();
+  upload.profileDocIds = { ...(upload.profileDocIds ?? {}), [input.profileId]: docId };
   upload.docId = docId;
   const previous = await storeGet(deps.documents, docId);
   if (previous && previous.profileId === input.profileId) {
@@ -92,11 +95,11 @@ export async function searchProfile(input: SearchProfileInput, deps: LibraryRout
 }
 
 async function removeDocumentStorage(document: DocumentRecord, deps: LibraryRouteDeps): Promise<void> {
-  await deps.s3.deletePrefix(`library/${document.profileId}/${document.docId}/`);
   const keys = deps.listChunkKeys ? await deps.listChunkKeys(document.docId) : [];
   // The index is profile-scoped. A pending document has no keys yet; deleting
   // an empty list is a no-op, while ready documents remove their exact keys.
   await deps.vectors.delete(keys, document.profileId);
+  await deps.s3.deletePrefix(`library/${document.profileId}/${document.docId}/`);
 }
 
 async function requireProfile(profileId: string, deps: LibraryRouteDeps): Promise<ProfileRecord> {

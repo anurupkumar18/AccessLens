@@ -17,6 +17,8 @@ export interface UploadRecord {
   key: string;
   /** Set on first registration so retrying the same upload reuses its docId. */
   docId?: string;
+  /** Allows one presigned upload to be registered in more than one profile without key collisions. */
+  profileDocIds?: Record<string, string>;
 }
 
 export interface LibraryObjectStore {
