@@ -9,7 +9,11 @@ cd "$ROOT_DIR"
 # whatever dist/ happens to be checked in.
 npx vite build --config apps/viewer/vite.config.ts
 
-npx --yes cdk deploy --app "npx tsx infra/bin/app.ts" --require-approval never --outputs-file .cdk-outputs.json
+# One CDK app carries both stacks, so synth needs Part 4's Lambda bundle
+# even when only AccessLensAuthoring is deployed (services/live-session/README.md:
+# "npm run build is not optional and not automatic").
+(cd services/live-session && npm ci --no-audit --no-fund && npm run build)
+npx --yes cdk deploy --app "npx tsx infra/bin/accesslens.ts" AccessLensAuthoring --require-approval never --outputs-file .cdk-outputs.json
 
 node --input-type=module <<'NODE'
 import { readFileSync, writeFileSync } from 'node:fs';

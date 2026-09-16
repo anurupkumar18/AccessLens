@@ -144,6 +144,8 @@ Each student extension loads the same reviewed pack but applies local preference
 
 - Focus mode crops or reconstructs the current approved region.
 - Structured mode follows the reviewed reading order.
+- Dyslexic mode presents the same reviewed text with student-controlled spacing,
+  line length, and dyslexic-friendly typography.
 - Caption mode displays instructor-approved or live caption segments.
 - Audio mode speaks concise reviewed descriptions only when requested.
 - Locate mode translates normalized position into screen-relative language or
@@ -276,6 +278,8 @@ grade, or attention signal.
 - `caption.appended`
 - `capture.paused`
 - `capture.resumed`
+- `capture.stopped` — capture has ended, but the temporary session remains open
+  for a later explicit Start on the same join code.
 - `source.unmatched`
 - `session.ended`
 
@@ -341,7 +345,8 @@ camera ownership is not a student requirement.
 | WebSocket disconnects | Mark the view stale; reconnect; request latest sequence |
 | Event arrives out of order | Reject it and retain the newer state |
 | Pack version differs | Stop rendering and fetch the exact approved version |
-| Instructor pauses or stops | Freeze or close student live views immediately |
+| Instructor pauses or stops capture | Freeze the last trusted student view immediately and state that sharing is not live; only `session.ended` closes the temporary session |
+| Instructor ends session | Stop delivery and close student live views immediately |
 | Audio is unavailable | Preserve structured text and visual focus alternatives |
 | Camera stretch fails | Return to instructor/manual selection; never require student cameras |
 

@@ -22,7 +22,7 @@ const Review = z.object({
 }).strict();
 // Part 6 (authoring pipeline, docs/VISUALIZATION_SYSTEM.md §4, §5, §9.5) adds
 // three additive optional fields and one new standalone contract. Relay thread
-// T-25. `arScene` is untouched and the authoring pipeline never writes it;
+// T-31. `arScene` is untouched and the authoring pipeline never writes it;
 // `LiveEventSchema` gains nothing.
 
 // A published visualization the Visualize mode loads for this slide. It names
@@ -78,6 +78,7 @@ export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ ...LiveEventBase, type:z.literal('caption.appended') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.paused') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.resumed') }).strict(),
+  z.object({ ...LiveEventBase, type:z.literal('capture.stopped') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('source.unmatched') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('session.ended') }).strict(),
 ]);

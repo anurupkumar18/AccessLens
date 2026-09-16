@@ -1,4 +1,15 @@
 {
+  "name": "@accesslens/infra",
   "private": true,
-  "type": "module"
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AccessLens CDK app: the Part 4 live plane and the Part 6 authoring pipeline as two stacks. Dependencies come from the repository root.",
+  "scripts": {
+    "synth": "cdk synth",
+    "deploy": "cdk deploy AccessLensLiveSession --require-approval never",
+    "destroy": "cdk destroy AccessLensLiveSession --force",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run test"
+  }
 }

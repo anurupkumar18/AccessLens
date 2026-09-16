@@ -58,7 +58,7 @@ describe('access-pack.schema.json asset/region shape', () => {
   });
 });
 
-// Part 6's additive fields (relay T-25). A pipeline-published pack carries a
+// Part 6's additive fields (relay T-31). A pipeline-published pack carries a
 // visualization, per-region audio, and citations into the instructor's own
 // course library; a pack without any of them still validates, which is what
 // keeps the checked-in bio-cell-demo pack working unchanged.

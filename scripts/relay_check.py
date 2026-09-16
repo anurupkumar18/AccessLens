@@ -108,7 +108,7 @@ def check_parts(text: str) -> list[str]:
     errors = []
     rows = _rows(text, REQUIRED_SECTIONS[1])
     # Part 6 (authoring pipeline and visualization system) was added alongside
-    # the original five in docs/VISUALIZATION_SYSTEM.md §15; see relay T-29.
+    # the original five in docs/VISUALIZATION_SYSTEM.md §15; see relay T-35.
     if len(rows) != EXPECTED_PARTS:
         errors.append(f"section 2 lists {len(rows)} parts; the plan defines {EXPECTED_PARTS}")
     for row in rows:

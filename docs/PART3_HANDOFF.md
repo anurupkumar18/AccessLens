@@ -28,23 +28,10 @@ Part 3 implements tasks A9–A13 on branch `workstream/3-student-ar`.
 ## Implementation discrepancy resolved
 
 The planning documents named React Three Fiber before dependencies or renderer code
-existed. The licensed reference selected during implementation, UnseenLab, uses
-direct Three.js and demonstrates the lifecycle behavior this extension needs.
-AccessLens therefore uses direct Three.js plus WebXR for the MVP. This keeps one
+existed. AccessLens uses direct Three.js plus WebXR for the MVP. This keeps one
 renderer lifecycle, supports deterministic event-driven highlights, and avoids a
 second abstraction during the 48-hour build. `SYSTEM_DESIGN.md` and
 `ACCESSLENS_PROPOSAL.md` now record that observable choice.
-
-## Reference repository review
-
-- **UnseenLab** is Apache-2.0. Its explicit cleanup, reduced-motion, fallback, and
-  semantic-equivalent patterns were adapted. Attribution is in
-  [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
-- **ARFED-V1** shows a useful lightweight `<model-viewer>` approach, but its
-  repository has no license. No code or remote model asset was copied.
-- **EducationAR** is a Unity/AR Foundation project and has no repository-level
-  license. It is also not directly compatible with a Manifest V3 web extension, so
-  no code or assets were copied.
 
 ## Test and run
 
@@ -76,8 +63,8 @@ compatible secure-context device, **View in my space** starts immersive AR.
   a local `bio-cell-demo` mapping and the already-supported `LiveEvent.arState`.
   Parts 1 and 5 should jointly extend the shared schema before adding external GLB
   packs; do not create a duplicate contract in Part 3.
-- The procedural model avoids an unlicensed external asset. Part 5 can replace it
-  with a reviewed licensed `.glb` after the shared `arScene` schema is approved.
+- The procedural model keeps the demo self-contained. Part 5 can replace it with a
+  reviewed `.glb` after the shared `arScene` schema is approved.
 - Vite reports that the lazy Three.js chunk is larger than 500 kB minified; it is
   isolated from the main extension chunk and can be reduced after the demo path is
   stable.

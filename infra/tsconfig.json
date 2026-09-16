@@ -4,7 +4,13 @@
     "rootDir": "..",
     "outDir": "cdk.out",
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["bin/**/*.ts", "lib/**/*.ts"]
+  "include": [
+    "bin/**/*.ts",
+    "lib/**/*.ts",
+    "test/**/*.ts"
+  ]
 }

@@ -25,7 +25,7 @@ new workstream alongside the original five, and the build prompt orders the
 Part 6 row added *and* `relay_check.py` kept green. A one-constant change is
 the implied consequence of an instruction that is already settled, not a
 deviation from it. `docs/PARALLEL_WORKSTREAMS.md` gained the matching
-ownership row. Relay thread T-29 records that Part 6 created `infra/` in
+ownership row. Relay thread T-35 records that Part 6 created `infra/` in
 Part 4's absence.
 
 **Date.** 2026-09-15.
@@ -49,7 +49,7 @@ stack, ingest, pack authoring, audio, publish, catalog, course-profile
 retrieval, and the agent stages — is built to completion with a test suite that
 includes model-behaviour evaluations asserting that each agent stage produces
 the resources the spec specifies. The four extension-client milestones are
-deferred; their relay threads (T-26, T-27, T-28) stay OPEN with Part 6 named,
+deferred; their relay threads (T-32, T-33, T-34) stay OPEN with Part 6 named,
 and `docs/VIZ_HANDOFF.md` lists them as the next action. Every capability they
 would have used is reachable over HTTPS with the bearer token, which is the
 property the spec's API-first rule actually asks for.
@@ -299,10 +299,11 @@ in six places, and three of them are structural rather than textual:
    root package) was added independently. `cdk.json` names one app entry;
    the two cannot both win. This is an ownership-boundary problem, not a
    merge-tool problem.
-2. **`docs/CONTEXT_RELAY.md` numbering.** Master is at RL-035 and T-30;
-   this branch wrote RL-024/RL-025 and T-31/T-32. Every Part 6 relay entry
-   and thread must be renumbered on merge (RL-036+, T-31 becomes the next
-   free id after master's, and PR #12 also claims T-31..T-33).
+2. **`docs/CONTEXT_RELAY.md` numbering.** Master is at RL-035 and T-30
+   and uses T-25..T-30 for other threads; this branch had written RL-025,
+   RL-026 and T-25..T-32. Applied on merge: Part 6's threads are T-31..T-38
+   and its entries RL-036 and RL-037. PR #12 also claims T-31..T-33 and
+   renumbers when it lands after this.
 3. **Committed build output.** `dist/` and `dist/index.html` conflict as
    rename/rename and modify/delete; they are generated and must be rebuilt
    after the merge, not resolved by hand.

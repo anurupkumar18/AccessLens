@@ -17,7 +17,7 @@ listed as deferred in the implementation plan are intentionally outside the
 | 1. Foundation and contracts | **Name: Anurup Kumar ** | Installable extension shell and stable shared interfaces |
 | 2. Instructor capture | **Name: Jacob ** | Consent-based screen sharing, slide matching, and correction |
 | 3. Student experience and AR | **Name: ____________________** | Synchronized accessible modes and required AR view |
-| 4. AWS live service | **Name: ____________________** | Secure temporary sessions and ordered WebSocket relay |
+| 4. AWS live service | **Name: Omar Rizwan** | Secure temporary sessions and ordered WebSocket relay |
 | 5. Content, camera, and demo QA | **Name: Kunj Rathod** | Reviewed biology pack, advanced camera adapter, and integrated demo |
 | 6. Authoring pipeline and visualization | **Name: Jacob ** | Single-upload authoring API, course-profile retrieval, and the visualization surface |
 
@@ -150,7 +150,7 @@ the Instructor extension or AWS.
 
 ## Part 4 — AWS temporary session and real-time transport
 
-**Name: ____________________**
+**Name: Omar Rizwan**
 
 **Implementation-plan tasks:** A6, A7, and A8
 
@@ -183,6 +183,49 @@ the Instructor extension or AWS.
 
 **Independent test path:** use fixture WebSocket clients and contract payloads; no
 browser extension is needed until integration.
+
+### Status — built and deployed
+
+Branch `workstream/4-aws-live`. `services/live-session/README.md` is the
+deployment and endpoint documentation; `make live-session-check` runs the narrow
+check.
+
+All five "Done when" conditions above are met, and each is an executable check
+rather than a claim:
+
+- **One instructor drives two students over the deployed endpoint** — `node
+  scripts/integration-test.mjs wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`
+  relays all 19 events of the reviewed happy path to two students in order,
+  12/12 green against real AWS.
+- **A student cannot publish instructor events** — every event type is
+  instructor-only; a student publisher is refused as
+  `role-not-permitted-to-publish`. Roles come from an HMAC-signed capability, so
+  editing `student` to `instructor` invalidates it.
+- **Malformed, stale, reordered, and raw-media-shaped events are rejected** —
+  the server-side validator uses Part 5's rule names exactly, and
+  `test/rules.parity.test.ts` runs both implementations over every reviewed
+  fixture and fails on any disagreement.
+- **Closing or expiring a session prevents further delivery** — close is
+  immediate and instructor-only; `session.ended` also closes. Expiry is enforced
+  on every read, because DynamoDB TTL deletes asynchronously.
+- **The real client replaces Part 1's mock without changing Parts 2 or 3** —
+  `src/client/webSocketSessionClient.ts` implements the frozen interface, with a
+  test asserting the same five methods at the same arities as
+  `InMemorySessionClient`. It imports no AWS SDK.
+
+Closed **T-15** (first sequence pinned to 1), **T-19** (the relay holds the
+session's pack version so renderers need not), and **T-20** (the account's write
+path, proven by deploying).
+
+**For Part 3:** the endpoint above is live now, so student renderers can be
+driven by a real instructor client instead of the simulator. `VITE_ACCESSLENS_WS_URL`
+is that URL. The endpoint dies with the hackathon account — see
+`docs/AWS_ACCESS_VERIFICATION.md` §1 — so treat it as a convenience, and keep the
+fixture path working.
+
+**Not built:** no authorizer on the initial `$connect` (the session id is the
+only secret — fine for a reviewed demo pack, not for real course content), no
+capability rotation, no alarms.
 
 ## Part 5 — Biology Access Pack, camera adapter, and demo quality
 
@@ -357,7 +400,7 @@ owned component, and include a short manual test note. Do not merge directly to
 - [ ] **Name: ____________________** confirms Part 1 is merged and tested.
 - [ ] **Name: ____________________** confirms Part 2 is merged and tested.
 - [ ] **Name: ____________________** confirms Part 3 is merged and tested.
-- [ ] **Name: ____________________** confirms Part 4 is merged and tested.
+- [ ] **Name: Omar Rizwan** confirms Part 4 is merged and tested.
 - [ ] **Name: Kunj Rathod** confirms Part 5 is merged and tested.
 - [ ] All five owners confirm the final demo still satisfies charter invariants
   A1–A11.

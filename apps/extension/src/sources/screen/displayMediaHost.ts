@@ -15,11 +15,31 @@ import type { CaptureHost, CaptureStream, Frame } from './captureHost';
 export function createDisplayMediaHost(): CaptureHost {
   return {
     async requestStream(): Promise<CaptureStream> {
-      const media = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      // Call getDisplayMedia directly from the controller's Start gesture. Do
+      // not add an intermediate permission or network await before this call:
+      // browsers otherwise reject window/screen capture because the transient
+      // user activation has expired. Leaving the source unconstrained keeps the
+      // chooser's tab, window, and entire-screen options available.
+      const media = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 2, max: 5 } },
+        audio: false,
+      });
       const video = document.createElement('video');
       video.muted = true;
       video.playsInline = true;
       video.srcObject = media;
+      if (video.readyState < 1) {
+        await new Promise<void>((resolve, reject) => {
+          const onMetadata = (): void => { cleanup(); resolve(); };
+          const onError = (): void => { cleanup(); reject(new Error('Shared source metadata was unavailable')); };
+          const cleanup = (): void => {
+            video.removeEventListener('loadedmetadata', onMetadata);
+            video.removeEventListener('error', onError);
+          };
+          video.addEventListener('loadedmetadata', onMetadata, { once: true });
+          video.addEventListener('error', onError, { once: true });
+        });
+      }
       await video.play();
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d', { willReadFrequently: true });

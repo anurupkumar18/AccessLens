@@ -5,7 +5,7 @@ import { z } from 'zod';
 // diagnosis, disability label, or behavioral signal (charter A4/A8).
 export const StudentPreferencesSchema = z.object({
   schemaVersion: z.literal('1.0'),
-  mode: z.enum(['focus', 'structured-text', 'audio', 'ar']),
+  mode: z.enum(['focus', 'structured-text', 'audio', 'dyslexic', 'ar']),
   textScale: z.number().min(0.75).max(2),
   reducedMotion: z.boolean(),
   captionsEnabled: z.boolean(),

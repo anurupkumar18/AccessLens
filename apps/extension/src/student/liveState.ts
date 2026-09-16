@@ -4,6 +4,7 @@ export type LiveStatus =
   | 'waiting'
   | 'live'
   | 'paused'
+  | 'stopped'
   | 'stale'
   | 'unmatched'
   | 'ended'
@@ -60,6 +61,13 @@ export function applyLiveEvent(
       return { ...current, status: 'paused', lastSequence: event.sequence, message: 'Instructor sharing is paused.' };
     case 'capture.resumed':
       return { ...current, status: 'live', lastSequence: event.sequence, message: 'Instructor sharing resumed.' };
+    case 'capture.stopped':
+      return {
+        ...current,
+        status: 'stopped',
+        lastSequence: event.sequence,
+        message: 'Instructor stopped sharing. Showing the last reviewed moment.',
+      };
     case 'source.unmatched':
       return {
         status: 'unmatched',
@@ -78,4 +86,9 @@ export function applyLiveEvent(
 export function markLiveStateStale(current: StudentLiveState): StudentLiveState {
   if (current.status !== 'live') return current;
   return { ...current, status: 'stale', message: 'Connection interrupted. Showing the last reviewed state.' };
+}
+
+export function markLiveStateReconnected(current: StudentLiveState): StudentLiveState {
+  if (current.status !== 'stale') return current;
+  return { ...current, status: 'live', message: 'Reconnected.' };
 }

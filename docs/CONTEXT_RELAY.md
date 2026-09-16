@@ -52,23 +52,26 @@ Three rules that save the most time here:
 
 ## 2. Where each part stands
 
-Integration branch: `accesslens-extension-ar-pivot`. Nothing merges to `master`
-during the build.
+The AccessLens integration has now been merged to `master`; subsequent feature
+work is being made directly on `master` by explicit product-owner direction.
 
 | Part | Owner | Branch | State | Proof |
 | --- | --- | --- | --- | --- |
-| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. | `npm run check`; `dist/` loads unpacked |
+| 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local preferences, `.env.example`, ajv + typecheck in `npm run check`. Closed T-02, T-03, T-04. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0050-stop-versus-end-session-lifecycle.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
-| 3. Student experience and AR | UNOWNED | merged, brought in via PR #8 | Code exists and is on the integration branch: `apps/extension/src/student/`, `src/renderers/`, `src/ar/` (direct Three.js, WebXR + non-immersive fallback), `docs/PART3_HANDOFF.md`, `memory/episodic/0040-part3-student-ar.md`. The branch never named its author in the relay, so the owner cell stays honest even though the code is in. Nobody has claimed Part 3; whoever picks it up inherits working code, not a blank directory. | `npm run check` on the integration branch (181 tests) |
-| 4. AWS live service | UNOWNED | `docs/aws-access-verification` (unmerged) | Not started as a service. Recon only: the hackathon AWS account allows exactly one Bedrock model (`us.anthropic.claude-sonnet-4-6`), Polly/Translate respond, and the write path for Lambda/DynamoDB/API Gateway/S3 is unverified. No `infra/` or `services/live-session/`. | `git log origin/docs/aws-access-verification` |
+| 3. Student experience and AR | Prachi | merged as `7a199c0` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. Follow-up adds a Dyslexic-friendly mode and hardens capture gesture handling for tab/window/screen sharing. | `npm run typecheck`; targeted Vitest checks; `docs/NEXT_STEPS.md` |
+| 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
-| 6. Authoring pipeline and visualization | Jacob | `workstream/6-authoring` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, RL-026 |
+| 6. Authoring pipeline and visualization | Jacob | `workstream/6-authoring` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, RL-037 |
 
-**The single largest risk moved again.** Parts 1, 2, 3, and 5 are all on the
-integration branch now with `make check` green (181 extension tests, 61 pack
-tests, 24 relay tests). Nobody owns Part 4, and Part 4 is the one thing that
-turns this from "one browser profile, `BroadcastChannel`" into an actual
-multi-device demo. The other new risk is process, not code: three independent
+**The largest risk moved again, and it is no longer Part 4.** Parts 1, 2, 3, and
+5 are on the integration branch, and Part 4 now is too: the relay is built,
+deployed, and verified against real AWS, so the thing that turns this from "one
+browser profile, `BroadcastChannel`" into an actual multi-device demo exists.
+**What has not happened is the two meeting.** Nothing in the extension points at
+the deployed endpoint yet — `WebSocketSessionClient` is written and tested but
+not wired in, and `VITE_ACCESSLENS_WS_URL` is still unset. That integration, and
+a rehearsal across two real devices, is now the top risk (T-25). The other new risk is process, not code: three independent
 ID collisions (two episodic `0040`/`0041` filenames, one `T-20` thread ID) were
 found and fixed only because someone merging noticed — see T-17/T-18, still
 open.
@@ -102,22 +105,28 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-16 | `caption.appended` is base-only in the discriminated union, so a caption event cannot carry a caption or name its asset. Stretch scope, so it blocks nothing today, but the type exists in the enum without a payload. | Part 1 | Captions (stretch) | OPEN | `docs/PART5_CONTRACT_CONFORMANCE.md` §3 |
 | T-17 | Episodic record numbers collide across parallel branches. It has happened **twice in one afternoon** with only two active workstreams: Part 5's records were renumbered `0038→0040` and `0039→0041`. Proposal: allocate a hundred-block per part (Part 1 → `01xx`, Part 5 → `05xx`), which needs no tooling change. | UNOWNED | Nothing | UNOWNED | `0038-part1-hardening.md` and `0039-part1-contract-gaps.md` vs the twice-renamed Part 5 records |
 | T-18 | `memory/INDEX.md` has a single "current handoff" pointer that `memory_check.py` requires to name the newest record, so every parallel branch conflicts on that one line. It has now bitten **five times**, and `19770f6` is a teammate hitting it independently and fixing it by hand. The proposal stands: make the pointer a list, one line per part, and have `memory_check.py` require each part's newest record rather than one global newest. | UNOWNED | Nothing | UNOWNED | `19770f6` plus four conflicts across PRs #4, #5, #7, and #9 |
-| T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | OPEN | `tests/e2e/fixture-replay.test.ts`, "records which rejections need pack awareness" |
+| T-19 | Schema validation cannot detect a stale `packVersion`: Zod types it as any positive integer, so a mismatched version passes cleanly. `SYSTEM_DESIGN.md` §9 requires rendering to stop and refetch when the pack version differs, so someone must hold the session's expected version and compare. If the relay does not, every student renderer must, separately. | Part 4 | Part 3, Part 4 | CLOSED | The session records `packId` and `packVersion` at create time and every event is compared against them; a mismatch is refused as `pack-version-mismatch`. Part 3 does not need to hold the version itself |
 | T-20 | Merging PR #5 resolved a `Makefile` conflict by taking the other side, silently dropping `relay-check` from `check` and removing `freeze-check` entirely. Both scripts stayed in the tree, so nothing looked broken — the relay gate simply stopped running. Restored, and `tests/relay/` now asserts the wiring. Worth a habit: after resolving a `Makefile` or workflow conflict, diff the target list, not just the file. | Part 5 | Everyone | CLOSED | Restored in PR #7; `WiredIntoTheBuild` in `tests/relay/test_relay_check.py` |
 | T-23 | CDK was not bootstrapped in the hackathon AWS account, so no `cdk deploy` would have worked. | Part 5 | — | CLOSED | Bootstrapped 2026-09-15: `CDKToolkit` version 32, staging bucket `cdk-hnb659fds-assets-087328706621-us-east-1`. `deploy_preflight.py --aws` now reports it ready |
 | T-24 | This file is itself a conflict magnet. Every part is asked to append a log entry and edit the same tables, so parallel branches collide in section 8 — PR #8 conflicts on exactly `CONTEXT_RELAY.md` and `memory/INDEX.md` and nothing else. Same structural problem as T-18, caused by the fix for it. Proposal: split the relay log into one file per entry under `docs/relay/NNN-*.md` (the pattern `memory/episodic/` already uses successfully) and have `relay_check.py` assemble and validate them, leaving only the tables shared. | Part 5 | Everyone appending | OPEN | PR #8's conflict set; this file's own growth; renumbered from a collision with T-21/T-22 during PR #9's merge, proving the point a third time |
+| T-25 | **The relay is deployed and the extension does not use it.** `WebSocketSessionClient` implements Part 1's frozen interface and is tested, but nothing constructs it: the extension still runs on `BroadcastChannel`, which is one browser profile on one machine. `VITE_ACCESSLENS_WS_URL` is unset. Until someone swaps the transport at its construction site and rehearses across two real devices, "multi-device demo" is an untested claim — and the swap is the cheap part, while discovering a problem during the rehearsal is not. | Part 1 + Part 3 | The demo | IN PROGRESS | `apps/extension/src/shell/createDefaultClient.ts` swaps the transport when `VITE_ACCESSLENS_WS_URL` is set; verified with the real deployed endpoint from two real browser tabs (instructor `create()` succeeded, student `join()` correctly rejected a bogus code) and Part 4's own `integration-test.mjs` (12/12). What has *not* happened is the rehearsal across two real devices with real `getDisplayMedia()` permission -- no sandboxed tool can grant that. |
+| T-26 | The deployed endpoint has no authorizer on `$connect`: anyone who can reach the URL can create a session, and the session id is the only secret. Acceptable for a reviewed demo pack with no student data, and stated in `services/live-session/README.md`, but it must not be described as secure, and it is not a shape to carry into anything holding real course content. | Part 4 | Claims made about the demo | ACCEPTED | Deliberate scope call for the hackathon; `services/live-session/README.md` "What is not built" |
+| T-27 | `.github/workflows/check.yml` ran `npm ci` at the repo root only. `services/live-session` is its own package with its own lockfile (Part 4's `live-session-check` Makefile target says so explicitly), so CI has failed on every push since Part 4 merged (`0fba221` onward) with `Cannot find module '@aws-sdk/client-dynamodb'` -- the same shape of gap as T-08, in a new directory nobody updated the workflow for. | Part 1 | Everyone | CLOSED | Added `npm ci --prefix services/live-session` to the workflow; reproduced the failure locally first (`rm -rf services/live-session/node_modules && make check`), confirmed the fix the same way |
+| T-28 | `StudentExperience.tsx` marked the view "stale" after 15 seconds with no new event -- a content-silence guess standing in for a connection check. An instructor explaining one region for more than 15 seconds (normal pacing) produced a false "Connection interrupted," which is exactly what the team hit live-testing the real extension against the real relay. | Part 1 + Part 3 + Part 4 | Trust in the demo's own status indicator | CLOSED | `WebSocketSessionClient.onConnectionChange` (real socket open/close, additive to the frozen interface) threaded through `liveRelayClient.ts` to `StudentExperience.tsx`, replacing the timer. `markLiveStateReconnected` added as the stale->live counterpart. +9 tests across the four files (`services/live-session` 52 total, extension 259 total) |
+| T-29 | Two internal critiques of this project (a harsh criterion-by-criterion scorecard, and a proposed scope-narrowing revision responding to it) existed only on one person's machine, uncommitted, since 2026-09-15, and were never seen by any of the other four contributors. Nobody can be aligned on a decision they have never seen. Compounding it: the scorecard is now 24h stale against what's actually built, and needs updating with real external research before anyone acts on it. | All five parts | Tomorrow's in-person product-direction meeting | OPEN | `docs/TEAM_ALIGNMENT_CHECK.md` is now a non-blocking meeting agenda. Anurup has responded; Jacob, Kunj, Omar, and Prachi are invited to respond before or during the meeting. Scoped implementation against the current extension-first MVP may continue. |
+| T-30 | The agent-first delivery system is additive: ticket files, claims, immutable updates, generated context, and validation must not become a second mutable product or risk register. Its initial portfolio intentionally keeps current-MVP proof P0 and durable identity/content work deferred behind human decisions. | Part 1 | Agent handoffs and release evidence | OPEN | `docs/AGENT_OPERATING_CONTEXT.md`; `docs/work/`; `make work-board-check`; AL-090 is in review |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
-| T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. Proposed: instructor key on `create`, relay enforcement in Part 4, and a shell gate. Not built — waiting on a go from the owner. | Part 2 + Part 4 | Demo integrity | OPEN | `apps/extension/src/shell/App.tsx` role switch; `docs/PART2_HANDOFF.md` open items |
-| T-21 | The event enum has no `capture.stopped`, so Part 2's Stop emits `session.ended` and then reuses the same session on the next Start. Students see "session ended" for what is really a pause in sharing. Either add a stop/pause event type or document that `session.ended` is non-terminal. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | OPEN | `apps/extension/src/instructor/captureController.ts`, Stop path |
-| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | OPEN | `apps/extension/src/shared/contracts.ts`. Part 2's controller also starts at 1 (`captureController.test.ts`), so 1 is now the de facto answer; Part 1 still has to pin it in the schema. |
-| T-25 | Part 6 needs two additive fields on the Access Pack asset (`visualization`, `references[]`) and one on the region (`audioUri`), plus a new `ArtifactManifest` contract, in `apps/extension/src/shared/contracts.ts` and `packages/contracts/`. Part 1 owns those files. Additive and optional only; `arScene` untouched; `LiveEvent` unchanged. | Part 1 + Part 6 | Part 6 V0/R0 and everything downstream | OPEN | `docs/VISUALIZATION_SYSTEM.md` §5, §9.5, §4 |
-| T-26 | Part 6 needs `apps/extension/src/shared/packMedia.ts` to resolve `mediaUri` and `audioUri` through a published-pack loader when a pack was published by the authoring pipeline, keeping the bundled path for checked-in packs. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V6 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12 |
-| T-27 | Part 6 needs `apps/extension/src/student/StudentExperience.tsx` to gain a Visualize tab and a "From your course materials" references list in Read mode. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V9, R4 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12, §9.5 |
-| T-28 | Part 6 needs an instructor authoring entry point in `apps/extension/src/shell/App.tsx` and `RoleNav.tsx`. Part 1 owns those files. | Part 1 + Part 6 | Part 6 V5 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §11 |
-| T-29 | Part 6 creates `infra/` because Part 4 (AWS live relay) is unowned. The CDK stack `AccessLensAuthoring` is the authoring plane only; the live relay is not built here. If Part 4 is claimed, the stack is shared and the split is negotiated here. | Part 6 | Part 4 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §15 |
-| T-30 | Part 6's `references[].quote` cap (300 characters, charter-adjacent: a student is never shown more of a professor's textbook than a citation needs) is expressed as `maxLength` in `access-pack.schema.json`, a keyword Part 5's `check_contract_conformance.py` did not implement. Its unsupported-keyword guard did its job and stopped rather than passing quietly. The checker now implements `maxLength`, with mutation tests in `tests/access_pack/test_conformance_maxlength.py`. | Part 5 + Part 6 | Nothing | CLOSED | `packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py`; `tests/access_pack/test_conformance_maxlength.py` (8 tests, mutation plus control); checker exit status unchanged from baseline |
-| T-31 | `docs/VISUALIZATION_SYSTEM.md` calls the slide fingerprint `dhash-v1` throughout (§3, §5, §8 stage 1), but the shared module, Part 5's reviewed pack, and Part 2's matcher all use the identifier `dhash12`. Documents beat code on this project, but implementing the document here would change the algorithm id inside a pack that has already been reviewed and would break recognition for it, so Part 6's ingest reads `FINGERPRINT_ALGORITHM` from the shared module instead of hardcoding either spelling — which is what the spec actually asks for in substance ("the fingerprint comes from the shared screen-source module so packs and the matcher cannot drift"). The spec prose is what should change. | Part 5 + Part 6 | Nothing | OPEN | `apps/extension/src/sources/screen/fingerprint.ts` (`dhash12`); `packs/hnsw/pack.draft.json`; `docs/VISUALIZATION_SYSTEM.md` §3 |
-| T-32 | Two branches each wrote a relay entry numbered RL-025: `workstream/6-authoring` (Part 6 claim, this branch) and `origin/accesslens-extension-ar-pivot` (cross-cutting, which continues through RL-028 and carries the IBM Plex interface rebuild, the Part 4 relay wiring, and T-28/T-29). Neither branch has a PR open. Whichever merges second must renumber, and `relay_check.py` will refuse a duplicate id. | Part 6 + cross-cutting | The merge of either branch into the other | OPEN | Renumber Part 6's entries on merge (they are the newer claim); do not touch the ar-pivot branch, which also hard-stops on T-29 until every contributor answers `docs/TEAM_ALIGNMENT_CHECK.md` |
+| T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
+| T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. Shared-contract second review and deployed-relay update remain before closure. |
+| T-15 | `sequence` is `nonnegative()` in Zod and unconstrained in the JSON Schema, so 0 is legal. Part 5's simulator starts at 1. Pin the first sequence number before Part 4 builds ordering logic. | Part 1 + Part 4 | Part 4 | CLOSED | Pinned to 1 by the relay, matching Part 5's reference: `sequence: 0` is refused as `sequence-not-a-positive-integer` (`services/live-session/src/rules.ts`, asserted by the parity test). The shared Zod contract still permits 0, so a client can construct one — the relay is what refuses it |
+| T-31 | Part 6 needs two additive fields on the Access Pack asset (`visualization`, `references[]`) and one on the region (`audioUri`), plus a new `ArtifactManifest` contract, in `apps/extension/src/shared/contracts.ts` and `packages/contracts/`. Part 1 owns those files. Additive and optional only; `arScene` untouched; `LiveEvent` unchanged. | Part 1 + Part 6 | Part 6 V0/R0 and everything downstream | OPEN | `docs/VISUALIZATION_SYSTEM.md` §5, §9.5, §4 |
+| T-32 | Part 6 needs `apps/extension/src/shared/packMedia.ts` to resolve `mediaUri` and `audioUri` through a published-pack loader when a pack was published by the authoring pipeline, keeping the bundled path for checked-in packs. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V6 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12 |
+| T-33 | Part 6 needs `apps/extension/src/student/StudentExperience.tsx` to gain a Visualize tab and a "From your course materials" references list in Read mode. Part 3 owns that file. | Part 3 + Part 6 | Part 6 V9, R4 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §12, §9.5 |
+| T-34 | Part 6 needs an instructor authoring entry point in `apps/extension/src/shell/App.tsx` and `RoleNav.tsx`. Part 1 owns those files. | Part 1 + Part 6 | Part 6 V5 | OPEN | `docs/VISUALIZATION_SYSTEM.md` §11 |
+| T-35 | Part 6 creates `infra/` because Part 4 (AWS live relay) is unowned. The CDK stack `AccessLensAuthoring` is the authoring plane only; the live relay is not built here. If Part 4 is claimed, the stack is shared and the split is negotiated here. | Part 6 | Part 4 | CLOSED | Resolved 2026-09-16: one CDK app (`infra/bin/accesslens.ts`) with two stacks, `AccessLensLiveSession` (Part 4) and `AccessLensAuthoring` (Part 6); `make deploy`/`make destroy` name the authoring stack only. |
+| T-36 | Part 6's `references[].quote` cap (300 characters, charter-adjacent: a student is never shown more of a professor's textbook than a citation needs) is expressed as `maxLength` in `access-pack.schema.json`, a keyword Part 5's `check_contract_conformance.py` did not implement. Its unsupported-keyword guard did its job and stopped rather than passing quietly. The checker now implements `maxLength`, with mutation tests in `tests/access_pack/test_conformance_maxlength.py`. | Part 5 + Part 6 | Nothing | CLOSED | `packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py`; `tests/access_pack/test_conformance_maxlength.py` (8 tests, mutation plus control); checker exit status unchanged from baseline |
+| T-37 | `docs/VISUALIZATION_SYSTEM.md` calls the slide fingerprint `dhash-v1` throughout (§3, §5, §8 stage 1), but the shared module, Part 5's reviewed pack, and Part 2's matcher all use the identifier `dhash12`. Documents beat code on this project, but implementing the document here would change the algorithm id inside a pack that has already been reviewed and would break recognition for it, so Part 6's ingest reads `FINGERPRINT_ALGORITHM` from the shared module instead of hardcoding either spelling — which is what the spec actually asks for in substance ("the fingerprint comes from the shared screen-source module so packs and the matcher cannot drift"). The spec prose is what should change. | Part 5 + Part 6 | Nothing | OPEN | `apps/extension/src/sources/screen/fingerprint.ts` (`dhash12`); `packs/hnsw/pack.draft.json`; `docs/VISUALIZATION_SYSTEM.md` §3 |
+| T-38 | Two branches each wrote a relay entry numbered RL-025: `workstream/6-authoring` (Part 6 claim, this branch) and `origin/accesslens-extension-ar-pivot` (cross-cutting, which continues through RL-028 and carries the IBM Plex interface rebuild, the Part 4 relay wiring, and T-28/T-29). Neither branch has a PR open. Whichever merges second must renumber, and `relay_check.py` will refuse a duplicate id. | Part 6 + cross-cutting | The merge of either branch into the other | CLOSED | Resolved 2026-09-16 by the master merge: Part 6 renumbered to RL-036/037 and T-31..T-38. |
 
 ---
 
@@ -580,7 +589,226 @@ extension.
 (`chrome-extension://`) and the Vite preview (`localhost`) cannot hear each
 other, so test both roles in the same origin until Part 4's relay exists.
 
-### RL-024 — 2026-09-16 — Part 2 — Jacob
+### RL-024 — 2026-09-16 — Part 4 — Omar Rizwan
+
+**Landed:** Part 4, built and deployed. `services/live-session/` is the relay —
+server-side validation, HMAC role capabilities, DynamoDB state with TTL enforced
+on read, the WebSocket handler, redacted logging, and the real `SessionClient`.
+`infra/` is the CDK stack. Verified against real AWS at
+`wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`: one instructor
+drove two students through all 19 happy-path events in order, and five refusals
+held, 12/12. 49 unit tests. `make live-session-check` added to `check`.
+**Threads touched:** T-15, T-19 closed. T-22's relay half is built (the shell
+half is still open). T-25 and T-26 opened. T-20, T-21, T-23, T-24 untouched.
+**Next agent needs to know:** five things.
+
+*The relay exists and nothing uses it (T-25).* This is the gap that matters now.
+The extension is still on `BroadcastChannel`; swapping in
+`WebSocketSessionClient` is a construction-site change plus
+`VITE_ACCESSLENS_WS_URL`. Do it early enough to rehearse on two devices.
+
+*The endpoint is disposable.* It lives in the Workshop Studio account, whose
+credentials expire before the account itself is reclaimed. If it stops
+answering, redeploy rather than debug.
+
+*Deploy is two steps and the second ships stale code silently.* `npm run build`
+in `services/live-session`, then `cdk deploy` in `infra`. The stack deploys a
+prebuilt `dist/` because CDK's implicit bundling shells out to esbuild from the
+repository root, where adding it would mean editing Part 1's `package.json`.
+
+*Validator parity is enforced, not hoped for.* `reference_event_check.py` asked
+for its rule names to be kept stable server-side; `test/rules.parity.test.ts`
+runs both implementations over every reviewed fixture and fails on any
+disagreement, order included.
+
+*I collided with this file exactly as T-17 and T-22 predict.* I branched at
+`1d1c72b` and wrote T-20/T-21/T-22 and RL-014/RL-015; by the time I merged, all
+five ids were taken by other people's work. I renumbered mine and rewrote my
+rows against the current file rather than resolving the conflict mechanically,
+which is the only reason the register still means anything. The Makefile
+conflict was the same story in miniature: my side had dropped `relay-check`,
+`freeze-check`, and `deploy-preflight`, and taking either side wholesale would
+have deleted someone's work. **If you are merging this file, read both sides.**
+
+### RL-025 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** `apps/extension/src/shell/createDefaultClient.ts` and
+`liveRelayClient.ts` -- the transport swap T-25 was waiting on. `App.tsx`'s
+`defaultClient` now uses Part 4's real `WebSocketSessionClient` when
+`VITE_ACCESSLENS_WS_URL` is set, falling back to `BroadcastChannel` then
+in-memory as before. The wrapper validates every inbound event against
+`LiveEventSchema` and every capability against `RoleCapabilitySchema` before
+either reaches the rest of the app, since `webSocketSessionClient.ts`
+deliberately types both as bare `Record<string, unknown>` to avoid importing
+Part 1's schema package -- assigning it to `SessionClient` directly was
+also a real `tsc` error, not just a style question.
+
+Then launch-tested the whole stack: ran Part 4's own `integration-test.mjs`
+against the live endpoint fresh (12/12, still green today), built the
+extension with the live URL, and drove it from two real browser tabs. The
+instructor tab's Start button produced "Sharing is required for live sync"
+rather than "Could not open a session" -- which the source only distinguishes
+when `client.create()` already succeeded against the real relay and it was
+`getDisplayMedia()` that failed. The student tab joined a made-up code and
+got a real "Could not join this session" from the live relay, not a canned
+message. No sandboxed tool here can grant real screen-share permission, so
+that is as far as this environment can verify the capture path.
+
+The committed `dist/` was deliberately rebuilt *without* the live URL, so the
+checked-in default stays network-free; a build with it set was tested but not
+committed. `memory/episodic/0044-wire-live-relay-and-launch-test.md` has the
+full evidence.
+
+**Threads touched:** T-25 moved to IN PROGRESS (not CLOSED -- the wiring and
+network path are verified; the real-device rehearsal is not, and nothing in
+this environment can do that part).
+**Next agent needs to know:** whoever does the real two-device rehearsal
+needs `.env.local` with `VITE_ACCESSLENS_WS_URL` set to the live endpoint
+(`.env.example` has the name; the value is in `services/live-session/README.md`
+and this file's section 2) before running `npm run build`. Loading the
+already-committed `dist/` will not reach the relay -- it was intentionally
+built without that variable.
+
+### RL-026 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** pushed the live-relay wiring (RL-025) and merged two more commits
+that landed on the integration branch in the meantime (`c754bf3`,
+`e72281a` -- a standalone `services/live-session/demo/index.html` page that
+connects to the real relay without the extension at all, useful for a
+two-device demo that doesn't depend on `getDisplayMedia()`). Pushing then
+failed CI: `Cannot find module '@aws-sdk/client-dynamodb'` in
+`live-session-check`, because `.github/workflows/check.yml` never got a
+`services/live-session`-specific `npm ci` when Part 4 merged. Fixed (T-27)
+and verified locally by reproducing the exact failure first.
+**Threads touched:** T-27 opened and closed in the same pass.
+**Next agent needs to know:** this is the second time a merge added a
+sub-package with its own dependencies and the workflow silently didn't
+follow (T-08 was the first, for `services/live-session` existing at all;
+this was for CI actually installing into it). If a future part adds another
+`package.json` anywhere other than the repo root, add its `npm ci` to
+`.github/workflows/check.yml` in the same PR, not as a follow-up someone
+else discovers via a red run.
+
+### RL-027 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** the user's teammates were live-testing the real extension against
+the real deployed relay and hit "Connection interrupted. Showing the last
+reviewed state." with the pill reading "Stale," while the connection was
+actually fine. Root cause: `StudentExperience.tsx` guessed staleness from
+15 seconds of content silence, not from any actual connection signal. An
+instructor spending more than 15 seconds on one region -- normal lecture
+pacing -- was indistinguishable from a dropped socket to that timer.
+
+Fixed properly rather than papering over it: `WebSocketSessionClient`
+already tracked real socket open/close internally and exposed none of it;
+added `onConnectionChange` (additive, not a change to the frozen five-method
+interface), threaded it through `liveRelayClient.ts`, and had
+`StudentExperience.tsx` drive `live`/`stale` from that instead of the timer.
+`BroadcastChannel`/in-memory transports have no such method and so never go
+falsely stale from a quiet instructor -- correct, since they have no real
+disconnect concept to report. Added `markLiveStateReconnected` as the
+stale -> live counterpart to the existing `markLiveStateStale`.
+**Threads touched:** T-28 opened and closed in the same pass.
+**Next agent needs to know:** this bug predates the live relay -- the same
+false alarm would have fired against `BroadcastChannel` too, just with lower
+stakes since that transport doesn't actually drop mid-demo. If you add
+another timer-based guess standing in for a real signal anywhere in this
+codebase, this is the second time in one day that pattern produced a false
+alarm in front of an actual user (the first was T-08/T-27's CI gaps). Prefer
+the real signal even when the guess is easier to write.
+
+### RL-028 — 2026-09-16 — cross-cutting — Anurup Kumar
+
+**Landed:** committed two documents that existed only on my machine since
+2026-09-15 and were never seen by anyone else on this team --
+`HACKATHON_CRITIQUE.md` (the original harsh scorecard, written when zero
+code existed) and `docs/ACCESSLENS_MVP_REVISION.md` (a proposed
+scope-narrowing response to it, cutting the extension/capture/required-AR
+entirely, which nobody has decided on and which everyone kept building
+against the *opposite* of). Added `docs/TEAM_ALIGNMENT_CHECK.md`: an updated,
+re-scored version of the critique against what's actually built and deployed
+today, plus external research (a real, free, ubiquitous competitor
+-`PowerPoint Live Captions` - that the original critique didn't name; third-party
+UDL effectiveness numbers to cite instead of inventing impact claims; a
+correction on who the AR mode actually serves, since accessibility research
+favors tactile models for blind users over screen-rendered AR), plus 14
+questions every contributor needs to answer. Hard-stopped it in both
+`AGENTS.md` and a new `CLAUDE.md` (Claude Code's auto-loaded entry point,
+which did not exist before) so no session -- human-directed or not -- can
+miss it.
+**Threads touched:** T-29 opened, not closed -- it closes only once every
+part listed in the new file's Responses section has actually answered.
+**Next agent needs to know:** if you're reading this via `AGENTS.md`'s normal
+read order and haven't seen the STOP section at its top, re-read from the
+top -- it was inserted above the standard read-order list specifically so it
+can't be skipped. Don't build more of the personalization/content-authoring
+work discussed this session (T-29 question 14) until this thread closes;
+it's real design but unbuilt, and the cheaper, higher-leverage fixes (one
+real user interview, the two rehearsals, the `master`/integration divergence)
+haven't happened yet either.
+
+### RL-029 — 2026-09-15 — Part 1 — Anurup Kumar
+
+**Landed:** Anurup's signed, complete response to the fourteen T-29 alignment
+questions is now recorded in `docs/TEAM_ALIGNMENT_CHECK.md`. It keeps the
+extension-first MVP as the working foundation, states the actual evidence gaps
+without claiming them solved, and explicitly holds new authoring/
+personalization work until the group decides together.
+**Threads touched:** T-29 remains OPEN; only Anurup has responded. Jacob,
+Kunj, Omar, and Prachi still need their own signed responses.
+**Next agent needs to know:** this response is not permission to implement the
+agent-first ticket system or any product feature. The mandatory gate closes
+only after every listed contributor responds.
+
+### RL-030 — 2026-09-15 — Part 1 — Anurup Kumar
+
+**Landed:** at the user's direction, removed the T-29 implementation block
+from `AGENTS.md`, `CLAUDE.md`, and `docs/TEAM_ALIGNMENT_CHECK.md`. The critique
+and signed response remain intact as a non-blocking agenda for tomorrow's
+in-person product-direction meeting.
+**Threads touched:** T-29 remains OPEN as a discussion thread, but no longer
+blocks scoped work on the current extension-first MVP.
+**Next agent needs to know:** read the alignment document before changing
+product direction, demo claims, privacy boundaries, or MVP scope; otherwise
+continue current scoped work and bring unresolved direction questions to the
+meeting.
+
+### RL-031 — 2026-09-16 — Part 1 — Codex
+
+**Landed:** agent-first delivery system for the current extension-first MVP:
+`docs/AGENT_OPERATING_CONTEXT.md`, the live-meaning decision and demo contract,
+canonical ticket files, claims, immutable updates, generated board/context tools,
+and checker tests now live under `docs/work/`, `scripts/`, and `tests/work/`.
+`make check` runs the delivery-board gate. The first workable P0 tickets are
+AL-001 capture matrix, AL-003 stop-versus-end lifecycle, and AL-006 mentor kit;
+durable identity/content tickets remain deferred or dependency-blocked.
+**Threads touched:** T-29 stays OPEN and non-blocking; T-30 opened to keep the
+new system additive and its human decision boundaries visible.
+**Next agent needs to know:** run `make agent-context` after pulling, claim one
+READY ticket with a claim and immutable update, and do not use T-29's open meeting
+agenda to adopt the alternate MVP, change privacy rules, or overstate demo proof.
+
+### RL-032 — 2026-09-16 — cross-cutting — Codex
+
+**Landed:** local AL-003/T-21 implementation now distinguishes stopped capture from an
+ended temporary session. The additive base-only `capture.stopped` event flows
+through the extension contract, JSON Schema, pack reference validator and
+simulator, instructor controller, student state, relay validator, and relay
+latest-state behavior. Stop releases local capture and freezes the student's
+last trusted reviewed state with an explicit non-live message; the same join
+code may later receive `session.started`. Only `session.ended` closes delivery.
+No raw screen/camera media, student preference, identity, or persistent field
+was added.
+**Threads touched:** T-21 is IN PROGRESS, not CLOSED: local checks are green,
+but a second shared-contract review and an authorized relay deployment are still
+required before calling this live-AWS behavior.
+**Next agent needs to know:** review AL-003's contract delta and checkpoint,
+then build and deploy `services/live-session` before running the updated
+real-device capture matrix. `memory/episodic/0050-stop-versus-end-session-lifecycle.md`
+has the precise behavior and verification record.
+
+
+### RL-033 — 2026-09-16 — Part 2 — Jacob
 
 **Landed:** pack-driven student rendering. Focus mode shows the followed
 slide from the asset's `mediaUri` with `region.bounds` outlined, for any
@@ -594,7 +822,47 @@ preference falls back to Focus otherwise. `scripts/build-pack.ts` emits
 rather than the pack's `modelUri`. Gating on `arScene` is enough while only
 one pack has a scene; a second AR pack needs the renderer to read the scene
 from the pack.
-### RL-025 — 2026-09-15 — Part 6 — Jacob
+
+### RL-034 — 2026-09-16 — Part 3 — Prachi
+
+**Landed:** direct master-branch follow-up for the student experience. Added a
+student-local Dyslexic-friendly reading tab with an explicit style toggle and
+keyboard-reachable semantics. Hardened instructor capture so
+`getDisplayMedia()` is invoked before awaited session creation, preserving the
+browser's transient user activation for tab, window, and full-screen sharing;
+the captured stream now waits for metadata before playback and keeps the chooser
+source unconstrained. Added `docs/NEXT_STEPS.md` with the staged Canvas/RAG,
+quality, Bedrock-agent, privacy-preserving session context, and asynchronous
+review plans; camera and AWS remain explicit follow-ups.
+
+**Checks:** typecheck and targeted capture/student/renderer tests pass. Full test
+execution still has the repository's Windows `python3` launcher and generated
+pack line-ending issues to resolve separately; no model or camera behavior was
+claimed by this slice.
+
+**Threads touched:** none.
+
+**Next agent needs to know:** the local preview should be run from `master` after
+`npm ci`. The two teammate documentation edits are intentionally kept in the
+stash while product work proceeds directly on `master`.
+### RL-035 — 2026-09-16 — Part 1 — Codex
+
+**Landed:** added `docs/ADVANCED_FEATURES.md`, defining a non-recording Review
+Mode built from approved documents and semantic lesson summaries; live focus,
+repeat, captions, and bookmarks; private accessibility-safe quests; and a future
+instructor/shared-device camera source for non-screen-shareable labs. The document
+includes an organic-chemistry gesture-to-semantic-event example and explicitly
+keeps camera input feeding Focus, Read, Hear, Dyslexic, and AR rather than adding
+a camera-only student mode.
+
+**Next agent needs to know:** these are future features, not current MVP claims.
+Review Mode must not replay a professor or require raw recordings. Camera work
+needs mentor/accessibility validation, explicit consent, local processing where
+practical, and a manual camera-free fallback.
+
+**Threads touched:** none.
+
+### RL-036 — 2026-09-15 — Part 6 — Jacob
 
 **Landed:** `workstream/6-authoring` branched from `workstream/2-pack-driven-rendering`.
 Claims Part 6, the authoring pipeline and visualization system specified in
@@ -607,7 +875,7 @@ the extension is its first client. Adds `infra/` (CDK stack
 `AccessLensAuthoring`), `services/`, `apps/viewer/`, `scripts/catalog/`, and
 `docs/prompts/viz/`. AR is out of scope for this pipeline and `arScene` is
 never written by it.
-**Threads touched:** T-25, T-26, T-27, T-28, T-29 opened — the four cross-part
+**Threads touched:** T-31, T-32, T-33, T-34, T-35 opened — the four cross-part
 edits Part 6 needs (Part 1 contracts, Part 3 `packMedia.ts` and
 `StudentExperience.tsx`, Part 1 shell entry point) and Part 6's creation of
 `infra/` in Part 4's absence. Nothing closed.
@@ -618,7 +886,7 @@ gains no types; `asset.changed` and `region.changed` already carry everything
 the Visualize mode needs. Part 5's `check_contract_conformance.py` is kept
 passing in the same commit as every schema change.
 
-### RL-026 — 2026-09-16 — Part 6 — Jacob
+### RL-037 — 2026-09-16 — Part 6 — Jacob
 
 **Landed:** the authoring API is a working product on AWS. Stack
 `AccessLensAuthoring` (`us-east-1`): API Gateway + bearer token, S3 decks /
@@ -648,16 +916,20 @@ conditionally in the workflow, held back because the catalog it retrieves
 from is one template stamped 150 times (D6) and the harness Lambda's
 Chromium image is unbuilt. Every slide reports `visualizationStatus:
 "no-visual"`, the spec's designed absence.
-**Threads touched:** T-25, T-26, T-28 exercised (contracts additive, remote
+**Threads touched:** T-31, T-32, T-34 exercised (contracts additive, remote
 pack loader in `packMedia.ts` under D7, no shell entry point built since the
-product is API-only under D2). T-29 escalated to D9: `origin/master` now
+product is API-only under D2). T-35 escalated to D9: `origin/master` now
 carries Part 4's own `infra/` CDK app and the IBM Plex interface rebuild
-(merged directly, no PR), so this branch's `infra/` and relay numbering
-(RL-024/025/026, T-31/T-32) collide on merge. Nothing closed; D5, D6, D9
-await the user.
+(merged directly, no PR). The user decided D9 and this branch merged
+master: one CDK app (`infra/bin/accesslens.ts`) now carries both the Part 4
+`AccessLensLiveSession` stack and Part 6's `AccessLensAuthoring`; Part 6's
+threads were renumbered from T-25..T-32 to T-31..T-38 and its log entries
+from RL-025/026 to RL-036/037 because master used those ids for other
+threads. T-35 (Part 6 owning `infra/`) and T-38 (the RL-025 collision) are
+closed by that merge. PR #12 also claims T-31..T-33 and must renumber when
+it lands after this. D5 and D6 still await the user.
 **Next agent needs to know:** `docs/VIZ_HANDOFF.md` is the runbook for
 picking this up; `docs/DEPLOY.md` §5 has the measured timings; every user
 decision is in `docs/VIZ_DECISIONS.md`. The stack is `RemovalPolicy.DESTROY`
-throughout and `make destroy` removes it. Renumber this branch's relay
-entries and threads on merge (master is at RL-035 and T-30, and PR #12
-adds three more thread ids of its own starting where master stops).
+throughout and `make destroy` removes it (the authoring stack only; the
+live-session stack is Part 4's to destroy).

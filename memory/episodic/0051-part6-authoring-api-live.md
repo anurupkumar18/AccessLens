@@ -1,4 +1,4 @@
-# 0044 — Part 6: the authoring API is live and proven end to end
+# 0051 — Part 6: the authoring API is live and proven end to end
 
 Date: 2026-09-16. Branch `workstream/6-authoring`.
 
@@ -20,7 +20,7 @@ routes, agents, harness, retriever, api), `apps/viewer/`, `scripts/catalog/`,
 `packages/catalog/`, `tests/evals/`, `docs/prompts/viz/`,
 `apps/extension/src/shared/remotePack.ts` and `packMedia.ts` (D7),
 `docs/DEPLOY.md`, `docs/VIZ_DECISIONS.md` (D1–D10), `docs/VIZ_HANDOFF.md`,
-`docs/CONTEXT_RELAY.md` (RL-026, T-31, T-32, Part 6 row), `vite.config.ts`.
+`docs/CONTEXT_RELAY.md` (RL-036, RL-037, T-31..T-38, Part 6 row), `vite.config.ts`.
 
 ## Validation evidence
 
@@ -48,7 +48,7 @@ catalog is one template stamped 150 times) and an unbuilt harness image.
 
 ## Next action
 
-User decisions D5, D6 and D9 (`docs/VIZ_DECISIONS.md`). On merge with
-`origin/master`, fold Part 6's stack into Part 4's CDK app and renumber this
-branch's relay entries RL-024..026, threads T-31/T-32 and this record
-(master is at RL-035, T-30, episodic 0050+; PR #12 adds 0052).
+User decisions D5 and D6 (`docs/VIZ_DECISIONS.md`). D9 was decided and
+applied: master is merged, one CDK app carries both stacks, and Part 6's
+relay ids are RL-036/037 and T-31..T-38. PR #12 (docs-only) must renumber
+its T-31..T-33 and episodic 0052 stays free for it.

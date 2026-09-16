@@ -141,7 +141,7 @@ def _check(instance: object, schema: object, path: str) -> list[tuple[str, str]]
     if isinstance(instance, str) and len(instance) < schema.get("minLength", 0):
         gaps.append(("too-short", where))
     # Part 6 caps a course-library quote at 300 characters so a student is never
-    # shown more of a professor's textbook than a citation needs (T-25, T-30).
+    # shown more of a professor's textbook than a citation needs (T-31, T-36).
     if isinstance(instance, str) and "maxLength" in schema and len(instance) > schema["maxLength"]:
         gaps.append(("too-long", where))
     if isinstance(instance, (int, float)) and not isinstance(instance, bool):

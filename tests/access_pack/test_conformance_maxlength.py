@@ -1,7 +1,7 @@
 """The conformance checker's `maxLength` rule, proven able to fail.
 
 Part 6 caps a course-library quote at 300 characters in
-`packages/contracts/access-pack.schema.json` (relay T-25, T-30), so the Python
+`packages/contracts/access-pack.schema.json` (relay T-31, T-36), so the Python
 reimplementation of JSON Schema in `check_contract_conformance.py` had to learn
 `maxLength`. RL-014's lesson applies: a check that cannot go red is worth
 nothing, so every rule here is exercised against a mutation and against a

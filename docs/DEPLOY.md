@@ -186,6 +186,12 @@ aws stepfunctions describe-execution --region us-east-1 \
 ```
 
 where `STATE_MACHINE_ARN` is the `StateMachineArn` output of `make deploy`.
+
+`infra/bin/accesslens.ts` is one CDK app with two stacks: Part 4's
+`AccessLensLiveSession` and this `AccessLensAuthoring`. `make deploy` and
+`make destroy` name the authoring stack only, but CDK synthesizes the whole
+app, so both scripts first build Part 4's Lambda bundle
+(`services/live-session/dist`) exactly as its README requires.
 `status` is `RUNNING` until the job reaches review, then stays `RUNNING`
 while it waits for the instructor: the machine polls the job record every
 few seconds and ends with `SUCCEEDED` once `POST /v1/jobs/{id}/review` and

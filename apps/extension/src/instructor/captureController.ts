@@ -72,7 +72,7 @@ export const UNMATCHED_DEBOUNCE = 3;
 export const SHARING_REQUIRED_MESSAGE =
   'Sharing is required for live sync. Click Start and choose a tab, window, or screen.';
 
-type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'source.unmatched' | 'session.ended' }
+type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
   | { type: 'asset.changed'; assetId: string }
   | { type: 'region.changed'; assetId: string; regionId: string };
 
@@ -177,7 +177,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     phase = 'idle';
     resetRecognition();
     message = 'Stopped sharing. The session is still open: Start again to share, or End Session to close it.';
-    emit({ type: 'session.ended' });
+    emit({ type: 'capture.stopped' });
     notify();
   }
 
@@ -195,18 +195,28 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       notify();
       const openedHere = sessionId === null;
       const id = sessionId ?? ids.sessionId();
+      // Invoke the browser chooser before any awaited session/network work so
+      // Chrome retains the Start button's transient user activation. This is
+      // what makes window and entire-screen sharing reliable; tab sharing was
+      // the only path that appeared to work when create() ran first.
       try {
+        // Invoke the chooser before the first awaited operation so the browser
+        // keeps the Start button's transient user activation for tab/window/
+        // screen capture.
+        const streamPromise = host.requestStream();
         if (openedHere) {
           try {
             await client.create(id);
           } catch {
+            const granted = await streamPromise.catch(() => null);
+            granted?.stop();
             phase = 'idle';
             message = 'Could not open a session. Check the connection and try Start again.';
             notify();
             return;
           }
         }
-        const granted = await host.requestStream();
+        const granted = await streamPromise;
         sessionId = id;
         stream = granted;
         unsubscribeEnded = granted.onEnded(() => endSharing());
@@ -248,6 +258,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     endSession() {
       if (phase === 'sharing' || phase === 'paused') endSharing();
       if (phase === 'closed') return;
+      if (sessionId !== null) emit({ type: 'session.ended' });
       client.close();
       sessionId = null;
       phase = 'closed';
