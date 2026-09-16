@@ -47,14 +47,15 @@ export const REQUIRED_FIELDS = [
   'sentAt',
 ] as const;
 
+/** Mirrors CAPTION_MAX_LENGTH in reference_event_check.py and the Zod contract. */
+export const CAPTION_MAX_LENGTH = 500;
+
 /**
  * Mirrors KNOWN_FIELDS in reference_event_check.py, `caption` included.
  *
- * `caption` is accepted here for the same reason Part 5 accepts it:
- * `caption.appended` is base-only in the shared contract, so a caption event
- * cannot yet carry its caption (T-16). Keeping the field known rather than
- * rejecting it means the relay does not become the reason captions are
- * impossible; the day T-16 closes, this list already agrees.
+ * `caption` is the live caption of the instructor's speech on
+ * `caption.appended` (T-16, closed): `{text, isFinal}` and nothing else,
+ * checked below with the same rule names as the Python reference.
  *
  * Anything *not* in this set is refused by name. That is what makes
  * `frameData`, `studentId`, and `masteryEstimate` bounce: not a blocklist of
@@ -201,6 +202,25 @@ export function checkEvent(
     } else if (regionId != null && hotspot.regionId !== regionId) {
       broken.push('hotspot-region-mismatch');
     }
+  }
+
+  // The one free-text field on the contract, so the one place audio or a
+  // student's words would try to ride along (A2, A4): exactly {text, isFinal},
+  // text bounded, and only on caption.appended.
+  const caption = event.caption as Record<string, unknown> | undefined | null;
+  if (type === 'caption.appended') {
+    const text = caption && typeof caption === 'object' ? caption.text : undefined;
+    const keys = caption && typeof caption === 'object' ? Object.keys(caption).sort() : [];
+    if (
+      !caption || typeof caption !== 'object' || Array.isArray(caption)
+      || keys.length !== 2 || keys[0] !== 'isFinal' || keys[1] !== 'text'
+      || typeof text !== 'string' || text.length < 1 || text.length > CAPTION_MAX_LENGTH
+      || typeof caption.isFinal !== 'boolean'
+    ) {
+      broken.push('caption-invalid');
+    }
+  } else if (caption !== undefined && caption !== null) {
+    broken.push('caption-on-wrong-event-type');
   }
 
   // Charter A9. `source.unmatched` is base-only in the discriminated union, so

@@ -30,10 +30,12 @@ ALLOWED_EVENT_TYPES = (
 
 REQUIRED_FIELDS = ("schemaVersion", "type", "sessionId", "packId", "packVersion", "sequence", "sentAt")
 
-# Mirrors the field matrix in packages/contracts/live-event.schema.json. The one
-# addition is `caption`: `caption.appended` is base-only in the shared contract,
-# so a caption event cannot currently carry a caption. That is tracked as a
-# contract gap rather than worked around -- see docs/PART5_CONTRACT_CONFORMANCE.md.
+# Mirrors the field matrix in packages/contracts/live-event.schema.json.
+# `caption` carries a live caption of the instructor's speech on
+# caption.appended only: `{text, isFinal}`, text at most CAPTION_MAX_LENGTH
+# characters, nothing else. The shape is checked here too because a caption is
+# the one free-text field on the contract, so it is where audio or a student's
+# words would try to ride along (charter A2, A4).
 KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "assetId",
     "regionId",
@@ -41,6 +43,8 @@ KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "arState",
     "caption",
 }
+
+CAPTION_MAX_LENGTH = 500
 
 INSTRUCTOR_ONLY_TYPES = (
     "session.started",
@@ -112,6 +116,20 @@ def check_event(event: dict, pack: dict, last_sequence: int = 0) -> list[str]:
             broken.append("hotspot-not-in-pack")
         elif region_id is not None and hotspot["regionId"] != region_id:
             broken.append("hotspot-region-mismatch")
+
+    caption = event.get("caption")
+    if event.get("type") == "caption.appended":
+        text = caption.get("text") if isinstance(caption, dict) else None
+        if (
+            not isinstance(caption, dict)
+            or set(caption) != {"text", "isFinal"}
+            or not isinstance(text, str)
+            or not 1 <= len(text) <= CAPTION_MAX_LENGTH
+            or not isinstance(caption.get("isFinal"), bool)
+        ):
+            broken.append("caption-invalid")
+    elif caption is not None:
+        broken.append("caption-on-wrong-event-type")
 
     if event.get("type") == "source.unmatched":
         for field in ("assetId", "regionId"):

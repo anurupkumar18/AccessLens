@@ -48,17 +48,16 @@ const scenarios: Fixture[] = readdirSync(FIXTURES)
   .map(name => JSON.parse(readFileSync(join(FIXTURES, name), 'utf8')) as Fixture);
 
 /**
- * Events the shared contract rejects today, and why. Not a workaround -- these
- * are kept in the fixtures deliberately so the gap stays visible. Tracked as
- * T-16 in docs/CONTEXT_RELAY.md: `caption.appended` is base-only in the
- * discriminated union, so a caption event cannot carry a caption.
+ * Events the shared contract rejects today, and why. Empty since T-16 closed:
+ * `caption.appended` now carries its caption, so the captions scenario passes.
+ * A new entry here needs a thread in docs/CONTEXT_RELAY.md.
  */
-const KNOWN_REJECTED = new Set(['captions#4', 'captions#5']);
+const KNOWN_REJECTED = new Set<string>();
 
 const key = (scenario: string, event: Record<string, unknown>) => `${scenario}#${event.sequence}`;
 
 describe('fixture replay through InMemorySessionClient', () => {
-  it('accepts every event except the documented caption gap', () => {
+  it('accepts every event in every reviewed scenario', () => {
     const rejected = new Set<string>();
     for (const fixture of scenarios) {
       for (const event of fixture.events) {
