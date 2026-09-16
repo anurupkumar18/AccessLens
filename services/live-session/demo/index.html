@@ -117,11 +117,19 @@ const $ = id => document.getElementById(id);
 const logEl = $('log');
 let socket = null, sent = 0, sessionId = '', role = 'instructor';
 
+// Query parameters let one link carry the whole setup, so two windows can be
+// launched pre-configured instead of typing the same code into both and
+// mistyping it once. ?role=student&session=demo-abcd&connect=1
+const params = new URLSearchParams(location.search);
+if (params.get('url')) $('url').value = params.get('url');
+if (params.get('role') === 'student' || params.get('role') === 'instructor') {
+  $('role').value = params.get('role');
+}
 // A short, readable code. The session id is the only secret this demo has, so
 // a guessable one would let anyone join — random beats a fixed default.
-if (!$('session').value) {
-  $('session').value = 'demo-' + Math.random().toString(36).slice(2, 6);
-}
+$('session').value = params.get('session')
+  || $('session').value
+  || 'demo-' + Math.random().toString(36).slice(2, 6);
 
 function log(line, kind) {
   const stamp = new Date().toLocaleTimeString();
@@ -223,6 +231,11 @@ $('playAll').onclick = () => {
   const tick = () => { if (sendNext()) setTimeout(tick, 900); };
   tick();
 };
+// connect=1 finishes the job: the window opens already joined.
+if (params.get('connect') === '1') {
+  addEventListener('load', () => $('connect').click());
+}
+
 $('endSession').onclick = () => {
   if (socket && socket.readyState === 1) {
     socket.send(JSON.stringify({ kind: 'close', sessionId }));

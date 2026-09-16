@@ -84,7 +84,19 @@ npm run demo      # regenerates the page and prints the file:// URL to open
 ```
 
 Open it in two windows (or a laptop and a phone), set one to **instructor** and
-one to **student** with the same session code, and press *Send next event*. The
+one to **student** with the same session code, and press *Send next event*.
+
+Query parameters carry the whole setup, so two pre-configured windows can be
+launched without typing the code twice and mistyping it once:
+
+```sh
+S=demo-$RANDOM; B="file://$PWD/demo/index.html"
+open "$B?role=instructor&session=$S&connect=1"
+open "$B?role=student&session=$S&connect=1"
+```
+
+`url=` overrides the endpoint, `role=` picks the side, `session=` sets the code,
+and `connect=1` connects on load. The
 student view follows over real AWS. It is generated from Part 5's reviewed pack,
 so the wording cannot drift from what the pack says.
 
