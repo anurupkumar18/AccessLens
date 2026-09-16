@@ -15,3 +15,5 @@ output/
 .claude/
 test-results/
 .worktrees/
+cdk.out/
+.cdk-outputs.json
