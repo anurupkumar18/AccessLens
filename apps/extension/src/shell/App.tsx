@@ -5,6 +5,7 @@ import { defaultPreferences, loadPreferences, savePreferences, type StudentPrefe
 import { CameraControl, InstructorPanel } from '../instructor';
 import { AuthoringPanel } from '../instructor/AuthoringPanel';
 import type { AuthoringClient, PublishedPackSummary } from '../shared/authoringClient';
+import { MediaPrepPanel } from '../mediaPrep/MediaPrepPanel';
 import { createDisplayMediaHost, type CaptureHost, type Scheduler } from '../sources/screen';
 import { createCameraMediaHost } from '../sources/camera';
 import { StudentExperience } from '../student/StudentExperience';
@@ -68,6 +69,7 @@ interface Props {
 export function App({ client = defaultClient, pack, host = defaultHost, cameraHost = defaultCameraHost, scheduler, fetchPublishedPack: fetchPack = fetchPublishedPack, authoringClient }: Props): React.ReactElement {
   const [role, setRole] = useState<Role>('instructor');
   const [studentSurface, setStudentSurface] = useState<'live' | 'review'>('live');
+  const [instructorView, setInstructorView] = useState<'live' | 'media'>('live');
   const [event, setEvent] = useState<LiveEvent | null>(null);
   const [preferences, setPreferences] = useState<StudentPreferences>(defaultPreferences);
   const [choiceId, setChoiceId] = useState(packChoices[0].id);
@@ -150,8 +152,18 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
           <Wordmark />
           <p className="tagline">Accessible, instructor-authorized lesson sharing</p>
         </header>
-        {role === 'instructor' ? (
-          <>
+        {role === 'instructor' && (
+          <div className="mode-tabs instructor-tabs" role="tablist" aria-label="Instructor tools">
+            <button id="instructor-tab-live" type="button" role="tab" aria-selected={instructorView === 'live'} aria-controls="instructor-panel" onClick={() => setInstructorView('live')}>Live lesson</button>
+            <button id="instructor-tab-media" type="button" role="tab" aria-selected={instructorView === 'media'} aria-controls="instructor-panel" onClick={() => setInstructorView('media')}>Prepare media</button>
+          </div>
+        )}
+        {role === 'instructor' && instructorView === 'media' ? (
+          <div id="instructor-panel" role="tabpanel" aria-labelledby="instructor-tab-media">
+            <MediaPrepPanel />
+          </div>
+        ) : role === 'instructor' ? (
+          <div id="instructor-panel" role="tabpanel" aria-labelledby="instructor-tab-live">
             {!pack && (
               <p className="pack-picker">
                 <label htmlFor="pack-choice">Lesson pack</label>
@@ -181,7 +193,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
             {activePack && <InstructorPanel key={`${activePack.packId}@${activePack.version}`} client={client} pack={activePack} host={host} scheduler={scheduler} />}
             <CameraControl host={cameraHost} />
             <AuthoringPanel client={authoringClient} onPublishedPacks={receivePublishedPacks} />
-          </>
+          </div>
         ) : (
           <>
             <nav className="student-surface-nav" aria-label="Student experience">

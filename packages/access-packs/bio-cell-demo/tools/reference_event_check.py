@@ -34,7 +34,7 @@ REQUIRED_FIELDS = ("schemaVersion", "type", "sessionId", "packId", "packVersion"
 # flat allowlist does not enforce which type may carry which field -- that
 # per-type matrix lives in the JSON Schema/Zod contract and is checked there;
 # this list only decides whether a field name is known at all (T-16, closed:
-# `caption.appended` carries `caption: {text, isFinal}`, `assetId` when there
+# `caption.appended` carries `caption: {text, isFinal, lang?}`, `assetId` when there
 # is a current match, text at most CAPTION_MAX_LENGTH characters, nothing
 # else -- checked below because a caption is the one free-text field on the
 # contract, so it is where audio or a student's words would try to ride along
@@ -47,7 +47,7 @@ KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "caption",
 }
 
-CAPTION_MAX_LENGTH = 500
+CAPTION_MAX_LENGTH = 2000
 
 INSTRUCTOR_ONLY_TYPES = (
     "session.started",
@@ -141,7 +141,9 @@ def check_event(event: dict, pack: dict, last_sequence: int = 0) -> list[str]:
                 broken.append("caption-text-too-long")
             if not isinstance(caption.get("isFinal"), bool):
                 broken.append("caption-isfinal-not-boolean")
-            if set(caption) - {"text", "isFinal"}:
+            lang = caption.get("lang")
+            lang_invalid = "lang" in caption and not (isinstance(lang, str) and 2 <= len(lang) <= 16)
+            if lang_invalid or set(caption) - {"text", "isFinal", "lang"}:
                 broken.append("caption-invalid")
 
     if event.get("type") == "source.unmatched":

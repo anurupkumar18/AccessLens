@@ -1,0 +1,21 @@
+{
+  "name": "@accesslens/media-access",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AccessLens — draft alt text (Bedrock) and timed transcripts (Transcribe) for instructor course media.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "build": "esbuild src/handler.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.mjs --external:@aws-sdk/*"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.700.0",
+    "@aws-sdk/client-transcribe-streaming": "^3.699.0",
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

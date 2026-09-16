@@ -71,6 +71,12 @@ export interface CaptureController {
   caption(text: string, isFinal: boolean): boolean;
   /** The relay-signed instructor capability for the open session, for the AI gateway. Null before a session opens. */
   getCapability(): RoleCapability | null;
+  /**
+   * Publishes a live caption on the open session, on the same sequence as
+   * every other event. A caption is what was said, never a claim about what
+   * is on screen, so it names no asset.
+   */
+  appendCaption(caption: { text: string; isFinal: boolean; lang?: string }): void;
   /** Halts sampling without emitting anything; for unmount. */
   dispose(): void;
 }
@@ -104,7 +110,7 @@ export const SHARING_REQUIRED_MESSAGE =
   'Sharing is required for live sync. Click Start and choose a tab, window, or screen.';
 
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
-  | { type: 'caption.appended'; assetId?: string; caption: { text: string; isFinal: boolean } }
+  | { type: 'caption.appended'; assetId?: string; caption: { text: string; isFinal: boolean; lang?: string } }
   | { type: 'asset.changed'; assetId: string }
   | { type: 'region.changed'; assetId: string; regionId: string; pointer?: { x: number; y: number } };
 
@@ -429,6 +435,14 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     },
 
     getCapability: () => capability,
+
+    appendCaption({ text, isFinal, lang }) {
+      if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot caption while ${phase}`);
+      const trimmed = text.trim().slice(0, CAPTION_MAX_LENGTH).trimEnd();
+      if (!trimmed) return;
+      const caption = lang && lang.length >= 2 && lang.length <= 16 ? { text: trimmed, isFinal, lang } : { text: trimmed, isFinal };
+      emit({ type: 'caption.appended', caption });
+    },
 
     dispose() {
       releaseStream();

@@ -6,7 +6,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import axe from 'axe-core';
 import { AccessPackSchema, InMemorySessionClient, type LiveEvent, type RoleCapability } from '../shared/contracts';
 import type { AiClient } from '../shared/aiClient';
-import type { CaptionDeps } from './LiveCaptions';
+import type { CaptionDeps } from './SpeechCaptions';
 import type { WhisperStreamOptions } from '../sources/voice/whisperStream';
 import { InstructorPanel } from './index';
 import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, solidFrame, testPack } from '../sources/screen/fixtures';
@@ -386,5 +386,41 @@ describe('InstructorPanel', () => {
       expect(container!.textContent).toContain('Live captions need the AWS session');
       expect(() => button('Start captions')).toThrow();
     });
+  });
+});
+
+describe('InstructorPanel: live captions', () => {
+  it('offers live captions only while sharing, and publishes what the instructor says', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const client = new InMemorySessionClient();
+    const events: LiveEvent[] = [];
+    client.subscribe(e => events.push(e));
+    let speak: ((s: Float32Array) => void) | null = null;
+    const microphone = { open: async (onSamples: (s: Float32Array) => void) => { speak = onSamples; return { stop: () => { speak = null; } }; } };
+    const transcribe = async () => [{ text: 'Welcome to cell biology.', isFinal: true, lang: 'en-US' }];
+    root = createRoot(container);
+    act(() => root!.render(
+      <InstructorPanel client={client} pack={pack} host={new FakeCaptureHost()} scheduler={new FakeScheduler()} clock={new FakeClock()} ids={fixedIds('JOIN42')} microphone={microphone} transcribe={transcribe} />,
+    ));
+    expect(container.textContent).not.toContain('Start live captions');
+
+    await click('Start');
+    await click('Start live captions');
+    expect(container.textContent).toContain('Captioning');
+
+    await act(async () => {
+      speak!(new Float32Array(4800));
+      speak!(Float32Array.from({ length: 16000 }, (_, i) => 0.3 * Math.sin(i / 5)));
+      speak!(new Float32Array(16000));
+      await new Promise(r => setTimeout(r, 0));
+    });
+    const caption = events.find(e => e.type === 'caption.appended');
+    expect(caption).toMatchObject({ sessionId: 'JOIN42', caption: { text: 'Welcome to cell biology.' } });
+    expect(container.textContent).toContain('Last caption sent');
+
+    await click('Stop');
+    expect(container.textContent).not.toContain('Stop live captions');
+    expect(speak).toBeNull();
   });
 });

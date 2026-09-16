@@ -553,7 +553,7 @@ class ConformanceWithPart1Contracts(unittest.TestCase):
 
     @unittest.skipUnless(conformance.CONTRACTS.exists(), "packages/contracts/ not present")
     def test_maxlength_is_enforced_not_just_accepted_as_a_keyword(self):
-        """T-16's caption.text bound (500 chars) must actually be checked."""
+        """T-16's caption.text bound (2000 chars) must actually be checked."""
         schema = conformance.load_schema("live-event.schema.json")
         event = {
             "schemaVersion": "1.0",
@@ -562,13 +562,13 @@ class ConformanceWithPart1Contracts(unittest.TestCase):
             "packId": PACK["packId"],
             "packVersion": PACK["version"],
             "assetId": "cell-slide-03",
-            "caption": {"text": "x" * 501, "isFinal": True},
+            "caption": {"text": "x" * 2001, "isFinal": True},
             "sequence": 1,
             "sentAt": "2026-09-15T15:00:00Z",
         }
         gaps = conformance.validate(event, schema, "LiveEvent")
         self.assertIn("LiveEvent:too-long:caption.text", gaps)
-        event["caption"]["text"] = "x" * 500
+        event["caption"]["text"] = "x" * 2000
         self.assertEqual(conformance.validate(event, schema, "LiveEvent"), [])
 
 

@@ -67,12 +67,17 @@ const LiveEventBase = { schemaVersion:z.literal('1.0'), sessionId:z.string().min
 const Pointer = z.object({x:z.number().min(0).max(1),y:z.number().min(0).max(1)});
 const ArState = z.object({hotspotId:z.string().min(1), action:z.enum(['focus','highlight','clear'])});
 // Bounded instructor speech, scoped to the asset it was said about when there
-// is a current match (T-16). Covers both a manually-authored caption line and
-// a streaming ASR line; `isFinal` distinguishes a settled line from one a
-// producer may still revise. This contract does not require streaming, only
-// tolerates a producer that does it.
-export const CAPTION_MAX_LENGTH = 500;
-const Caption = z.object({ text:z.string().min(1).max(CAPTION_MAX_LENGTH), isFinal:z.boolean() }).strict();
+// is a current match (T-16). Covers a manually-authored caption line and
+// streaming recognition from either caption path; `isFinal` distinguishes an
+// interim result, which a renderer replaces in place, from a settled one it
+// keeps. `lang` names the language spoken when the producer knows it. Strict:
+// text and these two fields only, so a caption can never carry audio (A2).
+export const CAPTION_MAX_LENGTH = 2000;
+const Caption = z.object({
+  text: z.string().min(1).max(CAPTION_MAX_LENGTH),
+  isFinal: z.boolean(),
+  lang: z.string().min(2).max(16).optional(),
+}).strict();
 
 // Per-type field matrix: only asset.changed and region.changed may name a
 // region, and only they and caption.appended may name an asset (a caption

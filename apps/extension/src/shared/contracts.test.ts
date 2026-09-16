@@ -46,6 +46,15 @@ describe('AccessLens contracts',()=>{
       }
     );
 
+    it('accepts an interim caption and an optional language', () => {
+      expect(LiveEventSchema.safeParse({
+        ...base, type:'caption.appended', caption:{text:'the mito', isFinal:false, lang:'en-US'},
+      }).success).toBe(true);
+      expect(LiveEventSchema.safeParse({
+        ...base, type:'caption.appended', caption:{text:'the mito', isFinal:false, lang:'x'},
+      }).success).toBe(false);
+    });
+
     it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
       'rejects %s carrying an assetId',
       (type) => {
@@ -59,7 +68,7 @@ describe('AccessLens contracts',()=>{
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption}).success).toBe(true);
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended'}).success).toBe(false);
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{ text:'', isFinal:true }}).success).toBe(false);
-      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{ text:'x'.repeat(501), isFinal:true }}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{ text:'x'.repeat(2001), isFinal:true }}).success).toBe(false);
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption:{ text:'x', isFinal:true, audio:'UklGR' }}).success).toBe(false);
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption, regionId:'mitochondrion'}).success).toBe(false);
     });
@@ -83,8 +92,8 @@ describe('AccessLens contracts',()=>{
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x', isFinal:true}, pointer:{x:.1,y:.1}}).success).toBe(false);
     });
 
-    it('rejects a caption text over 500 characters', () => {
-      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(501), isFinal:true}}).success).toBe(false);
+    it('rejects a caption text over 2000 characters', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(2001), isFinal:true}}).success).toBe(false);
     });
 
     it('rejects a non-caption type carrying a caption field', () => {

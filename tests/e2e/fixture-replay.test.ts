@@ -50,9 +50,10 @@ const scenarios: Fixture[] = readdirSync(FIXTURES)
 /**
  * Events the shared contract rejects today, and why. Not a workaround -- kept
  * as an explicit allowlist so a new gap cannot appear silently. T-16 (the
- * `caption.appended` payload) closed on 2026-09-16: `caption.appended` now
- * carries `caption: {text, isFinal}` and an `assetId` when there is a current
- * match, so every fixture event is expected to validate.
+ * `caption.appended` payload) closed on 2026-09-16: `caption.appended` carries
+ * `caption: {text, isFinal, lang?}` and an optional `assetId` when there is a
+ * current match, so every fixture event is expected to validate. An empty set
+ * here is the goal; a non-empty one is a gap someone should be able to name.
  */
 const KNOWN_REJECTED = new Set<string>([]);
 

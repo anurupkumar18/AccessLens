@@ -35,22 +35,17 @@ FIXTURES = PACK_ROOT / "fixtures"
 # Every incompatibility known when this check was written, as
 # "<schema>:<kind>:<detail>". Anything outside this set is a new break and
 # fails. See docs/PART5_CONTRACT_CONFORMANCE.md for why each one is here.
-EXPECTED_GAPS = {
-    # --- Pack: reviewed content the schema does not model yet ---------------
-    # The most serious of these is `arScene`. AR is a required student renderer
-    # (charter A10, task A12) and the pack schema currently forbids the pack
-    # from carrying the AR scene at all.
-    "AccessPack:additional-property:assets[].arScene",
-    "AccessPack:additional-property:assets[].mediaUri",
-    "AccessPack:additional-property:assets[].subtitle",
-    "AccessPack:additional-property:assets[].regions[].label",
-    "AccessPack:additional-property:review",
-    "AccessPack:additional-property:matching",
-    "AccessPack:additional-property:arCameras",
-    "AccessPack:additional-property:reservedReadingOrderIds",
-    # The caption gap (T-16) closed on 2026-09-16: caption.appended now carries
-    # `caption: {text, isFinal}` and may name its asset, in the suggested shape.
-}
+EXPECTED_GAPS: set[str] = set()
+# Every gap this file used to track is now closed.
+#
+# The pack-level ones closed when Part 1 widened `access-pack.schema.json`
+# (T-05) -- including `arScene`, which had been the serious one: AR is a
+# required renderer and the schema had made it impossible for a pack to carry
+# the scene. The event-level ones closed with T-16, which gave
+# `caption.appended` the payload it had always lacked.
+#
+# An empty set is the point of this check, not the end of it: anything that
+# appears here now is a new incompatibility and fails.
 
 
 

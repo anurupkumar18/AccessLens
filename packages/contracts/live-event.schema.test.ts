@@ -37,6 +37,12 @@ describe('live-event.schema.json contract matrix', () => {
     }
   );
 
+  it('accepts a caption with the language spoken, and rejects a caption payload on any other event type', () => {
+    expect(validate({...base, type:'caption.appended', caption:{text:'hi', isFinal:false, lang:'es'}})).toBe(true);
+    expect(validate({...base, type:'session.started', caption:{text:'x', isFinal:true}})).toBe(false);
+    expect(validate({...base, type:'region.changed', assetId:'a', regionId:'r', caption:{text:'x', isFinal:true}})).toBe(false);
+  });
+
   it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
     'rejects %s carrying an assetId, never inventing a match',
     (type) => {
@@ -59,8 +65,8 @@ describe('live-event.schema.json contract matrix', () => {
     expect(validate({...base, type:'caption.appended', caption:{ text:'x', isFinal:true }, regionId:'mitochondrion'})).toBe(false);
   });
 
-  it('rejects a caption text over 500 characters', () => {
-    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(501), isFinal:true}})).toBe(false);
+  it('rejects a caption text over 2000 characters', () => {
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(2001), isFinal:true}})).toBe(false);
   });
 
   it('rejects a caption missing isFinal, or carrying an extra field', () => {

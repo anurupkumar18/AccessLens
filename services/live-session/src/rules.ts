@@ -48,7 +48,7 @@ export const REQUIRED_FIELDS = [
 ] as const;
 
 /** Mirrors CAPTION_MAX_LENGTH in reference_event_check.py and the Zod contract. */
-export const CAPTION_MAX_LENGTH = 500;
+export const CAPTION_MAX_LENGTH = 2000;
 
 /**
  * Mirrors KNOWN_FIELDS in reference_event_check.py, `caption` included.
@@ -222,7 +222,9 @@ export function checkEvent(
       if (typeof text !== 'string' || text.length < 1) broken.push('caption-text-missing');
       else if (text.length > CAPTION_MAX_LENGTH) broken.push('caption-text-too-long');
       if (typeof caption.isFinal !== 'boolean') broken.push('caption-isfinal-not-boolean');
-      if (Object.keys(caption).some(key => key !== 'text' && key !== 'isFinal')) broken.push('caption-invalid');
+      const lang = caption.lang;
+      const langInvalid = lang !== undefined && (typeof lang !== 'string' || lang.length < 2 || lang.length > 16);
+      if (langInvalid || Object.keys(caption).some(key => key !== 'text' && key !== 'isFinal' && key !== 'lang')) broken.push('caption-invalid');
     }
   }
 

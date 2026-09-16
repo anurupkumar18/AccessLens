@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { AccessPackSchema, InMemorySessionClient, LiveEventSchema, type LiveEvent } from '../shared/contracts';
+import { AccessPackSchema, CAPTION_MAX_LENGTH, InMemorySessionClient, LiveEventSchema, type LiveEvent } from '../shared/contracts';
 import type { CaptureStream } from '../sources/screen/captureHost';
 import { createCaptureController } from './index';
 import {
@@ -484,9 +484,9 @@ describe('capture controller: live captions', () => {
 
   it('keeps the most recent words of an over-long caption, within the contract limit', async () => {
     const { controller, events } = await sharing();
-    controller.caption(`${'early words '.repeat(60)}the end`, true);
+    controller.caption(`${'early words '.repeat(200)}the end`, true);
     const text = (events.at(-1) as { caption: { text: string } }).caption.text;
-    expect(text.length).toBeLessThanOrEqual(500);
+    expect(text.length).toBeLessThanOrEqual(CAPTION_MAX_LENGTH);
     expect(text.endsWith('the end')).toBe(true);
     expect(text.startsWith('early') || text.startsWith('words')).toBe(true);
   });
@@ -501,5 +501,27 @@ describe('capture controller: live captions', () => {
     controller.endSession();
     expect(controller.getCapability()).toBeNull();
     expect(controller.caption('after the end', true)).toBe(false);
+
+  });
+
+  it('publishes contract-valid captions on the same sequence as every other event', async () => {
+    const { controller, events } = await sharing();
+    controller.appendCaption({ text: '  The nucleus holds DNA.  ', isFinal: true, lang: 'en-US' });
+    controller.pause();
+    controller.appendCaption({ text: 'Still captioning while paused.', isFinal: true });
+    expect(types(events)).toEqual(['session.started', 'caption.appended', 'capture.paused', 'caption.appended']);
+    expect(events.map(e => e.sequence)).toEqual([1, 2, 3, 4]);
+    expect(events[1]).toMatchObject({ caption: { text: 'The nucleus holds DNA.', isFinal: true, lang: 'en-US' } });
+    for (const event of events) expect(LiveEventSchema.safeParse(event).success).toBe(true);
+  });
+
+  it('refuses captions with no active capture, and drops empty or invalid fields', async () => {
+    const { controller, events } = setup();
+    expect(() => controller.appendCaption({ text: 'Too early.', isFinal: true })).toThrow(/Cannot caption/);
+    await controller.start();
+    controller.appendCaption({ text: '   ', isFinal: true });
+    controller.appendCaption({ text: 'x'.repeat(2500), isFinal: true, lang: 'e' });
+    expect(types(events)).toEqual(['session.started', 'caption.appended']);
+    expect(LiveEventSchema.safeParse(events[1]).success).toBe(true);
   });
 });

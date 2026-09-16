@@ -26,11 +26,9 @@ jobs:
       # and lockfile (Part 4's live-session-check target), so the root
       # `npm ci` above does not cover it -- without this it fails with
       # "Cannot find module '@aws-sdk/...'" instead of running any tests.
-      - run: npm ci --prefix services/live-session
+      - run: for dir in services/*/; do test -f "${dir}package.json" && npm ci --prefix "$dir"; done
       # Part 6's ingest acceptance tests render the checked-in deck with the
       # same Poppler and LibreOffice the ingest Lambda container carries.
       # Without these the [slow] tests fail with "spawnSync pdftoppm ENOENT".
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils libreoffice-impress
-      # services/ai-gateway likewise; the root test run also imports its tests.
-      - run: npm ci --prefix services/ai-gateway
       - run: make check
