@@ -99,6 +99,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
   }, [controller]);
 
   const active = state.phase === 'sharing' || state.phase === 'paused';
+  const current = state.current;
+  const currentAsset = current.kind === 'matched' ? pack.assets.find((asset) => asset.assetId === current.assetId) : undefined;
   const b = banner(state, pack);
   const step = stepIndex(state);
 
@@ -198,6 +200,18 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ai 
           );
         })}
       </ol>
+
+      {active && currentAsset?.arScene && (
+        <div className="ar-launch-control">
+          <h3>Make this slide interactive</h3>
+          <p className="supporting-text">
+            Find the first reviewed AR concept for this slide and focus it for students.
+          </p>
+          <button type="button" onClick={() => guarded(() => controller.findAr())}>
+            Find AR for this slide
+          </button>
+        </div>
+      )}
 
       {formError && <p role="alert">{formError}</p>}
       </div>
