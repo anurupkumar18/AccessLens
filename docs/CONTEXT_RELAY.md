@@ -797,3 +797,19 @@ required before calling this live-AWS behavior.
 then build and deploy `services/live-session` before running the updated
 real-device capture matrix. `memory/episodic/0050-stop-versus-end-session-lifecycle.md`
 has the precise behavior and verification record.
+
+### RL-033 — 2026-09-16 — Part 1 + Part 3 — Omar Rizwan
+
+**Landed:** the extension UI now follows Blacksmith's site layout, not just its
+tokens: yellow masthead with a pixel wordmark (`shell/Wordmark.tsx`, drawn from a
+5x5 bitmap, not their logo), `/ LABEL ■` section rules, pill buttons, window cards
+with hard shadows, bento mode tabs, halftone fields. `shell/ThemeToggle.tsx` adds a
+light/dark switch that pins `<html data-theme>`; dark-only values are now tokens.
+WCAG AA text contrast measured in a real browser: zero failures in both themes.
+No button text, id, or role that tests query changed; `make check` green.
+**Threads touched:** none opened or closed. T-25 note: `VITE_ACCESSLENS_WS_URL` in
+a local `.env.local` is enough to put the dev server on the deployed relay
+(integration test 12/12 on 2026-09-16); committed `dist/` is still built without it.
+**Next agent needs to know:** the HNSW draft pack's slides 04 and 05 are 16 bits
+apart, under the 2x-margin (28) rule `validate_pack.py` enforces for the bio pack,
+so it would show Unmatched between those two on a real capture. Demo on the bio pack.
