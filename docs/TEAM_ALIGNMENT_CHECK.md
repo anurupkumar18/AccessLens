@@ -263,6 +263,20 @@ The one thing I would spend an hour on regardless of the story chosen is #4.
 One person with a real access need, fifteen minutes, timed. It is the only item
 on this list that changes what the project *is* rather than how it is described.
 
+**Addendum, 2026-09-16 — implementation resumed by owner direction.**
+
+The product owner has read section 2, been shown the AWS capability survey and
+the feature map in `docs/AWS_FEATURE_MAP.md`, and directed that the three
+tier-1 accessibility features be built: live captions, catch-up summaries, and
+translated reviewed speech. I raised the tension with this gate and with
+question 14 before starting, and the direction was given again explicitly.
+Recording it here rather than quietly building past an open thread.
+
+What that does *not* change: questions 4, 6, 7 and 13 — a real user test, two
+timed rehearsals, a recorded fallback, and who is presenting — remain open, and
+remain the cheapest wins available. Building these features does not close any
+of them.
+
 ### Jacob Erard (Part 2)
 
 *(awaiting response)*
