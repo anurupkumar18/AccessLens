@@ -226,3 +226,19 @@ then fill the catalog with things that clear it.
 
 **Status.** Blocked on the user. The lead has not merged `lane/catalog-v12`
 and will not grow the catalog further under the current gates.
+
+## D7 — test the pipeline's published pack in the student view — DECIDED (user, 2026-09-16)
+
+**Question.** D2 scoped this run to the API. The lead asked whether, once one
+real job has run and been published, the pipeline's output pack should be
+loaded in the extension's existing student renderers (Part 2) as the one UI
+test that proves something about this pipeline's output.
+
+**Decision.** Yes. The user asked for it after the real job completes.
+
+**Scope granted.** Whatever is needed to point the extension's student view
+at the published pack URL on CloudFront — at most a small cross-part edit
+in `apps/extension/src/`, logged here if it happens. Not in scope: an
+instructor review UI (V5), a renderer for `audioUri` or `visualization`
+(V6/V9). Hear mode falls back to local speech synthesis; every slide in this
+deploy is `no-visual`, so no interactive would appear regardless.
