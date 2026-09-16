@@ -703,3 +703,9 @@ label.inline-label { display: inline; }
 audio.media-player { background: transparent; }
 .cue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; max-height: 50vh; overflow-y: auto; }
 .cue-time { margin: 0 0 .15rem; }
+
+/* ---------- Live captions (instructor) --------------------------------- */
+
+.live-captions { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.live-captions h3 { margin-top: 0; }
+.live-captions q { font-style: italic; }

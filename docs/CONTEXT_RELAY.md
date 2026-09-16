@@ -832,3 +832,9 @@ from the pack.
 **Landed:** `.github/workflows/deploy.yml` now builds every `services/*` bundle, runs `cdk deploy` from `infra/`, and writes all seven endpoints into the extension build. `docs/DEPLOYMENT.md` "One-time setup: GitHub deploy role" is a copy-paste runbook for a repository admin or their agent, with a failure table.
 **Threads touched:** T-32 opened.
 **Next agent needs to know:** nothing deploys until a repo admin runs that runbook once. `cdk synth` succeeds for all four stacks at `ddd4b2c` once every bundle is built; the deploy itself has not been run by anyone.
+
+### RL-037 — 2026-09-16 — Part 5 — Kunj Rathod
+
+**Landed:** Live captions in a live class. While sharing, the instructor clicks "Start live captions": `sources/audio/microphone.ts` opens the mic, `sources/audio/segmenter.ts` cuts utterances at pauses (or at the quietest gap before a 5 s cap), `instructor/liveCaptions.ts` sends each in order to the existing `services/captions` Lambda (AWS Transcribe) and publishes final results through the new `captureController.appendCaption`, so captions share the controller's sequence and pass the relay's monotonic check. Students' existing Live captions panel renders them. Root vitest 510 passed; driven in real Chrome with a fake microphone playing recorded speech, a mock captions endpoint, and a separate student page that joined the session and received every caption.
+**Threads touched:** none.
+**Next agent needs to know:** never run against real Transcribe; needs `AccessLensAccessibility` deployed and `VITE_ACCESSLENS_CAPTIONS_ENDPOINT` set (the fixed deploy workflow now passes it). Captions arrive roughly one utterance (≤5 s) plus transcription time behind speech; lower latency needs a held-open streaming connection, which a Function URL cannot provide. The Chrome side panel may be unable to show a microphone prompt; "Open in a full tab" is the fallback the error message names.

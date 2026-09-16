@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
-import { createCaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import type { MicrophoneHost } from '../sources/audio/microphone';
+import { createCaptureController, type CaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import { createLiveCaptions, type LiveCaptionsState, type Transcriber } from './liveCaptions';
 
 interface Props {
   client: SessionClient;
@@ -10,6 +12,8 @@ interface Props {
   scheduler?: Scheduler;
   clock?: Clock;
   ids?: IdGenerator;
+  microphone?: MicrophoneHost;
+  transcribe?: Transcriber;
 }
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
@@ -56,7 +60,7 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: Props): React.ReactElement {
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, microphone, transcribe }: Props): React.ReactElement {
   const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
@@ -131,6 +135,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
         )}
       </div>
 
+      {active && <LiveCaptionsControl controller={controller} microphone={microphone} transcribe={transcribe} />}
+
       </div>
       <div>
       <h3>How this works</h3>
@@ -184,5 +190,72 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids }: P
       </div>
       </div>
     </section>
+  );
+}
+
+const CAPTION_LANGUAGES: [string, string][] = [
+  ['en-US', 'English (US)'],
+  ['en-GB', 'English (UK)'],
+  ['es-US', 'Spanish (US)'],
+  ['fr-FR', 'French'],
+  ['de-DE', 'German'],
+  ['pt-BR', 'Portuguese (Brazil)'],
+  ['hi-IN', 'Hindi'],
+  ['zh-CN', 'Chinese (Mandarin)'],
+  ['ja-JP', 'Japanese'],
+  ['ko-KR', 'Korean'],
+];
+
+/**
+ * Live captions for the open session. Mounted only while sharing or paused,
+ * so unmounting (Stop, End Session) is what turns the microphone off.
+ */
+function LiveCaptionsControl({ controller, microphone, transcribe }: {
+  controller: CaptureController;
+  microphone?: MicrophoneHost;
+  transcribe?: Transcriber;
+}): React.ReactElement {
+  const [lang, setLang] = useState('en-US');
+  const langRef = React.useRef(lang);
+  langRef.current = lang;
+  const [captions] = useState(() => createLiveCaptions({
+    publish: caption => controller.appendCaption(caption),
+    sessionId: () => controller.getState().sessionId,
+    lang: () => langRef.current,
+    microphone,
+    transcribe,
+  }));
+  const [state, setState] = useState<LiveCaptionsState>(() => captions.getState());
+
+  useEffect(() => {
+    const unsubscribe = captions.subscribe(setState);
+    return () => { unsubscribe(); captions.stop(); };
+  }, [captions]);
+
+  const on = state.phase === 'listening' || state.phase === 'starting';
+  const status = state.phase === 'listening'
+    ? '● Captioning: students see what you say.'
+    : state.phase === 'starting' ? '◔ Waiting for microphone permission.' : '○ Live captions are off.';
+
+  return (
+    <div className="live-captions" aria-labelledby="live-captions-heading">
+      <h3 id="live-captions-heading">Live captions</h3>
+      <p>
+        <label htmlFor="live-captions-lang">Language you are speaking</label>
+        <select id="live-captions-lang" value={lang} onChange={e => setLang(e.target.value)}>
+          {CAPTION_LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+        </select>
+      </p>
+      <p role="status" aria-live="polite">{status}</p>
+      {on
+        ? <button type="button" className="stop" onClick={() => captions.stop()}>Stop live captions</button>
+        : <button type="button" className="primary" onClick={() => { void captions.start(); }}>Start live captions</button>}
+      {state.backlog >= 3 && <p className="a11y-notice">Captions are {state.backlog} sentences behind. Pausing briefly lets them catch up.</p>}
+      {state.message && <p role={state.phase === 'error' ? 'alert' : undefined} className="a11y-notice">{state.message}</p>}
+      {state.lastCaption && (
+        <p className="supporting-text">Last caption sent: <q>{state.lastCaption}</q></p>
+      )}
+      <p className="supporting-text">Your microphone audio goes to AWS Transcribe only to make captions; it is not recorded or stored. Captions are automatic and can be wrong.</p>
+    </div>
   );
 }

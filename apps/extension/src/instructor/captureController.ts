@@ -51,6 +51,12 @@ export interface CaptureController {
   endSession(): void;
   correct(correction: Correction): void;
   indicateRegion(regionId: string): void;
+  /**
+   * Publishes a live caption on the open session, on the same sequence as
+   * every other event. A caption is what was said, never a claim about what
+   * is on screen, so it names no asset.
+   */
+  appendCaption(caption: { text: string; isFinal: boolean; lang?: string }): void;
   /** Halts sampling without emitting anything; for unmount. */
   dispose(): void;
 }
@@ -74,7 +80,11 @@ export const SHARING_REQUIRED_MESSAGE =
 
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
   | { type: 'asset.changed'; assetId: string }
-  | { type: 'region.changed'; assetId: string; regionId: string };
+  | { type: 'region.changed'; assetId: string; regionId: string }
+  | { type: 'caption.appended'; caption: { text: string; isFinal: boolean; lang?: string } };
+
+/** Contract bound on `caption.text`; the relay rejects anything longer. */
+const MAX_CAPTION_CHARS = 2000;
 
 export function createCaptureController(options: ControllerOptions): CaptureController {
   const { client, pack, host } = options;
@@ -285,6 +295,14 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       current = { ...current, regionId };
       emit({ type: 'region.changed', assetId: current.assetId, regionId });
       notify();
+    },
+
+    appendCaption({ text, isFinal, lang }) {
+      if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot caption while ${phase}`);
+      const trimmed = text.trim().slice(0, MAX_CAPTION_CHARS).trimEnd();
+      if (!trimmed) return;
+      const caption = lang && lang.length >= 2 && lang.length <= 16 ? { text: trimmed, isFinal, lang } : { text: trimmed, isFinal };
+      emit({ type: 'caption.appended', caption });
     },
 
     dispose() {
