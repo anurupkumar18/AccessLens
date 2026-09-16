@@ -243,7 +243,7 @@ instructor review UI (V5), a renderer for `audioUri` or `visualization`
 (V6/V9). Hear mode falls back to local speech synthesis; every slide in this
 deploy is `no-visual`, so no interactive would appear regardless.
 
-## D8 — AWS credentials expired mid-run — USER ACTION NEEDED
+## D8 — AWS credentials expired mid-run — RESOLVED (user re-authenticated, 2026-09-16)
 
 **What happened.** The second deploy (`make deploy`, carrying the ingest
 CommonJS fix) exited 2, and every AWS call since answers
@@ -272,3 +272,5 @@ describe the running pipeline, held back until the job proves them. Local
 gates are green: 466 tests, `tsc` clean, `make check` green. The ingest
 image with the CommonJS fix builds and loads locally; whether it reached
 the stack depends on where the deploy died.
+
+**Resolution.** The user signed in again; `sts get-caller-identity` answers as the participant role and the stack reads `UPDATE_COMPLETE` on the pre-fix revision. The redeploy and the real job were started immediately.
