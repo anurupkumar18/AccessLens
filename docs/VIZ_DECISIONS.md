@@ -275,7 +275,7 @@ the stack depends on where the deploy died.
 
 **Resolution.** The user signed in again; `sts get-caller-identity` answers as the participant role and the stack reads `UPDATE_COMPLETE` on the pre-fix revision. The redeploy and the real job were started immediately.
 
-## D9 — `origin/master` moved under this branch: the UI rebuild is in, and two CDK apps now claim `infra/` — DECISION NEEDED
+## D9 — `origin/master` moved under this branch: the UI rebuild is in, and two CDK apps now claim `infra/` — DECIDED (user, 2026-09-16: fix the conflicts; option (a))
 
 **What the user asked.** "When you're done, the UI PR should be in so
 please check that out."
