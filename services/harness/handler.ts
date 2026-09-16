@@ -1,4 +1,4 @@
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -34,7 +34,7 @@ export interface HarnessOptions {
   tempRoot?: string;
 }
 
-const defaultS3 = undefined as unknown as HarnessS3Transport;
+const defaultS3: HarnessS3Transport = new S3Client({}) as unknown as HarnessS3Transport;
 
 interface S3ObjectResponse { Body?: unknown }
 interface ListedObject { Key?: string }
