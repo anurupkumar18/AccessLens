@@ -2063,3 +2063,19 @@ come back; the Deploy workflow would have failed the same way.
 **Threads touched:** T-47 still OPEN until a master Deploy run completes.
 **Next agent needs to know:** keep the definition at 200 characters or fewer and
 each example at 100 or fewer.
+### RL-094 — 2026-09-16 — deployment configuration — Codex
+
+**Landed:** the master deployment workflow reads `ApiUrl`, `GoogleClientId`, and
+`AssetBaseUrl` from the existing `AccessLensAuthoring` stack before deploying
+the other stacks. `AccessLensAuthoring` owns the OAuth client and hosted web
+assets, so its own script remains responsible for deployment; the generic CDK
+run creates only its required synth placeholders. The downloadable extension
+then falls back to these public authoring outputs when `/tmp/outputs.json` does
+not contain that separately managed stack. This resolves both the prior
+`CannotFindAsset .../dist-web` failure and the missing Upload slides
+configuration without inventing endpoints or weakening sign-in.
+**Threads touched:** none.
+**Next agent needs to know:** wait for a successful master deployment before
+asking an instructor to retest Upload slides. A successful build exposes the
+sign-in control; authorization still depends on the configured Google origin
+and instructor allowlist.

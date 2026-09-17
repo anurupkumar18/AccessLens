@@ -95,17 +95,23 @@ jobs:
             npm run build --prefix "$dir"
           done
 
-      # The relay reads published packs from the authoring distribution; without
-      # its URL every pack that is not bundled is refused (RL-091).
-      - name: Find the published pack distribution
+      # AccessLensAuthoring is deployed by infra/scripts/deploy.sh because it
+      # owns the Google OAuth client and hosted web assets. Its public outputs
+      # still configure the downloadable extension and the relay pack source.
+      - name: Read deployed authoring configuration
         run: |
-          base=$(aws cloudformation describe-stacks --stack-name AccessLensAuthoring \
-            --query "Stacks[0].Outputs[?OutputKey=='AssetBaseUrl'].OutputValue" --output text)
-          if [ -z "$base" ] || [ "$base" = "None" ]; then
-            echo "::error::AccessLensAuthoring has no AssetBaseUrl output; deploy it with infra/scripts/deploy.sh first."
-            exit 1
-          fi
-          echo "VITE_ACCESSLENS_ASSET_BASE_URL=$base" >> "$GITHUB_ENV"
+          aws cloudformation describe-stacks --stack-name AccessLensAuthoring --output json > /tmp/authoring-stack.json
+          node -e '
+            const { appendFileSync, readFileSync } = require("node:fs");
+            const stack = JSON.parse(readFileSync("/tmp/authoring-stack.json", "utf8"));
+            const outputs = Object.fromEntries((stack.Stacks[0]?.Outputs ?? []).map(output => [output.OutputKey, output.OutputValue]));
+            const required = { VITE_ACCESSLENS_API_URL: "ApiUrl", VITE_GOOGLE_CLIENT_ID: "GoogleClientId", VITE_ACCESSLENS_ASSET_BASE_URL: "AssetBaseUrl" };
+            for (const [env, key] of Object.entries(required)) {
+              if (!outputs[key]) throw new Error(`AccessLensAuthoring is missing ${key}`);
+              appendFileSync(process.env.GITHUB_ENV, `${env}=${outputs[key]}\n`);
+            }
+            console.log("Loaded public authoring configuration from AccessLensAuthoring.");
+          '
 
       # From infra/, where cdk.json names the app; run from the repo root, the
       # CDK CLI finds no app to deploy. AccessLensAuthoring is not deployed here:
@@ -127,10 +133,10 @@ jobs:
             const find = (k) => Object.values(o).map(s => s[k]).find(Boolean) ?? "";
             const lines = [
               `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
-              `VITE_ACCESSLENS_API_URL=${find("ApiUrl")}`,
-              `VITE_GOOGLE_CLIENT_ID=${find("GoogleClientId")}`,
+              `VITE_ACCESSLENS_API_URL=${find("ApiUrl") || process.env.VITE_ACCESSLENS_API_URL || ""}`,
+              `VITE_GOOGLE_CLIENT_ID=${find("GoogleClientId") || process.env.VITE_GOOGLE_CLIENT_ID || ""}`,
               `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
-              `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl")}`,
+              `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl") || process.env.VITE_ACCESSLENS_ASSET_BASE_URL || ""}`,
               `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,
               `VITE_ACCESSLENS_RECAP_ENDPOINT=${find("RecapUrl")}`,
               `VITE_ACCESSLENS_TRANSLATE_ENDPOINT=${find("TranslateSpeakUrl")}`,
