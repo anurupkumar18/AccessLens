@@ -27,6 +27,10 @@ const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
   return { default: module.CellArView };
 });
+const WaterLevelArView = React.lazy(async () => {
+  const module = await import('../ar/WaterLevelArView');
+  return { default: module.WaterLevelArView };
+});
 
 // The cell demo's first slide is the deliberate hardcoded bridge from the
 // uploaded/local `cell-slide-01` image to the reviewed mitochondria model.
@@ -40,6 +44,19 @@ function usesCellModel(pack: AccessPack, asset: AccessPack['assets'][number] | u
     || packTitle === 'cell-slide-01'
     || assetId === 'cell-slide-01'
     || assetId === 'local-slide-01' && assetTitle.includes('cell-slide-01');
+}
+
+function usesWaterLevelModel(pack: AccessPack, asset: AccessPack['assets'][number] | undefined): boolean {
+  const normalize = (value: string | undefined): string => value?.trim().toLowerCase().replace(/\\/gu, '/') ?? '';
+  const packTitle = normalize(pack.title);
+  const assetTitle = normalize(asset?.title);
+  const assetId = normalize(asset?.assetId);
+  return packTitle.includes('waterlevel')
+    || packTitle.includes('water level')
+    || assetTitle.includes('waterlevel')
+    || assetTitle.includes('water level')
+    || assetId.includes('waterlevel')
+    || assetId.includes('water-level');
 }
 
 interface Props {
@@ -287,8 +304,10 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
-            {usesCellModel(pack, currentAsset) ? (
-              <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            {usesWaterLevelModel(pack, currentAsset) ? (
+              <WaterLevelArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            ) : usesCellModel(pack, currentAsset) ? (
+              <CellArView assetId={live.assetId} regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
             ) : (
               <PackArView packId={pack.packId} asset={currentAsset} regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
             )}
