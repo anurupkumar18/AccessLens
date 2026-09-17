@@ -1,6 +1,5 @@
 /**
- * The accessibility services: captions, catch-up, translation, and course
- * media preparation (alt text and recorded-media captions).
+ * The three accessibility services: captions, catch-up, and translation.
  *
  * One stack rather than three, because they share a shape exactly — a single
  * Lambda behind a Function URL, called from a browser extension on an
@@ -75,17 +74,6 @@ export class AccessibilityServicesStack extends Stack {
         timeout: 30,
         memory: 512,
         policies: [{ actions: ['translate:TranslateText', 'polly:SynthesizeSpeech', 'comprehend:DetectDominantLanguage'], resources: ['*'] }],
-      },
-      {
-        // Instructor course media: draft alt text for images and slide
-        // pictures, timed transcripts for recorded audio and video. The
-        // extension sends about a minute of audio per call, several in
-        // parallel, so the timeout covers one chunk rather than a lecture.
-        id: 'MediaAccess',
-        directory: 'services/media-access',
-        timeout: 120,
-        memory: 512,
-        policies: [bedrockInvoke, { actions: ['transcribe:StartStreamTranscription'], resources: ['*'] }],
       },
     ];
 

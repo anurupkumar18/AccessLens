@@ -26,6 +26,7 @@
 import { App } from 'aws-cdk-lib';
 import { AccessLensAuthoringStack } from '../lib/access-lens-authoring-stack';
 import { AccessibilityServicesStack } from '../lib/accessibility-services-stack.js';
+import { CourseMediaStack } from '../lib/course-media-stack.js';
 import { DistributionStack } from '../lib/distribution-stack.js';
 import { GitHubDeployRoleStack } from '../lib/github-deploy-role-stack.js';
 import { LiveSessionStack } from '../lib/live-session-stack';
@@ -55,6 +56,13 @@ new AccessLensAuthoringStack(app, 'AccessLensAuthoring');
 new AccessibilityServicesStack(app, 'AccessLensAccessibility', {
   env,
   description: 'AccessLens accessibility services: captions, recap, translate and speak',
+});
+
+// Course materials: automatic alt text and captions for anything a professor
+// uploads, delivered to students in the extension.
+new CourseMediaStack(app, 'AccessLensCourseMedia', {
+  env,
+  description: 'AccessLens course materials: automatic alt text and captions',
 });
 
 // Where the packed extension, the install page, and the reviewed pack assets

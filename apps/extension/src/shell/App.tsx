@@ -5,7 +5,7 @@ import { defaultPreferences, loadPreferences, savePreferences, type StudentPrefe
 import { CameraControl, InstructorPanel } from '../instructor';
 import { AuthoringPanel } from '../instructor/AuthoringPanel';
 import type { AuthoringClient, PublishedPackSummary } from '../shared/authoringClient';
-import { MediaPrepPanel } from '../mediaPrep/MediaPrepPanel';
+import { InstructorMaterials, StudentMaterials } from '../courseMedia/CourseMaterials';
 import type { ClassroomClient } from '../shared/classroomClient';
 import { createDisplayMediaHost, type CaptureHost, type Scheduler } from '../sources/screen';
 import { createBedrockScreenAnalyzer } from '../sources/screen/screenAnalyzer';
@@ -88,8 +88,8 @@ interface Props {
 
 export function App({ client = defaultClient, pack, host = defaultHost, cameraHost = defaultCameraHost, scheduler, analyzer = defaultAnalyzer, fetchPublishedPack: fetchPack = fetchPublishedPack, authoringClient, classroomClient, slides = defaultSlidesSource() }: Props): React.ReactElement {
   const [role, setRole] = useState<Role>('instructor');
-  const [studentSurface, setStudentSurface] = useState<'live' | 'review' | 'class'>('live');
-  const [instructorView, setInstructorView] = useState<'live' | 'media'>('live');
+  const [studentSurface, setStudentSurface] = useState<'live' | 'review' | 'class' | 'materials'>('live');
+  const [instructorView, setInstructorView] = useState<View>('live');
   const [event, setEvent] = useState<LiveEvent | null>(null);
   const [preferences, setPreferences] = useState<StudentPreferences>(defaultPreferences);
   const [choiceId, setChoiceId] = useState(packChoices[0].id);
@@ -172,62 +172,77 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
           <Wordmark />
           <p className="tagline">Accessible, instructor-authorized lesson sharing</p>
         </header>
-        {role === 'instructor' && (
-          <div className="mode-tabs instructor-tabs" role="tablist" aria-label="Instructor tools">
-            <button id="instructor-tab-live" type="button" role="tab" aria-selected={instructorView === 'live'} aria-controls="instructor-panel" onClick={() => setInstructorView('live')}>Live lesson</button>
-            <button id="instructor-tab-media" type="button" role="tab" aria-selected={instructorView === 'media'} aria-controls="instructor-panel" onClick={() => setInstructorView('media')}>Prepare media</button>
-          </div>
-        )}
-        {role === 'instructor' && instructorView === 'media' ? (
-          <div id="instructor-panel" role="tabpanel" aria-labelledby="instructor-tab-media">
-            <MediaPrepPanel />
-          </div>
-        ) : role === 'instructor' ? (
-          <div id="instructor-panel" role="tabpanel" aria-labelledby="instructor-tab-live">
-            {!pack && (
-              <p className="pack-picker">
-                <label htmlFor="pack-choice">Lesson pack</label>
-                <select id="pack-choice" value={publishedChoice ? publishedChoiceId(publishedChoice) : choice.id} onChange={e => pickPack(e.target.value)}>
-                  {publishedPacks.length > 0 && (
-                    <optgroup label="Your published packs">
-                      {publishedPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
+        {role === 'instructor' ? (
+          <>
+            <ViewTabs label="Instructor tools" view={instructorView} onChange={setInstructorView} />
+            {/* Both views stay mounted: unmounting the live panel would end
+                screen sharing mid-class just to upload a file. */}
+            <div id="view-panel-live" role="tabpanel" aria-labelledby="view-tab-live" hidden={instructorView !== 'live'}>
+              {!pack && (
+                <p className="pack-picker">
+                  <label htmlFor="pack-choice">Lesson pack</label>
+                  <select id="pack-choice" value={publishedChoice ? publishedChoiceId(publishedChoice) : choice.id} onChange={e => pickPack(e.target.value)}>
+                    {publishedPacks.length > 0 && (
+                      <optgroup label="Your published packs">
+                        {publishedPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
+                      </optgroup>
+                    )}
+                    {demoPacks.length > 0 && (
+                      <optgroup label="Published demo packs">
+                        {demoPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
+                      </optgroup>
+                    )}
+                    <optgroup label="Bundled demo packs">
+                      {packChoices.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                     </optgroup>
-                  )}
-                  {demoPacks.length > 0 && (
-                    <optgroup label="Published demo packs">
-                      {demoPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
-                    </optgroup>
-                  )}
-                  <optgroup label="Bundled demo packs">
-                    {packChoices.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                  </optgroup>
-                </select>
-                {publishedPacks.length === 0 && <span className="muted">Sign in below to present a pack you uploaded.</span>}
-              </p>
-            )}
-            {publishedChoice && !activePack && !instructorPackError && <p role="status" aria-live="polite">Loading {publishedChoice.title}…</p>}
-            {instructorPackError && <p role="alert">{instructorPackError}</p>}
-            {activeIsDraft && (
-              <p role="note" className="draft-note">Draft pack: slide descriptions were generated by Claude and have not been instructor-reviewed yet. Review <code>{choice.draftPath}</code> before a real class.</p>
-            )}
-            {activePack && <InstructorPanel key={`${activePack.packId}@${activePack.version}`} client={client} pack={activePack} host={host} scheduler={scheduler} analyzer={analyzer} slides={slides} />}
-            <CameraControl host={cameraHost} />
-            <AuthoringPanel client={authoringClient} onPublishedPacks={receivePublishedPacks} />
-          </div>
+                  </select>
+                  {publishedPacks.length === 0 && <span className="muted">Sign in below to present a pack you uploaded.</span>}
+                </p>
+              )}
+              {publishedChoice && !activePack && !instructorPackError && <p role="status" aria-live="polite">Loading {publishedChoice.title}…</p>}
+              {instructorPackError && <p role="alert">{instructorPackError}</p>}
+              {activeIsDraft && (
+                <p role="note" className="draft-note">Draft pack: slide descriptions were generated by Claude and have not been instructor-reviewed yet. Review <code>{choice.draftPath}</code> before a real class.</p>
+              )}
+              {activePack && <InstructorPanel key={`${activePack.packId}@${activePack.version}`} client={client} pack={activePack} host={host} scheduler={scheduler} analyzer={analyzer} slides={slides} />}
+              <CameraControl host={cameraHost} />
+              <AuthoringPanel client={authoringClient} onPublishedPacks={receivePublishedPacks} />
+            </div>
+            <div id="view-panel-materials" role="tabpanel" aria-labelledby="view-tab-materials" hidden={instructorView !== 'materials'}>
+              <InstructorMaterials />
+            </div>
+          </>
         ) : (
           <>
             <nav className="student-surface-nav" aria-label="Student experience">
               <button type="button" aria-current={studentSurface === 'live'} onClick={() => setStudentSurface('live')}>Live lesson</button>
               <button type="button" aria-current={studentSurface === 'review'} onClick={() => setStudentSurface('review')}>Review</button>
               <button type="button" aria-current={studentSurface === 'class'} onClick={() => setStudentSurface('class')}>Class library</button>
+              <button type="button" aria-current={studentSurface === 'materials'} onClick={() => setStudentSurface('materials')}>Course materials</button>
             </nav>
             {packError && <p role="alert" className="pack-error">{packError}</p>}
-            {studentSurface === 'live' ? <StudentExperience client={client} event={event} pack={studentPack} preferences={preferences} onPreferencesChange={updatePreferences} /> : null}
+            {/* The live lesson stays mounted so looking at another surface does
+                not drop the student out of the session. */}
+            <div hidden={studentSurface !== 'live'}>
+              <StudentExperience client={client} event={event} pack={studentPack} preferences={preferences} onPreferencesChange={updatePreferences} />
+            </div>
             {studentSurface === 'review' ? <ReviewExperience pack={studentPack} preferences={preferences} /> : null}
             {studentSurface === 'class' ? <CourseAssistant client={classroomClient} /> : null}
+            {studentSurface === 'materials' ? <StudentMaterials /> : null}
           </>
         )}
       </main>
     </ErrorBoundary>
+  );
+}
+
+type View = 'live' | 'materials';
+
+function ViewTabs({ label, view, onChange }: { label: string; view: View; onChange: (view: View) => void }): React.ReactElement {
+  return (
+    <div className="mode-tabs view-tabs" role="tablist" aria-label={label}>
+      <button id="view-tab-live" type="button" role="tab" aria-selected={view === 'live'} aria-controls="view-panel-live" onClick={() => onChange('live')}>Live lesson</button>
+      <button id="view-tab-materials" type="button" role="tab" aria-selected={view === 'materials'} aria-controls="view-panel-materials" onClick={() => onChange('materials')}>Course materials</button>
+    </div>
   );
 }

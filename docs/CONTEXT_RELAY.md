@@ -125,6 +125,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-48 | **Hosted shell at `/app/` is behind the deployed relay.** `AccessLensLiveSession` (deployed 2026-09-16 from `integ/ui-api`) now returns `streamToken` on every capability; the hosted shell built before that parses capabilities with the strict `RoleCapabilitySchema`, so its create/join reject until `bash infra/scripts/deploy.sh` republishes the shell from a tree that carries `f50ce29` or later. Rolling the relay back is the other way out. Shell redeployed 2026-09-16 from `lane/window-stream`. | Jacob | Live demo from the hosted shell | CLOSED | `bash infra/scripts/deploy.sh` from `lane/window-stream` → `/app/assets/index-Co7Ueiio.js` carries `streamToken`, "Stream this window", "Instructor's live slide video" and the relay URL; `AccessLensLiveSession` redeployed with no changes; probe-video shows publish/subscribe tokens and stage deleted on close |
 | T-49 | **A deploy from another checkout overwrote `AccessLensLiveSession`.** At 22:55 UTC on 2026-09-16 the stack was deployed from a tree without `f50ce29` (the plain `Mind-Machine` checkout on `workstream/6-authoring`): the relay lost its pack resolver (every non-bundled pack got `pack-id-mismatch`, students saw no slide changes), the IVS stage lifecycle and sweeper, and the AI handler and API were deleted. Redeployed from `lane/window-stream`; the AI API came back under a new URL (`https://5skua1vus7.execute-api.us-east-1.amazonaws.com`), so the hosted shell and `.env.local` were updated. Rule: only the lane that owns the live-session code deploys that stack, and the CDK app should refuse to deploy it from a bundle without the resolver. | Jacob | Any live demo | OPEN | Stack events show `AiHandler`, `StageSweeper` and IVS policies `DELETE_COMPLETE` at 22:55; relay logs show `pack-id-mismatch` for `introduction-to-hnsw` 23:03–23:05; probe-video green after the redeploy |
 | T-50 | **No warning when a student's network stalls silently.** If Wi-Fi drops without closing the socket, the student's pill stays "live" while nothing arrives (live bench R01/R02). Detecting it needs a relay-answered heartbeat, which means adding a message kind to the frozen `SessionMessageSchema` and redeploying the relay. T-28 removed the content-silence timer because it raised false alarms, so a timer is not the fix. | Omar Rizwan | A trustworthy "live" pill on flaky classroom Wi-Fi | OPEN | `docs/qa/live-bench-results.md` BUG-1; `services/live-session/src/client/webSocketSessionClient.ts` |
+| T-51 | **Course materials publish generated alt text and captions with no instructor review.** Product decision by Kunj Rathod on 2026-09-16: professors upload and students see the result automatically. This departs from charter A3 (instructor review before publication) for uploaded course materials, and it stores uploads and derived files in S3 for 90 days, where the charter's raw-media rule was written for live capture. The team should confirm or amend the charter wording, as was done for the orb. Mitigations in place: every student view says the text was generated automatically and can contain mistakes; a failed description shows the page's real text rather than nothing. | Kunj Rathod | Charter wording; demo claims about review | OPEN | `services/course-media/src/descriptions.ts` header; `apps/extension/src/courseMedia/MaterialViewer.tsx` notice; RL-083 |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. **The second shared-contract review is now done** (`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`): stop-retains-session and restart-resumes-session are confirmed, base-only is confirmed against media/identity/preference but **not** enforced relay-side for asset/region (T-31). The existing endpoint was independently re-probed and still rejects `capture.stopped` as `event-type-not-allowlisted`. `2d04fad` separately prevents an invalid inbound lifecycle event from silently leaving a student marked live (T-33, closed). Deployed-relay update and T-31/T-32 remain before closure. |
@@ -1885,7 +1886,13 @@ they drive the relay without the extension client, so they show the relay's
 own behaviour that the client now works around. Test the unpacked build, not
 only `npx vite`: three of these bugs existed only under the extension origin.
 
-### RL-083 — 2026-09-16 — cross-cutting — Claude (branch consolidation onto master, at Omar Rizwan's direction)
+### RL-083 — 2026-09-16 — Part 5 — Kunj Rathod
+
+**Landed:** Course materials, fully automatic. Professors create a class once, then drop in PDF, PPT/PPTX, DOC/DOCX, XLS/XLSX, images (including HEIC/SVG/TIFF) or audio/video; students enter the class code in the extension and read and watch them. `services/course-media` + `infra/lib/course-media-stack.ts` (`AccessLensCourseMedia`): presigned upload to S3 -> container worker (LibreOffice, poppler, ffmpeg, ImageMagick, libheif) renders pages and asks Claude on Bedrock for page and figure alt text, or extracts audio and starts a Transcribe job (language auto-detected, WebVTT) -> EventBridge -> `finish` writes the manifest. The worker image is built by CodeBuild during `cdk deploy`, so deploying needs no local Docker. Extension: `apps/extension/src/courseMedia/` for both roles; Live lesson and Course materials are tabs that stay mounted, which also fixes PR #19's tab switch ending screen sharing. Removed the review-gated upload flow and `services/media-access`. Checks: root vitest 486 passed, `services/course-media` 14 passed, extension and infra `tsc` clean, `cdk synth` for all five stacks; the professor and student flows were driven in real Chrome against a local mock of the API (upload, progress, page alt text, captions track, transcript seeking).
+**Threads touched:** T-51 opened.
+**Next agent needs to know:** never deployed. The first `cdk deploy` is the first build of `services/course-media/worker/Dockerfile` (CodeBuild, about 10–15 minutes) and the first time CodeBuild and ECR are used in the workshop account. If the image build fails, the stack rolls back with the CodeBuild log link in the error. Run `npm run build` in `services/course-media` before `cdk synth`/`deploy`; the worker asset is `worker/` including `worker/dist`.
+
+### RL-084 — 2026-09-16 — cross-cutting — Claude (branch consolidation onto master, at Omar Rizwan's direction)
 
 **Landed:** every branch with unmerged work is merged into `master`:
 `codex/demo-proof-sprint-qa` (with `accesslens-extension-ar-pivot`),
@@ -1893,17 +1900,24 @@ only `npx vite`: three of these bugs existed only under the extension origin.
 `student-course-experience`), `lane/screen-reader` (with `integ/ui-api` and
 `lane/window-stream`), the parts of `ui/blacksmith-revamp` not already here
 (the quality bench, RL-082), and `claude/accesslens-demo-proof-qa-31tqrj`
-(already integrated; recorded with `-s ours`). Where two lines contradicted each
+(already integrated; recorded with `-s ours`), then `accesslens-extension-ar-pivot`
+again for PR #24 (Course materials, RL-083), which landed while this was under
+way. Where two lines contradicted each
 other the newer change was kept: Hear mode stays removed (RL-081), so the
 Review surface lost its Hear tab and the student settings lost the read-aloud
 voice and speed selects that only `AudioView` used; "Fix a wrong match" and
 "Point students at a region" stay removed (`lane/screen-reader`). Everything else is the
 union: screen analysis, captions (2000 characters with `lang`), pointer
-following, Find AR, Slides following, live video, the class library. Log entries
-renumbered RL-075..078, RL-079..081 and RL-082; threads T-48, T-49 and T-50.
+following, Find AR, Slides following, live video, the class library, and Course
+materials in place of Prepare media. The instructor's Live lesson and Course
+materials tabs both stay mounted; the student's live lesson stays mounted behind
+Review, Class library and Course materials. Log entries renumbered
+RL-075..078, RL-079..081, RL-082 and RL-083; threads T-48, T-49, T-50 and T-51.
 `make check` passes except the three `[slow]` ingest tests that need Poppler and
 LibreOffice locally.
-**Threads touched:** T-48, T-49, T-50 renumbered in (see above); none opened.
+**Threads touched:** T-48..T-51 renumbered in (see above); none opened. T-46
+still describes `services/media-access`, which PR #24 removed; its owner should
+close or rewrite it.
 **Next agent needs to know:** `codex/live-workspace-foundation` (three commits,
 2026-08-28, the superseded Evidence Engine prototype) was deliberately not
 merged. `scripts/qa/live-bench.cjs` and `extension-load.cjs` still drive the
