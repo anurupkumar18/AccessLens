@@ -73,7 +73,7 @@ describe('StudentExperience', () => {
     expect(container?.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
     expect(container!.querySelector('.read-view')).not.toBeNull();
     expect(container!.querySelector(`article#read-${validPack.assets[0].assetId}`)?.getAttribute('aria-current')).toBe('true');
-    expect(container!.querySelector<HTMLAnchorElement>('.read-view .skip-link')?.getAttribute('href')).toBe(`#read-${validPack.assets[0].assetId}`);
+    expect(container!.querySelector<HTMLAnchorElement>('.read-view .skip-link')?.getAttribute('href')).toBe(`#read-title-${validPack.assets[0].assetId}`);
   });
 
 

@@ -17,6 +17,8 @@ interface Props {
  * landmark, a table of contents, an article per slide with heading levels
  * a rotor can walk, and the instructor's slide marked with `aria-current`
  * and a skip link so the student can follow along without leaving Read.
+ * Nothing inside is focusable except that heading: focusable containers
+ * collapse into a single screen-reader item and hide their children.
  * Focus mode crops to the instructor's position instead.
  */
 export function StructuredTextView({ pack, assetId, regionId }: Props): React.ReactElement {
@@ -29,7 +31,7 @@ export function StructuredTextView({ pack, assetId, regionId }: Props): React.Re
       <p className="eyebrow" aria-hidden="true">Read</p>
       <h3 id="structured-title">{pack.title}</h3>
       {instructorSlide && (
-        <a className="skip-link" href={`#read-${instructorSlide.asset.assetId}`}>
+        <a className="skip-link" href={`#read-title-${instructorSlide.asset.assetId}`}>
           Skip to the instructor's slide: {instructorSlide.asset.title}
         </a>
       )}
@@ -54,9 +56,11 @@ export function StructuredTextView({ pack, assetId, regionId }: Props): React.Re
             className={`read-slide${current ? ' read-slide--current' : ''}`}
             aria-labelledby={`read-title-${asset.assetId}`}
             aria-current={current ? 'true' : undefined}
-            tabIndex={-1}
           >
-            <h4 id={`read-title-${asset.assetId}`}>
+            {/* The skip link lands on the heading, not the article: a focusable
+                article becomes one VoiceOver item whose whole text reads at once,
+                and VO+Right cannot step through the regions inside it. */}
+            <h4 id={`read-title-${asset.assetId}`} tabIndex={-1}>
               {asset.title}
               {current && <span className="read-here"> <span className="visually-hidden">— </span>Instructor is on this slide</span>}
             </h4>

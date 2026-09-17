@@ -45,7 +45,9 @@ describe('Read mode for screen readers', () => {
   it('marks the instructor slide and region and offers a skip link to it', () => {
     render(<StructuredTextView pack={validPack} assetId={slide.assetId} regionId={region.regionId} />);
     const skip = container!.querySelector<HTMLAnchorElement>('.skip-link')!;
-    expect(skip.getAttribute('href')).toBe(`#read-${slide.assetId}`);
+    expect(skip.getAttribute('href')).toBe(`#read-title-${slide.assetId}`);
+    expect(container!.querySelector(`#read-title-${slide.assetId}`)?.getAttribute('tabindex')).toBe('-1');
+    expect(container!.querySelector('article[tabindex]')).toBeNull();
     expect(skip.textContent).toContain(slide.title);
     const article = container!.querySelector(`#read-${slide.assetId}`)!;
     expect(article.getAttribute('aria-current')).toBe('true');
