@@ -95,12 +95,29 @@ jobs:
             npm run build --prefix "$dir"
           done
 
+      # The relay reads published packs from the authoring distribution; without
+      # its URL every pack that is not bundled is refused (RL-091).
+      - name: Find the published pack distribution
+        run: |
+          base=$(aws cloudformation describe-stacks --stack-name AccessLensAuthoring \
+            --query "Stacks[0].Outputs[?OutputKey=='AssetBaseUrl'].OutputValue" --output text)
+          if [ -z "$base" ] || [ "$base" = "None" ]; then
+            echo "::error::AccessLensAuthoring has no AssetBaseUrl output; deploy it with infra/scripts/deploy.sh first."
+            exit 1
+          fi
+          echo "VITE_ACCESSLENS_ASSET_BASE_URL=$base" >> "$GITHUB_ENV"
+
       # From infra/, where cdk.json names the app; run from the repo root, the
-      # CDK CLI finds no app to deploy.
+      # CDK CLI finds no app to deploy. AccessLensAuthoring is not deployed here:
+      # it needs the Google OAuth client id and its web builds, so
+      # infra/scripts/deploy.sh deploys it. Synth still constructs it, so its
+      # asset folders only have to exist.
       - name: Deploy the stacks
         run: |
+          mkdir -p ../apps/viewer/dist ../dist-web
           npm ci
-          npx cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json
+          npx cdk deploy AccessLensLiveSession AccessLensAccessibility AccessLensCourseMedia AccessLensDistribution AccessLensOrbExplain \
+            --require-approval never --outputs-file /tmp/outputs.json
         working-directory: infra
 
       - name: Rebuild the extension against the deployed endpoints
