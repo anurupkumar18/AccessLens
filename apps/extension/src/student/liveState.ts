@@ -1,4 +1,4 @@
-import type { AccessPack, LiveEvent, ScreenAnalysisResult } from '../shared/contracts';
+import type { AccessPack, LiveEvent, ScreenAnalysisResult, StreamSurface } from '../shared/contracts';
 
 export type LiveStatus =
   | 'waiting'
@@ -31,6 +31,12 @@ export interface StudentLiveState {
   /** A reviewed semantic focus point, never a captured cursor location. */
   pointer?: { x: number; y: number };
   hotspotId?: string;
+  /**
+   * Live video of the instructor's tab or window is being streamed, and what
+   * kind of surface it is. Separate from `status` on purpose: video can start,
+   * stop or fail without touching slide following.
+   */
+  stream?: { surface: StreamSurface };
   message: string;
   analysis?: ScreenAnalysisResult;
   captions: StudentCaption[];
@@ -59,16 +65,32 @@ export function applyLiveEvent(
     };
   }
 
+  // View events say which slide is showing. They say nothing about video, so
+  // the stream in force rides through them; only the stream and lifecycle
+  // events below end it.
+  const stream = current.stream;
   switch (event.type) {
-    case 'asset.changed':
+    case 'asset.changed': {
+      const asset = pack.assets.find((candidate) => candidate.assetId === event.assetId);
       return {
         status: 'live',
         lastSequence: event.sequence,
         assetId: event.assetId,
-        message: `Following ${event.assetId}.`,
+        stream,
+        message: `Now on ${asset?.title ?? event.assetId}.`,
         captions: current.captions,
       };
-    case 'region.changed':
+    }
+    case 'region.changed': {
+      // The status line is a live region, so this sentence is what a screen
+      // reader speaks when the instructor moves. It carries the reviewed
+      // description itself, not the identifiers: a student hears "Mitochondrion:
+      // the mitochondrion releases usable energy for the cell", once, without
+      // having to find it.
+      const asset = pack.assets.find((candidate) => candidate.assetId === event.assetId);
+      const region = asset?.regions.find((candidate) => candidate.regionId === event.regionId);
+      const name = region?.label ?? event.regionId;
+      const described = region ? `${name}: ${region.shortDescription}` : `${name} on ${asset?.title ?? event.assetId}.`;
       return {
         status: 'live',
         lastSequence: event.sequence,
@@ -76,9 +98,11 @@ export function applyLiveEvent(
         regionId: event.regionId,
         pointer: event.pointer,
         hotspotId: event.arState?.action === 'clear' ? undefined : event.arState?.hotspotId,
-        message: `Following ${event.regionId} on ${event.assetId}.`,
+        stream,
+        message: described,
         captions: current.captions,
       };
+    }
     case 'capture.paused':
       return { ...current, status: 'paused', staleReason: undefined, lastSequence: event.sequence, message: 'Instructor sharing is paused.' };
     case 'capture.resumed':
@@ -89,21 +113,27 @@ export function applyLiveEvent(
         status: 'stopped',
         staleReason: undefined,
         lastSequence: event.sequence,
+        stream: undefined,
         message: 'Instructor stopped sharing. Showing the last reviewed moment.',
       };
+    case 'stream.started':
+      return { ...current, lastSequence: event.sequence, stream: { surface: event.surface } };
+    case 'stream.stopped':
+      return { ...current, lastSequence: event.sequence, stream: undefined };
     case 'source.unmatched':
       return {
         status: 'unmatched',
         lastSequence: event.sequence,
+        stream,
         message: 'This source is not in the reviewed lesson pack yet.',
         captions: current.captions,
       };
     case 'screen.analyzed':
-      return { status: 'live', lastSequence: event.sequence, analysis: event.analysis, message: `Understanding: ${event.analysis.title}.`, captions: current.captions };
+      return { status: 'live', lastSequence: event.sequence, stream, analysis: event.analysis, message: `Understanding: ${event.analysis.title}.`, captions: current.captions };
     case 'session.ended':
       return { status: 'ended', lastSequence: event.sequence, message: 'The instructor ended this session.', captions: [] };
     case 'session.started':
-      return { status: 'live', lastSequence: event.sequence, message: 'Connected to the live lesson.', captions: [] };
+      return { status: 'live', lastSequence: event.sequence, stream, message: 'Connected to the live lesson.', captions: [] };
     case 'caption.appended':
       return {
         ...current,

@@ -16,7 +16,9 @@ region, pointer position, caption segment, and sequence number—through a tempo
 AWS session. Student extensions follow automatically and render the event through
 their chosen modes:
 
-- **Hear:** concise audio description;
+- **Screen readers:** every reviewed description is plain text that VoiceOver,
+  NVDA, JAWS and ChromeVox read as the lesson moves; there is no separate audio
+  mode;
 - **Focus:** one region or relationship at a time;
 - **Read:** structured text, read-aloud, or approved language support;
 - **Dyslexic:** student-controlled spacing, line length, and dyslexic-friendly
@@ -42,13 +44,12 @@ against the hackathon AWS account (stack `AccessLensLiveSession`, `us-east-1`):
   recognizes slides from the reviewed `bio-cell-demo` Access Pack (including
   inside window and screen shares), and says so instead of guessing when a slide
   is not in the pack.
-- **Student extension.** Focus, Read, Hear, and AR modes, a light/dark theme, and
+- **Student extension.** Focus, Read, Dyslexic, and AR modes, a light/dark theme, and
   a dyslexia-friendly text switch.
 - **AI on AWS** (`services/ai-gateway`). Checked against the deployed routes by
   `services/ai-gateway/scripts/smoke-test.ts`:
   - *Ask this class:* Claude Sonnet 4.6 on Amazon Bedrock answers only from the
     reviewed pack, cites the regions it used, and declines anything else.
-  - *Hear:* Amazon Polly reads the reviewed descriptions aloud.
   - *Live captions:* Amazon Transcribe, off until the instructor opts in beside
     a consent notice. Students receive text only, and when the instructor names
     a region, students move to it.

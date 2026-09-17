@@ -70,7 +70,7 @@ describe('StudentExperience', () => {
 
   it('follows an instructor event and renders Focus mode first', () => {
     renderExperience();
-    expect(container?.textContent).toContain('Following mitochondrion on cell-slide-03.');
+    expect(container?.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
     expect(container?.textContent).toContain('Focus view');
   });
 
@@ -107,7 +107,7 @@ describe('StudentExperience', () => {
   it('offers the AR tab only when the pack carries an AR scene', () => {
     renderExperience(validEvent, validPack);
     const tabs = Array.from(container!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
-    expect(tabs).toEqual(['Focus', 'Read', 'Hear', 'Reading spacing']);
+    expect(tabs).toEqual(['Focus', 'Read', 'Reading spacing']);
     expect(container!.querySelector('#mode-tab-ar')).toBeNull();
   });
 
@@ -160,17 +160,15 @@ describe('StudentExperience', () => {
     const spacing = container!.querySelector('#line-spacing') as HTMLSelectElement;
     const width = container!.querySelector('#content-width') as HTMLSelectElement;
     const contrast = container!.querySelector('#high-contrast-toggle') as HTMLInputElement;
-    const speechRate = container!.querySelector('#speech-rate') as HTMLSelectElement;
 
     await act(async () => {
       font.value = 'serif'; font.dispatchEvent(new Event('change', { bubbles: true }));
       spacing.value = 'spacious'; spacing.dispatchEvent(new Event('change', { bubbles: true }));
       width.value = 'narrow'; width.dispatchEvent(new Event('change', { bubbles: true }));
       contrast.click();
-      speechRate.value = '1.25'; speechRate.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    expect(harness.preferences).toMatchObject({ fontFamily: 'serif', lineSpacing: 'spacious', contentWidth: 'narrow', highContrast: true, speechRate: 1.25 });
+    expect(harness.preferences).toMatchObject({ fontFamily: 'serif', lineSpacing: 'spacious', contentWidth: 'narrow', highContrast: true });
     expect(container!.querySelector('.student-experience')?.className).toContain('high-contrast');
     expect(container!.querySelector('.student-experience')?.className).toContain('font-serif');
   });
@@ -254,5 +252,151 @@ describe('StudentExperience', () => {
       },
     });
     expect(result.violations).toEqual([]);
+  });
+});
+
+// ---- Live video pane ----------------------------------------------------------
+
+import { FakeSubscriber } from '../sources/stream/fixtures';
+import type { LiveEvent } from '../shared/contracts';
+
+/** The relay hands a student a subscribe-only token beside the capability; the in-memory client does not, so this one does. */
+class VideoSessionClient extends InMemorySessionClient {
+  override async join(sessionId: string) {
+    return { ...(await super.join(sessionId)), streamToken: 'subscribe-token-1' };
+  }
+}
+
+const streamStarted: LiveEvent = { ...validEvent, type: 'stream.started', surface: 'browser', sequence: 2, assetId: undefined, regionId: undefined, pointer: undefined } as unknown as LiveEvent;
+const streamStopped: LiveEvent = { schemaVersion: '1.0', type: 'stream.stopped', sessionId: 'demo-session', packId: 'bio-cell-demo', packVersion: 1, sequence: 3, sentAt: '2026-09-15T15:00:02Z' };
+const captureStopped: LiveEvent = { ...streamStopped, type: 'capture.stopped', sequence: 3 };
+
+describe('StudentExperience: live video pane', () => {
+  let container: HTMLDivElement | null = null;
+  let root: Root | null = null;
+
+  afterEach(() => {
+    act(() => root?.unmount());
+    container?.remove();
+    root = null;
+    container = null;
+  });
+
+  function mount(client: SessionClient, subscriber: FakeSubscriber, first: LiveEvent | null) {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    let current = first;
+    const show = (event: LiveEvent | null): void => {
+      current = event;
+      root?.render(
+        <StudentExperience client={client} event={current} pack={validPack} preferences={defaultPreferences} onPreferencesChange={() => undefined} subscriber={subscriber} />,
+      );
+    };
+    act(() => show(first));
+    const deliver = (event: LiveEvent) => act(() => show(event));
+    const join = async () => {
+      const input = container!.querySelector<HTMLInputElement>('#session-code')!;
+      await act(async () => {
+        const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+        setValue.call(input, 'demo-session');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await act(async () => { container!.querySelector('.join-form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    };
+    const pane = () => container!.querySelector('.live-video');
+    return { deliver, join, pane };
+  }
+
+  it('shows nothing about video until the instructor streams', async () => {
+    const subscriber = new FakeSubscriber();
+    const { join, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
+    await join();
+    expect(pane()).toBeNull();
+    expect(subscriber.calls).toEqual([]);
+  });
+
+  it('subscribes with the join token on stream.started, plays the video muted and inline, and tears down on stream.stopped', async () => {
+    const subscriber = new FakeSubscriber();
+    const { join, deliver, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
+    await join();
+    deliver(streamStarted);
+
+    expect(subscriber.calls).toEqual(['subscribe:subscribe-token-1']);
+    const section = pane()!;
+    expect(section.getAttribute('aria-label')).toBe("Instructor's live slide video");
+    const video = section.querySelector('video')!;
+    expect(video.muted).toBe(true);
+    expect(video.hasAttribute('playsinline')).toBe(true);
+    expect(video.getAttribute('aria-label')).toBe("Live video of the instructor's tab");
+    expect(section.textContent).toContain('Connecting');
+
+    const media = { id: 'fake-media-stream' } as unknown as MediaStream;
+    act(() => subscriber.deliver(media));
+    expect((video as unknown as { srcObject: unknown }).srcObject).toBe(media);
+    expect(section.textContent).toContain("Live video of the instructor's tab");
+    // Focus mode is still following the slide underneath.
+    expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
+
+    deliver(streamStopped);
+    expect(pane()).toBeNull();
+    expect(subscriber.calls).toEqual(['subscribe:subscribe-token-1', 'stop']);
+  });
+
+  it('a student who joins mid-stream subscribes from the catch-up event', async () => {
+    const subscriber = new FakeSubscriber();
+    // The relay's catch-up posts stream.started as the first thing this student sees.
+    const { join, pane } = mount(new VideoSessionClient(), subscriber, streamStarted);
+    expect(subscriber.calls).toEqual([]); // no token before joining
+    await join();
+    expect(subscriber.calls).toEqual(['subscribe:subscribe-token-1']);
+    expect(pane()).not.toBeNull();
+  });
+
+  it('the pane stays up and stays subscribed while the instructor changes slides', async () => {
+    const subscriber = new FakeSubscriber();
+    const { join, deliver, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
+    await join();
+    deliver(streamStarted);
+    const media = { id: 'fake-media-stream' } as unknown as MediaStream;
+    act(() => subscriber.deliver(media));
+
+    deliver({ ...validEvent, type: 'asset.changed', assetId: 'cell-slide-03', regionId: undefined, pointer: undefined, sequence: 3 } as unknown as LiveEvent);
+    deliver({ ...validEvent, sequence: 4 });
+
+    expect(pane()).not.toBeNull();
+    expect((pane()!.querySelector('video') as unknown as { srcObject: unknown }).srcObject).toBe(media);
+    expect(subscriber.calls).toEqual(['subscribe:subscribe-token-1']);
+    expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
+  });
+
+  it('capture.stopped ends the video too', async () => {
+    const subscriber = new FakeSubscriber();
+    const { join, deliver, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
+    await join();
+    deliver(streamStarted);
+    deliver(captureStopped);
+    expect(pane()).toBeNull();
+    expect(subscriber.subscribed).toBeNull();
+  });
+
+  it('a video failure is one sentence and the modes keep working', async () => {
+    const subscriber = new FakeSubscriber();
+    const { join, deliver, pane } = mount(new VideoSessionClient(), subscriber, validEvent);
+    await join();
+    deliver(streamStarted);
+    act(() => subscriber.fail('The live video could not connect. The lesson text still works.'));
+    expect(pane()!.textContent).toContain('The live video could not connect.');
+    expect(container!.querySelectorAll('[role="tab"]').length).toBeGreaterThan(0);
+    expect(container!.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
+  });
+
+  it('without a stage token the pane explains and never subscribes', async () => {
+    const subscriber = new FakeSubscriber();
+    const { join, deliver, pane } = mount(new InMemorySessionClient(), subscriber, validEvent);
+    await join();
+    deliver(streamStarted);
+    expect(subscriber.calls).toEqual([]);
+    expect(pane()!.textContent).toContain('no video access');
   });
 });

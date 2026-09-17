@@ -19,11 +19,11 @@ describe('DyslexicTextView', () => {
     container = null;
   });
 
-  it('uses the reviewed live text and exposes a local style toggle', () => {
+  it('shows the whole lesson in plain language and exposes a local style toggle', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
-    act(() => root?.render(<DyslexicTextView pack={validPack} assetId="cell-slide-03" regionId="mitochondrion" />));
+    act(() => root?.render(<DyslexicTextView pack={validPack} />));
     expect(container.querySelector('.dyslexic-view--enabled')).not.toBeNull();
     expect(container.textContent).toContain('This structure helps power the cell.');
     const toggle = container.querySelector('button') as HTMLButtonElement;

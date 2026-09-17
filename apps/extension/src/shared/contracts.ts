@@ -87,6 +87,9 @@ const Caption = z.object({
   isFinal: z.boolean(),
   lang: z.string().min(2).max(16).optional(),
 }).strict();
+/** What the instructor is streaming video of: one tab or one window. Never a monitor. */
+export const StreamSurface = z.enum(['browser','window']);
+export type StreamSurface = z.infer<typeof StreamSurface>;
 
 // Per-type field matrix: only asset.changed and region.changed may name a
 // region, and only they and caption.appended may name an asset (a caption
@@ -102,6 +105,12 @@ export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ ...LiveEventBase, type:z.literal('capture.paused') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.resumed') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.stopped') }).strict(),
+  // Live video of one instructor-chosen tab or window is being streamed over
+  // Amazon IVS Real-Time; students subscribe with the token on their
+  // capability. Only the fact and the kind of surface travel here, never a
+  // frame, and a whole monitor is not a permitted surface.
+  z.object({ ...LiveEventBase, type:z.literal('stream.started'), surface:StreamSurface }).strict(),
+  z.object({ ...LiveEventBase, type:z.literal('stream.stopped') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('source.unmatched') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('screen.analyzed'), analysis: ScreenAnalysis }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('session.ended') }).strict(),
@@ -123,9 +132,10 @@ export const RoleCapabilitySchema = z.object({
   issuedAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
   token: z.string().min(1),
-  // Opaque short-lived token for the session's live media stream (Amazon IVS),
-  // attached by the relay since 2026-09-16. Passed through untouched; strict()
-  // still refuses any other field, so identity cannot ride along.
+  // The session's video stage token, when the session has video: publish for
+  // the instructor, subscribe-only for a student. Minted by the relay, expires
+  // with the capability, carries no identity. Not covered by `token`'s
+  // signature; the video service verifies it itself.
   streamToken: z.string().min(1).optional(),
 }).strict();
 

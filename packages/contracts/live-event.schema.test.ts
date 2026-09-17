@@ -50,6 +50,16 @@ describe('live-event.schema.json contract matrix', () => {
     }
   );
 
+  it('accepts stream.started only with a tab or window surface, and stream.stopped base-only', () => {
+    expect(validate({...base, type:'stream.started', surface:'browser'})).toBe(true);
+    expect(validate({...base, type:'stream.started', surface:'window'})).toBe(true);
+    expect(validate({...base, type:'stream.started', surface:'monitor'})).toBe(false);
+    expect(validate({...base, type:'stream.started'})).toBe(false);
+    expect(validate({...base, type:'stream.started', surface:'browser', assetId:'cell-slide-03'})).toBe(false);
+    expect(validate({...base, type:'stream.stopped'})).toBe(true);
+    expect(validate({...base, type:'stream.stopped', surface:'browser'})).toBe(false);
+  });
+
   it('accepts caption.appended with caption text, with or without the slide it was spoken over', () => {
     const caption = { text:'The mitochondrion releases usable energy.', isFinal:true };
     expect(validate({...base, type:'caption.appended', caption})).toBe(true);

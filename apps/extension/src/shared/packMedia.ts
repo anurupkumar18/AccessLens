@@ -1,7 +1,6 @@
 import type { AccessPack } from './contracts';
 
 type Asset = AccessPack['assets'][number];
-type Region = Asset['regions'][number];
 
 /**
  * Slide images bundled with the extension, keyed by pack id then by the
@@ -50,15 +49,3 @@ export function slideImageUrl(pack: Pick<AccessPack, 'packId'>, asset: Pick<Asse
   return bundledSlides[pack.packId]?.[basename(asset.mediaUri)] ?? null;
 }
 
-/**
- * URL for a region's reviewed audio description. Only packs published by the
- * authoring pipeline carry `audioUri` (Polly MP3s written next to the pack),
- * so it resolves against the distribution root the pack was loaded from;
- * a bundled pack ships no audio and gets null, which the audio renderer
- * treats as "synthesize the reviewed text instead".
- */
-export function regionAudioUrl(pack: Pick<AccessPack, 'packId'>, region: Pick<Region, 'audioUri'>): string | null {
-  if (!region.audioUri) return null;
-  const remote = remoteBases.get(pack.packId);
-  return remote ? new URL(region.audioUri, remote).toString() : null;
-}

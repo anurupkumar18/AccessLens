@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LiveEvent",
-  "description": "Per-type field matrix mirroring apps/extension/src/shared/contracts.ts LiveEventSchema. Only asset.changed and region.changed may name a region, and only they and caption.appended (which carries the caption text) may name an asset; every other type -- including source.unmatched -- is base-only, so an unmatched source can never be reported alongside an invented assetId. caption.appended carries a bounded caption object, either instructor-authored or a streaming line of the instructor's own speech, scoped to the current assetId when there is one (T-16); it is a semantic aid, never raw audio or an unbounded transcript.",
+  "description": "Per-type field matrix mirroring apps/extension/src/shared/contracts.ts LiveEventSchema. Only asset.changed and region.changed may name a region, and only they and caption.appended (which carries the caption text) may name an asset; every other type -- including source.unmatched -- is base-only, so an unmatched source can never be reported alongside an invented assetId. caption.appended carries a bounded caption object, either instructor-authored or a streaming line of the instructor's own speech, scoped to the current assetId when there is one (T-16); it is a semantic aid, never raw audio or an unbounded transcript. stream.started names only the surface (a browser tab or a window, never a monitor) whose live video travels over Amazon IVS Real-Time; stream.stopped is base-only.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -25,6 +25,8 @@
         "capture.paused",
         "capture.resumed",
         "capture.stopped",
+        "stream.started",
+        "stream.stopped",
         "source.unmatched",
         "session.ended"
       ]
@@ -121,6 +123,13 @@
           "maxLength": 16
         }
       }
+    },
+    "surface": {
+      "description": "What the instructor is streaming live video of on stream.started: one browser tab or one window. A whole monitor is never streamed. The video itself travels over Amazon IVS Real-Time, never on this contract.",
+      "enum": [
+        "browser",
+        "window"
+      ]
     }
   },
   "allOf": [
@@ -140,7 +149,8 @@
           "regionId": false,
           "pointer": false,
           "arState": false,
-          "caption": false
+          "caption": false,
+          "surface": false
         }
       }
     },
@@ -158,7 +168,8 @@
           "regionId"
         ],
         "properties": {
-          "caption": false
+          "caption": false,
+          "surface": false
         }
       }
     },
@@ -171,6 +182,7 @@
               "capture.paused",
               "capture.resumed",
               "capture.stopped",
+              "stream.stopped",
               "source.unmatched",
               "session.ended"
             ]
@@ -178,6 +190,28 @@
         }
       },
       "then": {
+        "properties": {
+          "assetId": false,
+          "regionId": false,
+          "pointer": false,
+          "arState": false,
+          "caption": false,
+          "surface": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "stream.started"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "surface"
+        ],
         "properties": {
           "assetId": false,
           "regionId": false,
@@ -202,7 +236,8 @@
         "properties": {
           "regionId": false,
           "pointer": false,
-          "arState": false
+          "arState": false,
+          "surface": false
         }
       }
     }

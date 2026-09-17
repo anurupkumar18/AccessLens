@@ -60,7 +60,7 @@ work is being made directly on `master` by explicit product-owner direction.
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, AL-049's caption instructor input/student display, AL-050's server-side caption shape validation, AL-051's honest session-end-on-unmount fix, and AL-052's high-contrast fix are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
 | 3. Student experience and AR | Prachi | merged as `7a199c0` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. Follow-up adds a Dyslexic-friendly mode and hardens capture gesture handling for tab/window/screen sharing. | `npm run typecheck`; targeted Vitest checks; `docs/NEXT_STEPS.md` |
-| 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
+| 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** 2026-09-16 (`integ/ui-api`, Jacob): one IVS Real-Time stage per session, publish/subscribe tokens beside the capabilities, `stream.started`/`stream.stopped` on the contract, stage deleted on close and by a DynamoDB-stream sweeper on TTL expiry; proven live by `scripts/probe-video.mjs`. `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
 | 6. Authoring pipeline and visualization | Jacob / Codex (AL-056/057/058) | `workstream/6-authoring` / `codex/course-library-assistant` / `codex/student-course-experience` / `codex/class-library-deletion-jobs` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. AL-056 adds an approval-gated PDF class-assistant slice; AL-057 adds its separate signed-in student client, cited answers, and local-only task list; AL-058 makes profile deletion archive-first with durable purge status. The stacked corrections make invite redemption atomic, reject writes to archived classes, and complete metadata purges on retry; the feature flag stays off by default and does not authorize real course data. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, `docs/work/tickets/al-056-approval-gated-course-library-and-cited-class-assistant.md`, `docs/work/tickets/al-057-student-class-library-experience.md`, `docs/work/tickets/al-058-durable-class-library-deletion-jobs.md`, RL-060, RL-068, RL-069, RL-070, RL-071 |
 
@@ -122,6 +122,8 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-41 | **Browser sign-in needs the OAuth client id.** D12 replaced the shared bearer token with Google ID tokens (API Gateway JWT authorizer); the API accepts the Google Cloud SDK's client as a second audience, so scripts and `make smoke` work with `gcloud auth print-identity-token`, but the panel's Sign in with Google button needs the deployment's own OAuth web client id, which only the Google Cloud account owner can create. | Jacob | Any instructor using the upload panel in a browser | OPEN | Create the client (origins `http://localhost:5173` + viewer URL; redirect `https://<extension-id>.chromiumapp.org/`), set `GOOGLE_CLIENT_ID`, `make deploy`, then sign in from the panel |
 | T-46 | **Prepare media sends instructor-uploaded files to AWS.** An instructor's own `.png`/`.jpg`/`.pptx` pictures (downscaled JPEG) and `.mp3`/`.mp4` audio (16 kHz mono pcm, ~55 s per call) go to `services/media-access` to draft alt text and captions. Charter language that raw media stays on the source device was written for live capture; whether an explicit instructor upload is covered, amended like `docs/ORB_CHARTER_AMENDMENT.md`, or needs a different boundary is a team decision. Also: like every other Function URL here it has no auth, and this one accepts multi-MB bodies, so exposure is Bedrock and Transcribe spend. | Kunj Rathod | Claims about what leaves the device; deploying MediaAccess | OPEN | `services/media-access/src/handler.ts` stores and logs no content (asserted by `never logs media content`); `infra/lib/accessibility-services-stack.ts` `MediaAccess` spec; not deployed |
 | T-47 | **Continuous deploy has never deployed.** Every Deploy run (after PR #14 and PR #19) stopped at "Check the deploy role is configured": `AWS_DEPLOY_ROLE_ARN` is unset, and only a repository admin can set it. The workflow also had three bugs that would have failed the first real run: it built only two of six Lambda bundles (accessibility stack synth fails), ran `cdk deploy` from the repo root where there is no `cdk.json`, and never passed the captions, recap, translate or media endpoints into the extension build. | Anurup Kumar | Every deploy; the live demo endpoints | OPEN | Runs `35153428621`, `35157214783`; workflow fixes and the admin runbook in `docs/DEPLOYMENT.md` "One-time setup: GitHub deploy role" |
+| T-48 | **Hosted shell at `/app/` is behind the deployed relay.** `AccessLensLiveSession` (deployed 2026-09-16 from `integ/ui-api`) now returns `streamToken` on every capability; the hosted shell built before that parses capabilities with the strict `RoleCapabilitySchema`, so its create/join reject until `bash infra/scripts/deploy.sh` republishes the shell from a tree that carries `f50ce29` or later. Rolling the relay back is the other way out. Shell redeployed 2026-09-16 from `lane/window-stream`. | Jacob | Live demo from the hosted shell | CLOSED | `bash infra/scripts/deploy.sh` from `lane/window-stream` → `/app/assets/index-Co7Ueiio.js` carries `streamToken`, "Stream this window", "Instructor's live slide video" and the relay URL; `AccessLensLiveSession` redeployed with no changes; probe-video shows publish/subscribe tokens and stage deleted on close |
+| T-49 | **A deploy from another checkout overwrote `AccessLensLiveSession`.** At 22:55 UTC on 2026-09-16 the stack was deployed from a tree without `f50ce29` (the plain `Mind-Machine` checkout on `workstream/6-authoring`): the relay lost its pack resolver (every non-bundled pack got `pack-id-mismatch`, students saw no slide changes), the IVS stage lifecycle and sweeper, and the AI handler and API were deleted. Redeployed from `lane/window-stream`; the AI API came back under a new URL (`https://5skua1vus7.execute-api.us-east-1.amazonaws.com`), so the hosted shell and `.env.local` were updated. Rule: only the lane that owns the live-session code deploys that stack, and the CDK app should refuse to deploy it from a bundle without the resolver. | Jacob | Any live demo | OPEN | Stack events show `AiHandler`, `StageSweeper` and IVS policies `DELETE_COMPLETE` at 22:55; relay logs show `pack-id-mismatch` for `introduction-to-hnsw` 23:03–23:05; probe-video green after the redeploy |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. **The second shared-contract review is now done** (`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`): stop-retains-session and restart-resumes-session are confirmed, base-only is confirmed against media/identity/preference but **not** enforced relay-side for asset/region (T-31). The existing endpoint was independently re-probed and still rejects `capture.stopped` as `event-type-not-allowlisted`. `2d04fad` separately prevents an invalid inbound lifecycle event from silently leaving a student marked live (T-33, closed). Deployed-relay update and T-31/T-32 remain before closure. |
@@ -156,6 +158,8 @@ section 3; do not silently build against it.
 | Five parts, fixed directory boundaries, small PRs into the integration branch, nothing straight to `master`. | `docs/PARALLEL_WORKSTREAMS.md` |
 | The reviewed pack owns the matching thresholds, so recognition tuning is reviewed content rather than a constant compiled into Part 2. | `packages/access-packs/bio-cell-demo/pack.json`, `matching` block |
 | Perceptual-hash ties resolve to 0 with a 0.75-of-255 epsilon. Any reimplementation of the matcher must keep this; without it, worst-case drift on a distorted capture is ~4x larger. | `docs/IMPLEMENTATION_PLAN.md` risk register |
+| **Live video of one instructor-chosen tab or window may be streamed to the session's students** when the instructor turns it on, per session, from a click; the console names the surface ("Streaming a tab" / "Streaming a window") while it is on. A whole monitor is never streamed. The video travels over Amazon IVS Real-Time (one stage per session, deleted with the session); the relay carries only stage tokens and the two `stream.*` state events, never media. This is the reviewed, visibly consented exception charter A2 requires, decided by the team on 2026-09-16; it does not widen to audio, cameras, recording, or other surfaces. | Team decision 2026-09-16; `docs/prompts/window-stream-build.md`; `services/live-session/src/stage.ts` |
+| **The student extension has no spoken mode.** Hear mode, the region player and the Polly `speak` client were removed on 2026-09-16; the student's own screen reader (VoiceOver, NVDA, JAWS, ChromeVox) reads the reviewed descriptions from Focus, Read and Dyslexic. `regions[].audioUri` stays in the pack schema for the authoring pipeline but nothing in the extension plays it. | RL-046 |
 
 ---
 
@@ -1794,3 +1798,67 @@ not enable the feature or approve real-course material.
 **Next agent needs to know:** source buckets are still shared by prefix; the
 physical per-instructor-bucket and malware-scanning controls remain open
 hardening work before any real-course activation.
+
+### RL-079 — 2026-09-16 — Parts 2, 3, 4 — Jacob
+
+**Landed:** live video of the instructor's tab or window to students,
+per `docs/prompts/window-stream-build.md`. Relay (`f50ce29`): one Amazon
+IVS Real-Time stage per session (`services/live-session/src/stage.ts`,
+`ivsStage.ts`), `streamToken` beside the capability (publish for create,
+subscribe-only for join), `stream.started {surface}` / `stream.stopped`
+in Zod, JSON schema, Python reference and the relay rules, monitor
+surface refused by all four, `latestStream` catch-up in sequence order,
+stage deleted on `close`, `session.ended`, and by `StageSweeper` on the
+sessions table's TTL stream. Deployed and probed: create and join carry
+tokens that differ by role and carry no user id, `get-stage` finds the
+stage, `ResourceNotFoundException` after close. Instructor (`be20ff5`):
+Stream this window / Stop streaming, existing capture track reused, chooser
+only in Slides-follow mode, whole monitor refused, stream ends before
+`capture.stopped`. Student (`bdf251b`): `<video>` pane above the mode tabs,
+muted inline, one-sentence failure, join-mid-stream from catch-up. Section
+4 records the A2 decision. 534 + 63 tests, `dist/` rebuilt.
+**Threads touched:** T-48 opened and closed the same day (hosted shell
+redeployed from this lane once the product owner approved).
+**Next agent needs to know:** the Lambda bundle now carries
+`@aws-sdk/client-ivs-realtime` (CJS) inside ESM, which needs the
+`createRequire` banner in `services/live-session/package.json`; without it
+every route fails at init with "Dynamic require of node:https". IAM for
+Real-Time uses the `ivs:` prefix, not `ivs-realtime:`. `resume` mints no
+token: it runs on `$connect`, where nothing can be posted, and the client
+keeps the token from create/join. Video actually rendering across two
+devices was not verified from a terminal.
+
+### RL-080 — 2026-09-16 — Part 3 — Jacob
+
+**Landed:** screen readers hear the reviewed description. The student
+shell's `role="status"` line (`apps/extension/src/student/liveState.ts`)
+now speaks `"<region label>: <shortDescription>"` on `region.changed` and
+`"Now on <slide title>."` on `asset.changed`, `aria-atomic`, once per event.
+The Focus figure's description moved from `aria-label` to a `figcaption`
+(`renderers/FocusView.tsx`) so say-all and line reading reach it. No
+permissions, no dependencies; works in the extension and the hosted shell.
+**Threads touched:** none.
+**Next agent needs to know:** there is no Chrome-native screen reader
+outside ChromeOS (ChromeVox is ChromeOS-only; `chrome.tts` is speech
+output, not a reader; `accessibilityFeatures.spokenFeedback` is ChromeOS
+only). The bar is "works with VoiceOver, NVDA/JAWS and ChromeVox", which
+this markup meets by construction; an in-app keyboard reading mode over
+`chrome.tts` is a separate, undecided feature.
+
+### RL-081 — 2026-09-16 — Part 3 — Jacob
+
+**Landed:** Hear mode is gone. `renderers/AudioView.tsx`,
+`student/regionAudio.ts`, `regionAudioUrl` in `shared/packMedia.ts` and the
+`speak` method on `shared/aiClient.ts` were deleted with their tests; the
+`audio` value left the preferences enum, and a saved preference this build
+no longer offers now falls back to the defaults instead of throwing on
+load. The mode tabs carry a one-line hint that screen readers read every
+description here. It also removes the double-voice problem reported today:
+the Hear panel's own live region no longer competes with the screen reader.
+**Threads touched:** none.
+**Next agent needs to know:** the AI gateway's `/speak` route
+(`services/ai-gateway`) still exists and is now unused by the shell; it
+belongs to the gateway's owner to remove. `docs/ACCESSLENS_PROPOSAL.md`,
+`ACCESSLENS_MVP_REVISION.md`, `DEMO_BRIEF.md`, `ADVANCED_FEATURES.md` and
+`NEXT_STEPS.md` still describe Hear as a mode; they are historical planning
+documents and were not rewritten.

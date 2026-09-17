@@ -55,6 +55,9 @@ export function createCameraMediaHost(): CaptureHost {
           endedListeners.add(listener);
           return () => endedListeners.delete(listener);
         },
+        videoTrack(): MediaStreamTrack | null {
+          return stopped || !track || track.readyState === 'ended' ? null : track;
+        },
       };
     },
   };

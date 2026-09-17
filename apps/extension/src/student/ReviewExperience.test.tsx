@@ -67,13 +67,14 @@ describe('ReviewExperience', () => {
   it('moves review format tabs with Arrow keys, Home, and End', async () => {
     render();
     const tab = (name: string) => Array.from(container!.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find((button) => button.textContent === name)!;
-    await act(async () => tab('Read').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
-    expect(tab('Hear').getAttribute('aria-selected')).toBe('true');
-    await act(async () => tab('Hear').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })));
+    await act(async () => tab('Read').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })));
     expect(tab('Focus').getAttribute('aria-selected')).toBe('true');
+    await act(async () => tab('Focus').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
+    expect(tab('Read').getAttribute('aria-selected')).toBe('true');
+    await act(async () => tab('Read').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })));
     await act(async () => tab('Focus').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })));
-    expect(tab('Hear').getAttribute('aria-selected')).toBe('true');
-    expect(container!.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe('review-mode-tab-hear');
+    expect(tab('Read').getAttribute('aria-selected')).toBe('true');
+    expect(container!.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe('review-mode-tab-read');
   });
 
   it('has no automatically detectable accessibility violations', async () => {

@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
 import type { ScreenAnalyzer } from '../sources/screen/screenAnalyzer';
+import type { SlidesSource } from '../sources/slides';
+import { createIvsPublisher, type StreamPublisher } from '../sources/stream';
 import { defaultAiClient, type AiClient } from '../shared/aiClient';
 import type { MicrophoneHost } from '../sources/audio/microphone';
-import { createCaptureController, type CaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import { createCaptureController, STREAM_UNAVAILABLE_MESSAGE, type CaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
 import { LiveCaptions, type CaptionDeps } from './SpeechCaptions';
 import { createLiveCaptions, type LiveCaptionsState, type Transcriber } from './liveCaptions';
 
@@ -21,13 +23,21 @@ interface Props {
   captionDeps?: CaptionDeps;
   microphone?: MicrophoneHost;
   transcribe?: Transcriber;
+  /** Offered as "Follow Google Slides" when this build can watch tabs. */
+  slides?: SlidesSource;
+  /** Publishes live video of the shared tab or window; defaults to Amazon IVS Real-Time. */
+  publisher?: StreamPublisher;
 }
+
+// Constructing the publisher loads nothing and connects to nothing; video
+// starts only from the Stream button below (charter A1).
+const defaultPublisher = createIvsPublisher();
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
 
 interface Banner { glyph: string; label: string; tone: Tone; sentence: string }
 
-const SURFACE_NAMES = { browser: 'a tab', window: 'a window', monitor: 'your screen' } as const;
+const SURFACE_NAMES = { browser: 'a tab', window: 'a window', monitor: 'your screen', slides: 'Google Slides' } as const;
 
 /** One banner per state: glyph and label carry the meaning, colour only reinforces it. */
 function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
@@ -43,12 +53,19 @@ function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
       : state.surface === 'window' || state.surface === 'monitor'
         ? ' Looking for a reviewed slide anywhere in what you shared.'
         : ' Looking for a reviewed slide.';
-  const sharing = state.surface ? `Sharing ${SURFACE_NAMES[state.surface]}.` : 'Sharing.';
+  const sharing = state.surface === 'slides' ? 'Following Google Slides.' : state.surface ? `Sharing ${SURFACE_NAMES[state.surface]}.` : 'Sharing.';
+  if (state.phase === 'sharing' && state.surface === 'slides') {
+    const synced = state.current.kind === 'matched';
+    return {
+      glyph: synced ? '●' : '◉', label: synced ? 'Following Slides · Synced' : 'Following Slides', tone: synced ? 'ok' : 'live',
+      sentence: state.message ?? `${sharing}${synced ? where : ' Waiting for you to present.'}`,
+    };
+  }
   switch (state.phase) {
     case 'idle':
       return {
         glyph: '○', label: 'Not sharing', tone: state.message ? 'warn' : 'idle',
-        sentence: state.message ?? `Not sharing. ${pack.title} is loaded. Click Start to share the window with your slides.`,
+        sentence: state.message ?? `Not sharing. ${pack.title} is loaded. Click Follow Google Slides, or Start to share a window.`,
       };
     case 'starting':
       return { glyph: '◔', label: 'Waiting for you', tone: 'live', sentence: state.message ?? 'Waiting for the browser dialog.' };
@@ -77,12 +94,9 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids, analyzer, ai = defaultAiClient, captionDeps, microphone, transcribe }: Props): React.ReactElement {
-  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, analyzer }));
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, analyzer, ai = defaultAiClient, captionDeps, microphone, transcribe, slides, publisher = defaultPublisher }: Props): React.ReactElement {
+  const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, analyzer, slides, publisher }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
-  const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
-  const [correctRegion, setCorrectRegion] = useState('');
-  const [indicateRegion, setIndicateRegion] = useState('');
   const [captionText, setCaptionText] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -102,9 +116,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
   }, [controller]);
 
   const active = state.phase === 'sharing' || state.phase === 'paused';
-  const currentAssetId = state.current.kind === 'matched' ? state.current.assetId : null;
-  const currentAsset = currentAssetId ? pack.assets.find(a => a.assetId === currentAssetId) : undefined;
-  const correctionAsset = pack.assets.find(a => a.assetId === correctAsset) ?? pack.assets[0];
+  const current = state.current;
+  const currentAsset = current.kind === 'matched' ? pack.assets.find((asset) => asset.assetId === current.assetId) : undefined;
   const b = banner(state, pack);
   const step = stepIndex(state);
 
@@ -117,17 +130,6 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
     }
   }
 
-  function submitCorrection(event: React.FormEvent): void {
-    event.preventDefault();
-    guarded(() => controller.correct({ assetId: correctionAsset.assetId, regionId: correctRegion || undefined }));
-  }
-
-  function submitIndication(event: React.FormEvent): void {
-    event.preventDefault();
-    if (!indicateRegion) { setFormError('Choose a region first.'); return; }
-    guarded(() => controller.indicateRegion(indicateRegion));
-  }
-
   function submitCaption(event: React.FormEvent): void {
     event.preventDefault();
     if (!captionText.trim()) { setFormError('Type a caption first.'); return; }
@@ -135,9 +137,9 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
   }
 
   const steps = [
-    'Click Start and pick the tab, window, or screen showing your slides.',
+    slides ? 'Click Follow Google Slides. Present your deck whenever you like; the session finds it.' : 'Click Start and pick the tab, window, or screen showing your slides.',
     'Read the join code to students. They enter it in their AccessLens.',
-    'Present. Reviewed slides are recognised on this device and synced; fix a wrong match below.',
+    'Present. Reviewed slides are recognised on this device and synced to students, who read and listen at their own pace.',
   ];
 
   return (
@@ -165,7 +167,8 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
       )}
 
       <div role="group" aria-label="Capture controls">
-        {state.phase === 'idle' && <button type="button" className="primary" onClick={() => { void controller.start(); }}>Start</button>}
+        {state.phase === 'idle' && slides && <button type="button" className="primary" onClick={() => { void controller.followSlides(); }}>Follow Google Slides</button>}
+        {state.phase === 'idle' && <button type="button" className={slides ? undefined : 'primary'} onClick={() => { void controller.start(); }}>{slides ? 'Share a window instead' : 'Start'}</button>}
         {state.phase === 'sharing' && <button type="button" onClick={() => guarded(() => controller.pause())}>Pause</button>}
         {state.phase === 'paused' && <button type="button" className="primary" onClick={() => guarded(() => controller.resume())}>Resume</button>}
         {active && <button type="button" className="stop" onClick={() => guarded(() => controller.stop())}>Stop</button>}
@@ -182,6 +185,37 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
             <span className="muted"> (sharing a window or your entire screen; a tab share has no mouse pointer)</span>
           </label>
         </p>
+      )}
+
+      {active && (
+        <div className="stream" role="group" aria-label="Live video for students">
+          {state.stream.status === 'on' ? (
+            <>
+              <p className="stream-label" data-tone="live">
+                <span className="glyph" aria-hidden="true">▶</span>
+                Streaming {state.stream.surface === 'browser' ? 'a tab' : 'a window'}
+              </p>
+              <button type="button" className="stop" onClick={() => guarded(() => controller.stopStreaming())}>Stop streaming</button>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={state.stream.status === 'starting' || state.stream.status === 'unavailable'}
+              onClick={() => { void controller.startStreaming(); }}
+            >
+              {state.stream.status === 'starting' ? 'Opening the browser dialog…' : 'Stream this window'}
+            </button>
+          )}
+          <p role="status" className="stream-note">
+            {state.stream.status === 'unavailable'
+              ? STREAM_UNAVAILABLE_MESSAGE
+              : state.stream.status === 'off' && state.stream.message
+                ? state.stream.message
+                : state.stream.status === 'on'
+                  ? 'Students see live video of this surface next to their text and audio. Only this tab or window is streamed, never your whole screen.'
+                  : 'Optional: stream live video of the shared tab or window to students. Your whole screen is never streamed.'}
+          </p>
+        </div>
       )}
 
       <LiveCaptions controller={controller} state={state} pack={pack} ai={ai} deps={captionDeps} />
@@ -202,40 +236,6 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
           );
         })}
       </ol>
-
-      {active && (
-        <form onSubmit={submitCorrection}>
-          <h3>Fix a wrong match</h3>
-          <p>
-            <label htmlFor="correct-asset">Reviewed slide</label>
-            <select id="correct-asset" value={correctionAsset.assetId} onChange={e => { setCorrectAsset(e.target.value); setCorrectRegion(''); }}>
-              {pack.assets.map(a => <option key={a.assetId} value={a.assetId}>{a.title}</option>)}
-            </select>
-          </p>
-          <p>
-            <label htmlFor="correct-region">Region (optional)</label>
-            <select id="correct-region" value={correctRegion} onChange={e => setCorrectRegion(e.target.value)}>
-              <option value="">No region</option>
-              {correctionAsset.regions.map(r => <option key={r.regionId} value={r.regionId}>{r.regionId}</option>)}
-            </select>
-          </p>
-          <button type="submit">Apply correction</button>
-        </form>
-      )}
-
-      {active && currentAsset && (
-        <form onSubmit={submitIndication}>
-          <h3>Point students at a region</h3>
-          <p>
-            <label htmlFor="indicate-region">Region of {currentAsset.title}</label>
-            <select id="indicate-region" value={indicateRegion} onChange={e => setIndicateRegion(e.target.value)}>
-              <option value="">Choose a region</option>
-              {currentAsset.regions.map(r => <option key={r.regionId} value={r.regionId}>{r.regionId}</option>)}
-            </select>
-          </p>
-          <button type="submit">Indicate region</button>
-        </form>
-      )}
 
       {active && currentAsset?.arScene && (
         <div className="ar-launch-control">

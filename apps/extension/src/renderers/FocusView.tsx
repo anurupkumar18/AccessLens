@@ -38,8 +38,13 @@ export function FocusView({ pack, assetId, regionId, pointer }: Props): React.Re
     <section className="mode-panel focus-view" aria-labelledby="focus-title">
       <p className="eyebrow">Focus view · {asset.title}</p>
       <h3 id="focus-title">{heading}</h3>
-      {imageUrl && (
-        <figure className="slide-figure" aria-label={`${heading}: ${region.shortDescription}`}>
+      {imageUrl ? (
+        // The reviewed description is the figure's caption, in the DOM, so a
+        // screen reader's reading commands (VoiceOver VO+A, NVDA and JAWS
+        // say-all, ChromeVox Search+R) reach it as ordinary text rather than
+        // as an aria-label they cannot step through or reread. The outline is
+        // decorative; the caption is the outline's meaning.
+        <figure className="slide-figure">
           <img className="slide-image" src={imageUrl} alt={asset.title} />
           <div
             className="region-highlight"
@@ -56,10 +61,12 @@ export function FocusView({ pack, assetId, regionId, pointer }: Props): React.Re
               <path d={pointerAt.corner === 'start' ? 'M22 22 L2 12 L11 10 L14 2 Z' : 'M2 2 L22 12 L13 14 L10 22 Z'} />
             </svg>
           )}
+          <figcaption className="supporting-text">{region.shortDescription}</figcaption>
         </figure>
+      ) : (
+        <p className="supporting-text">{region.shortDescription}</p>
       )}
       <p>{region.plainLanguage}</p>
-      <p className="supporting-text">{region.shortDescription}</p>
     </section>
   );
 }

@@ -12,7 +12,6 @@ const AskResult = z.discriminatedUnion('status', [
   z.object({ status: z.literal('answered'), answer: z.string().min(1), citations: z.array(Citation).min(1) }),
   z.object({ status: z.literal('declined'), reason: z.string() }),
 ]);
-const SpeakResult = z.object({ contentType: z.literal('audio/mpeg'), audio: z.string().min(1) });
 const TranscribeUrl = z.object({ url: z.string().startsWith('wss://'), sampleRate: z.number().int().positive(), expiresIn: z.number().positive() });
 const ClipText = z.object({ text: z.string() });
 
@@ -25,7 +24,6 @@ export class AiUnavailableError extends Error {
 
 export interface AiClient {
   ask(capability: RoleCapability, packId: string, packVersion: number, question: string): Promise<AskAnswer>;
-  speak(capability: RoleCapability, packId: string, packVersion: number, assetId: string, regionId: string, field: 'shortDescription' | 'plainLanguage'): Promise<Blob>;
   transcribeUrl(capability: RoleCapability): Promise<TranscribeGrant>;
   /** Text of one spoken WAV clip, from Whisper on SageMaker. Instructor only. */
   transcribeClip(capability: RoleCapability, wav: Uint8Array): Promise<string>;
@@ -64,11 +62,6 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = (...ar
 
   return {
     ask: (capability, packId, packVersion, question) => post('ask', { capability, packId, packVersion, question }, AskResult),
-    async speak(capability, packId, packVersion, assetId, regionId, field) {
-      const result = await post('speak', { capability, packId, packVersion, assetId, regionId, field }, SpeakResult);
-      const bytes = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0));
-      return new Blob([bytes], { type: result.contentType });
-    },
     transcribeUrl: capability => post('transcribe-url', { capability }, TranscribeUrl),
     async transcribeClip(capability, wav) {
       return (await post('transcribe-chunk', { capability, audio: base64(wav) }, ClipText)).text;

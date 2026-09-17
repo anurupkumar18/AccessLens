@@ -20,6 +20,7 @@ import { Relay } from '../src/relay.js';
 import { indexPack } from '../src/rules.js';
 import { SESSION_TTL_SECONDS } from '../src/records.js';
 import { MemorySessionStore } from './memoryStore.js';
+import { MemoryStage } from './memoryStage.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -47,10 +48,12 @@ const publishedPack = indexPack({ ...JSON.parse(readFileSync(join(packDir, 'pack
 
 function harness(resolvePack?: (packId: string, version: number) => Promise<ReturnType<typeof indexPack> | undefined>) {
   const store = new MemorySessionStore();
+  const stage = new MemoryStage();
   const inbox: Inbox = new Map();
   const gone = new Set<string>();
   const relay = new Relay({
     store,
+    stage,
     pack,
     resolvePack,
     secret: SECRET,
@@ -62,10 +65,14 @@ function harness(resolvePack?: (packId: string, version: number) => Promise<Retu
       return true;
     },
   });
-  return { store, relay, inbox, gone };
+  return { store, stage, relay, inbox, gone };
 }
 
 const happy = fixture('happy-path.json').events;
+/** A `stream.started` for the session, at `sequence`, from the same instructor. */
+const streamStarted = (sequence: number, surface: unknown = 'browser') =>
+  ({ ...happy[0]!, type: 'stream.started', sequence, surface }) as Record<string, unknown>;
+const lifecycle = (type: string, sequence: number) => ({ ...happy[0]!, type, sequence }) as Record<string, unknown>;
 
 describe('relay', () => {
   let h: ReturnType<typeof harness>;
@@ -101,7 +108,7 @@ describe('relay', () => {
     const published: Record<string, unknown>[] = happy.map(e => ({ ...e, packId: 'published-pack', packVersion: 3 }));
 
     for (const event of published) {
-      expect(await h.relay.publish('instructor-1', event), String(event.sequence)).toMatchObject({ status: 'ok' });
+      expect(await h.relay.publish('instructor-1', event), String((event as Record<string, unknown>).sequence)).toMatchObject({ status: 'ok' });
     }
     expect((h.inbox.get('student-1') ?? []).map(e => e.sequence)).toEqual(happy.map(e => e.sequence));
     expect(asked).toEqual(['published-pack@3']);
@@ -319,5 +326,110 @@ describe('relay', () => {
     await h.relay.create('instructor-1', 'other-session');
     const outcome = await h.relay.publish('instructor-1', happy[0]!);
     expect(outcome).toEqual({ status: 'rejected', rules: ['session-id-mismatch'] });
+  });
+});
+
+describe('relay: live video stage', () => {
+  let h: ReturnType<typeof harness>;
+  beforeEach(() => {
+    h = harness();
+  });
+
+  const token = (outcome: Awaited<ReturnType<Relay['create']>>) =>
+    (outcome as { capability: { streamToken?: string } }).capability.streamToken;
+
+  it('creates one stage with the session and hands out tokens that differ by role', async () => {
+    const created = await h.relay.create('instructor-1', SESSION);
+    const joined = await h.relay.join('student-1', SESSION, 'student');
+    const joinedAgain = await h.relay.join('student-2', SESSION, 'student');
+
+    expect(h.stage.calls.filter(c => c.startsWith('createStage'))).toEqual([`createStage:${SESSION}`]);
+    expect(h.store.sessions.get(SESSION)?.stageArn).toBe([...h.stage.stages][0]);
+    expect(token(created)).toMatch(/^publish-token-/);
+    expect(token(joined)).toMatch(/^subscribe-token-/);
+    expect(token(joinedAgain)).toMatch(/^subscribe-token-/);
+    expect(token(joined)).not.toBe(token(joinedAgain));
+    // The stage token is never persisted: only the ARN is on the record.
+    expect(JSON.stringify([...h.store.sessions.values()])).not.toContain('token');
+  });
+
+  it('does not create a second stage when the instructor re-creates the session', async () => {
+    await h.relay.create('instructor-1', SESSION);
+    const again = await h.relay.create('instructor-1b', SESSION);
+    expect(h.stage.stages.size).toBe(1);
+    expect(token(again)).toMatch(/^publish-token-/);
+  });
+
+  it('opens the session without video when the stage cannot be created', async () => {
+    h.stage.failCreateWith = new Error('AccessDeniedException');
+    const created = await h.relay.create('instructor-1', SESSION);
+    expect(created.status).toBe('ok');
+    expect(token(created)).toBeUndefined();
+    expect(h.store.sessions.get(SESSION)?.stageArn).toBeUndefined();
+
+    await h.relay.join('student-1', SESSION, 'student');
+    expect(await h.relay.publish('instructor-1', happy[0]!)).toMatchObject({ status: 'ok', delivered: 1 });
+  });
+
+  it('relays stream.started to students and catches a late joiner up with the view and then the stream', async () => {
+    await h.relay.create('instructor-1', SESSION);
+    await h.relay.join('student-1', SESSION, 'student');
+    const started = streamStarted(1, 'window');
+    expect(await h.relay.publish('instructor-1', started)).toMatchObject({ status: 'ok', delivered: 1 });
+    expect(await h.relay.publish('instructor-1', { ...happy[1]!, sequence: 2 })).toMatchObject({ status: 'ok' });
+
+    await h.relay.join('late-student', SESSION, 'student');
+    // Ascending sequence, so a student that ignores stale sequences keeps both.
+    expect((h.inbox.get('late-student') ?? []).map(e => [e.type, e.sequence])).toEqual([
+      ['stream.started', 1],
+      [happy[1]!.type, 2],
+    ]);
+  });
+
+  it('forgets the stream on stream.stopped, capture.stopped and session.ended', async () => {
+    for (const [ending, sequence] of [['stream.stopped', 2], ['capture.stopped', 2]] as const) {
+      h = harness();
+      await h.relay.create('instructor-1', SESSION);
+      await h.relay.publish('instructor-1', streamStarted(1));
+      expect(h.store.sessions.get(SESSION)?.latestStream).toBeDefined();
+      expect(await h.relay.publish('instructor-1', lifecycle(ending, sequence)), ending).toMatchObject({ status: 'ok' });
+      expect(h.store.sessions.get(SESSION)?.latestStream, ending).toBeUndefined();
+      await h.relay.join('late-student', SESSION, 'student');
+      expect((h.inbox.get('late-student') ?? []).map(e => e.type), ending).not.toContain('stream.started');
+    }
+  });
+
+  it('deletes the stage when the session ends by event and when it is closed', async () => {
+    await h.relay.create('instructor-1', SESSION);
+    const arn = h.store.sessions.get(SESSION)!.stageArn!;
+    await h.relay.publish('instructor-1', lifecycle('session.ended', 1));
+    expect(h.stage.stages.has(arn)).toBe(false);
+    expect(h.stage.calls).toContain(`deleteStage:${arn}`);
+
+    h = harness();
+    await h.relay.create('instructor-1', SESSION);
+    const arn2 = h.store.sessions.get(SESSION)!.stageArn!;
+    expect(await h.relay.close('instructor-1', SESSION)).toEqual({ status: 'ok' });
+    expect(h.stage.stages.has(arn2)).toBe(false);
+  });
+
+  it('refuses a stream.started that names a whole monitor, or no surface', async () => {
+    await h.relay.create('instructor-1', SESSION);
+    const { surface: _none, ...withoutSurface } = streamStarted(1);
+    for (const [label, event] of [['monitor', streamStarted(1, 'monitor')], ['42', streamStarted(1, 42)], ['missing', withoutSurface]] as const) {
+      const outcome = await h.relay.publish('instructor-1', event);
+      expect(outcome.status, label).toBe('rejected');
+      expect((outcome as { rules: string[] }).rules, label).toContain('stream-surface-invalid');
+    }
+    expect(h.store.sessions.get(SESSION)?.latestStream).toBeUndefined();
+  });
+
+  it('refuses a student announcing a stream', async () => {
+    await h.relay.create('instructor-1', SESSION);
+    await h.relay.join('student-1', SESSION, 'student');
+    expect(await h.relay.publish('student-1', streamStarted(1))).toEqual({
+      status: 'rejected',
+      rules: ['role-not-permitted-to-publish'],
+    });
   });
 });

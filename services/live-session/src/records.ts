@@ -24,8 +24,31 @@ export interface SessionRecord {
   lastSequence: number;
   /** The most recent view-bearing event, for reconnect catch-up. */
   latestState?: Record<string, unknown>;
+  /**
+   * The `stream.started` event in force, if the instructor is streaming a tab
+   * or window. Cleared by `stream.stopped`, `capture.stopped` and
+   * `session.ended`, so a student who joins mid-stream is told to subscribe
+   * and one who joins after it ended is not.
+   */
+  latestStream?: Record<string, unknown>;
+  /**
+   * The IVS Real-Time stage that carries this session's video. Absent when the
+   * stage could not be created; the session then works without video. Only
+   * the ARN is stored: tokens are minted per connection and never persisted.
+   */
+  stageArn?: string;
   /** Unix seconds. Also the DynamoDB TTL attribute. */
   expiresAt: number;
+}
+
+/**
+ * What one accepted event does to the session's catch-up state. `view` replaces
+ * the latest view-bearing event; `stream` replaces the stream state, `null`
+ * clearing it. Omitted fields are left as they were.
+ */
+export interface LatestUpdate {
+  view?: Record<string, unknown>;
+  stream?: Record<string, unknown> | null;
 }
 
 export interface ConnectionRecord {
@@ -66,6 +89,7 @@ export interface SessionStoreApi {
     sessionId: string,
     packId: string,
     packVersion: number,
+    stageArn: string | undefined,
     now?: Date,
   ): Promise<SessionRecord>;
   getSession(sessionId: string, now?: Date): Promise<SessionRecord | undefined>;
@@ -74,7 +98,7 @@ export interface SessionStoreApi {
   advanceSequence(
     sessionId: string,
     sequence: number,
-    latestState: Record<string, unknown> | undefined,
+    latest: LatestUpdate,
     now?: Date,
   ): Promise<boolean>;
   closeSession(sessionId: string): Promise<void>;

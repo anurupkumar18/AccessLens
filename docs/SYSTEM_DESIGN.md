@@ -66,7 +66,7 @@ flowchart TD
     subgraph StudentDevice["Student device"]
         StudentPanel["Extension side panel"]
         LocalPrefs["Local accessibility preferences"]
-        Renderer["Focus / text / captions / audio renderer"]
+        Renderer["Focus / text / captions renderer"]
         ARRenderer["Three.js AR scene renderer<br/>WebXR + spatial preview"]
         StudentPanel --> Renderer
         StudentPanel --> ARRenderer
@@ -280,6 +280,12 @@ grade, or attention signal.
 - `capture.resumed`
 - `capture.stopped` — capture has ended, but the temporary session remains open
   for a later explicit Start on the same join code.
+- `stream.started` — the instructor is streaming live video of one tab or one
+  window (`surface: browser | window`) over the session's Amazon IVS Real-Time
+  stage; students subscribe with the token on their capability. The video
+  never touches the relay. A monitor is not a permitted surface.
+- `stream.stopped` — that video has ended. `capture.stopped` and
+  `session.ended` end it too.
 - `source.unmatched`
 - `session.ended`
 
@@ -381,7 +387,7 @@ flowchart LR
     Share["Shared screen adapter"] --> Event["LiveEvent contract"]
     Camera["Future camera adapter"] -.-> Event
     Manual["Instructor manual control"] --> Event
-    Event --> Students["Focus, text, audio, and AR renderers"]
+    Event --> Students["Focus, text, and AR renderers"]
 ```
 
 ## 12. Official implementation references

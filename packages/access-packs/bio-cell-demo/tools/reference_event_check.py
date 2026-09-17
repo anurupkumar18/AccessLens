@@ -24,6 +24,8 @@ ALLOWED_EVENT_TYPES = (
     "capture.paused",
     "capture.resumed",
     "capture.stopped",
+    "stream.started",
+    "stream.stopped",
     "source.unmatched",
     "screen.analyzed",
     "session.ended",
@@ -47,9 +49,14 @@ KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "arState",
     "caption",
     "analysis",
+    "surface",
 }
 
 CAPTION_MAX_LENGTH = 2000
+
+# `surface` names what the instructor is streaming on stream.started: a tab or a
+# window. A whole monitor is never streamed, so it is not a valid value.
+STREAM_SURFACES = ("browser", "window")
 
 INSTRUCTOR_ONLY_TYPES = (
     "session.started",
@@ -59,6 +66,8 @@ INSTRUCTOR_ONLY_TYPES = (
     "capture.paused",
     "capture.resumed",
     "capture.stopped",
+    "stream.started",
+    "stream.stopped",
     "source.unmatched",
     "screen.analyzed",
     "session.ended",
@@ -148,6 +157,13 @@ def check_event(event: dict, pack: dict, last_sequence: int = 0) -> list[str]:
             lang_invalid = "lang" in caption and not (isinstance(lang, str) and 2 <= len(lang) <= 16)
             if lang_invalid or set(caption) - {"text", "isFinal", "lang"}:
                 broken.append("caption-invalid")
+
+    surface = event.get("surface")
+    if event.get("type") == "stream.started":
+        if not isinstance(surface, str) or surface not in STREAM_SURFACES:
+            broken.append("stream-surface-invalid")
+    elif surface is not None:
+        broken.append("surface-on-wrong-event-type")
 
     if event.get("type") == "source.unmatched":
         for field in ("assetId", "regionId"):

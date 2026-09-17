@@ -1,6 +1,6 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import type { AccessPack, LiveEvent, RoleCapability, SessionClient } from '../shared/contracts';
-import { defaultAiClient, isRelayCapability, type AiClient } from '../shared/aiClient';
+import { defaultAiClient, type AiClient } from '../shared/aiClient';
 import { AskClass } from './AskClass';
 import { StudyChat } from './StudyChat';
 import { defaultChatClient, type ChatClient } from '../shared/chatClient';
@@ -9,11 +9,15 @@ import { ScreenReaderAnnouncer } from './ScreenReaderAnnouncer';
 import type { StudentPreferences } from '../shared/preferences';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
-import { AudioView } from '../renderers/AudioView';
 import { DyslexicTextView } from '../renderers/DyslexicTextView';
 import { ScreenAnalysisView } from '../renderers/ScreenAnalysisView';
 import { applyLiveEvent, initialStudentLiveState, markLiveStateProtocolInvalid, markLiveStateStale, markLiveStateReconnected } from './liveState';
 import { AccessibilityBar } from '../accessibility/AccessibilityBar';
+import { createIvsSubscriber, type StreamSubscriber } from '../sources/stream';
+
+// Constructing the subscriber loads nothing and connects to nothing; it joins
+// the session's video stage only once the instructor announces a stream.
+const defaultSubscriber = createIvsSubscriber();
 
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
@@ -30,12 +34,13 @@ interface Props {
   ai?: AiClient | null;
   /** Study chat client; defaults to the one configured by VITE_ACCESSLENS_CHAT_URL. */
   chat?: ChatClient | null;
+  /** Watches the instructor's live video; defaults to Amazon IVS Real-Time. */
+  subscriber?: StreamSubscriber;
 }
 
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
-  { id: 'audio', label: 'Hear' },
   { id: 'dyslexic', label: 'Reading spacing' },
   { id: 'ar', label: 'AR' },
 ];
@@ -46,14 +51,15 @@ function modesFor(pack: AccessPack): typeof allModes {
   return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
 }
 
-export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient, chat = defaultChatClient }: Props): React.ReactElement {
+export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient, chat = defaultChatClient, subscriber = defaultSubscriber }: Props): React.ReactElement {
   const [sessionId, setSessionId] = useState('');
   const [joinMessage, setJoinMessage] = useState('Type the join code your instructor reads out, then press Join.');
   const [live, setLive] = useState(initialStudentLiveState);
   const [capability, setCapability] = useState<RoleCapability | null>(null);
-  const speak = ai && isRelayCapability(capability)
-    ? (assetId: string, regionId: string) => ai.speak(capability, pack.packId, pack.version, assetId, regionId, 'shortDescription')
-    : undefined;
+  // Read and Dyslexic show the whole lesson for the student to move through
+  // in any order; only Focus (and AR) follow the instructor's position. There
+  // is no spoken mode: the student's own screen reader reads the reviewed
+  // descriptions from the text modes.
 
   // Kept so a student can be caught up from where they actually stopped
   // following, rather than from an arbitrary "last five minutes".
@@ -109,6 +115,30 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
   const currentRegion = currentAsset?.regions.find((region) => region.regionId === live.regionId);
   const currentRegionText = currentRegion?.shortDescription ?? '';
   const captionsActive = history.some((item) => item.type === 'caption.appended');
+
+  // Live video of the instructor's tab or window. It lives beside the modes,
+  // not in `live.status`: subscribing, failing or stopping never changes what
+  // the text modes show. The pane exists while the instructor's
+  // `stream.started` is in force and this connection holds a stage token.
+  const streaming = live.stream !== undefined;
+  const streamSurface = live.stream?.surface;
+  const streamToken = capability?.streamToken;
+  const [video, setVideo] = useState<MediaStream | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (!streaming || !streamToken) return;
+    setVideo(null);
+    setVideoError(null);
+    void subscriber.subscribe(streamToken, { onVideo: setVideo, onError: setVideoError });
+    return () => { subscriber.stop(); setVideo(null); };
+  }, [streaming, streamToken, subscriber]);
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element) return;
+    // `autoPlay` on the element does the playing; muted inline video needs no gesture.
+    element.srcObject = video;
+  }, [video]);
 
   async function join(): Promise<void> {
     try {
@@ -171,7 +201,9 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         </div>
       </form>
       <p role="status" className="supporting-text">{joinMessage}</p>
-      <p role="status" className="live-message">{live.message}</p>
+      {/* The one live region that follows the instructor. aria-atomic so the
+          whole sentence is read, not the words that changed. */}
+      <p role="status" aria-atomic="true" className="live-message">{live.message}</p>
 
       {preferences.captionsEnabled && live.captions.length > 0 ? (
         <div className="caption-track" role="log" aria-label="Live captions">
@@ -188,7 +220,31 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
           track above rather than unilaterally deciding which one wins. */}
       <LiveCaptionsView client={client} />
 
-      <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson">
+      {streaming && (
+        <section className="live-video" aria-label="Instructor's live slide video">
+          {streamToken ? (
+            <>
+              <video
+                ref={videoRef}
+                muted
+                playsInline
+                autoPlay
+                aria-label={`Live video of the instructor's ${streamSurface === 'browser' ? 'tab' : 'window'}`}
+              />
+              <p role="status" className="supporting-text">
+                {videoError ?? (video ? `Live video of the instructor's ${streamSurface === 'browser' ? 'tab' : 'window'}. The text below follows the lesson too.` : 'Connecting to the instructor\u2019s live video\u2026')}
+              </p>
+            </>
+          ) : (
+            <p role="status" className="supporting-text">The instructor is streaming live video, but this connection has no video access. The lesson text still works.</p>
+          )}
+        </section>
+      )}
+
+      <p id="mode-help" className="supporting-text">
+        Screen readers read every description here. Focus announces the slide and region the instructor is on; Read and Reading spacing hold the whole lesson.
+      </p>
+      <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson" aria-describedby="mode-help">
         {modes.map((mode, index) => (
           <button
             key={mode.id}
@@ -207,11 +263,10 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       </div>
 
       <div className="student-content" id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
-        {live.analysis && activeMode !== 'ar' ? <ScreenAnalysisView analysis={live.analysis} mode={activeMode === 'structured-text' ? 'read' : activeMode === 'audio' ? 'hear' : activeMode as 'focus' | 'dyslexic'} /> : null}
+        {live.analysis && activeMode !== 'ar' ? <ScreenAnalysisView analysis={live.analysis} mode={activeMode === 'structured-text' ? 'read' : activeMode} /> : null}
         {!live.analysis && activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} pointer={live.pointer} /> : null}
-        {!live.analysis && activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
-        {!live.analysis && activeMode === 'audio' ? <AudioView pack={pack} assetId={live.assetId} regionId={live.regionId} speechRate={preferences.speechRate} speak={speak} readAloudWith={preferences.readAloudWith} onReadAloudWithChange={(readAloudWith) => updatePreferences({ readAloudWith })} /> : null}
-        {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
+        {!live.analysis && activeMode === 'structured-text' ? <StructuredTextView pack={pack} /> : null}
+        {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
             <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
@@ -233,14 +288,6 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
             onChange={() => updatePreferences({ announceChanges: !preferences.announceChanges })}
           />
           Announce slide changes to my screen reader
-        </label>
-        <label htmlFor="read-aloud-setting">
-          Read descriptions with
-          <select id="read-aloud-setting" value={preferences.readAloudWith} onChange={(changeEvent) => updatePreferences({ readAloudWith: changeEvent.target.value as StudentPreferences['readAloudWith'] })}>
-            <option value="ai-voice">AI voice (Amazon Polly)</option>
-            <option value="screen-reader">My screen reader</option>
-            <option value="browser-voice">Browser voice</option>
-          </select>
         </label>
         <p className="supporting-text">Works with VoiceOver, NVDA, JAWS, Narrator, and ChromeVox. These settings stay on this device.</p>
       </fieldset>
@@ -321,15 +368,6 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
             onChange={() => updatePreferences({ highContrast: !preferences.highContrast })}
           />
           Higher contrast
-        </label>
-        <label htmlFor="speech-rate">
-          Read-aloud speed
-          <select id="speech-rate" value={preferences.speechRate} onChange={(changeEvent) => updatePreferences({ speechRate: Number(changeEvent.target.value) })}>
-            <option value="0.75">Slower</option>
-            <option value="1">Standard</option>
-            <option value="1.25">Faster</option>
-            <option value="1.5">Fastest</option>
-          </select>
         </label>
       </fieldset>
     </section>

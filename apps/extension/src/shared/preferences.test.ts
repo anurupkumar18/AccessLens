@@ -51,7 +51,7 @@ describe('local preferences storage', () => {
   it('round-trips saved preferences without any network or session client', async () => {
     const changed = {
       ...defaultPreferences,
-      mode:'audio' as const,
+      mode:'dyslexic' as const,
       fontFamily: 'serif' as const,
       lineSpacing: 'spacious' as const,
       contentWidth: 'narrow' as const,
@@ -61,6 +61,13 @@ describe('local preferences storage', () => {
     };
     await savePreferences(changed);
     expect(await loadPreferences()).toEqual(changed);
+  });
+
+  it('starts from the defaults when a saved mode is no longer offered', async () => {
+    await savePreferences(defaultPreferences);
+    // Written by an earlier build that still had a spoken mode.
+    await savePreferences({...defaultPreferences, mode: 'audio'} as never).catch(() => undefined);
+    expect(await loadPreferences()).toEqual(defaultPreferences);
   });
 
   it('rejects saving preferences with a prohibited field', async () => {

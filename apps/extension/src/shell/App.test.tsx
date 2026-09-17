@@ -29,45 +29,6 @@ describe('App shell', () => {
     }
   });
 
-  it('lets the student view follow an instructor correction, with no network client', async () => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    const client = new InMemorySessionClient();
-    const host = new FakeCaptureHost();
-    const root = createRoot(container);
-    act(() => root.render(<App client={client} pack={syntheticPack} host={host} scheduler={new FakeScheduler()} />));
-
-    // A separate device/tab, not this instructor tab's own role toggle: since
-    // switching this tab to Student would now correctly end the open session
-    // (see the "unmounting while sharing ends the session" InstructorPanel
-    // test), the realistic way to observe what a student sees is a second
-    // App instance sharing the same client, exactly as two real browser tabs
-    // would -- subscribed before the instructor sends anything, exactly as a
-    // student who joined before the instructor spoke would be.
-    const studentContainer = document.createElement('div');
-    document.body.appendChild(studentContainer);
-    const studentRoot = createRoot(studentContainer);
-    act(() => studentRoot.render(<App client={client} pack={syntheticPack} />));
-    const studentButton = Array.from(studentContainer.querySelectorAll('button')).find(b => b.textContent === 'Student')!;
-    act(() => studentButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-
-    expect(host.calls).toEqual([]);
-    const startButton = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Start')!;
-    await act(async () => { startButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-    expect(host.calls).toEqual(['requestStream']);
-
-    const assetSelect = container.querySelector<HTMLSelectElement>('#correct-asset')!;
-    act(() => { assetSelect.value = 'slide-04'; assetSelect.dispatchEvent(new Event('change', { bubbles: true })); });
-    const regionSelect = container.querySelector<HTMLSelectElement>('#correct-region')!;
-    act(() => { regionSelect.value = 'nucleolus'; regionSelect.dispatchEvent(new Event('change', { bubbles: true })); });
-    const apply = Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Apply correction')!;
-    await act(async () => { apply.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-
-    expect(studentContainer.textContent).toContain('Following nucleolus on slide-04');
-    act(() => studentRoot.unmount());
-    studentContainer.remove();
-  });
-
   it('switching this tab away from Instructor while sharing tells students the session ended, not silence', async () => {
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -121,7 +82,7 @@ describe('App shell', () => {
     expect(fetchPublishedPack).toHaveBeenCalledTimes(1);
     expect(fetchPublishedPack).toHaveBeenCalledWith(published.packId, published.version);
     expect(container.textContent).not.toContain('different reviewed lesson version');
-    expect(container.textContent).toContain(`Following ${published.assets[0].assetId}.`);
+    expect(container.textContent).toContain(`Now on ${published.assets[0].title}.`);
     expect(container.textContent).toContain(published.assets[0].regions[0].regionId);
   });
 

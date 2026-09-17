@@ -58,7 +58,7 @@ describeIf('a pack the pipeline published, in the student view', () => {
     // The same assertions the bundled packs satisfy: the followed slide and
     // its first region reach the DOM, and the slide image comes from
     // CloudFront rather than the bundle.
-    expect(container.textContent).toContain(`Following ${slide.assetId}.`);
+    expect(container.textContent).toContain(`Now on ${slide.title}.`);
     expect(container.textContent).toContain(slide.regions[0].regionId);
     const img = container.querySelector('img');
     expect(img?.getAttribute('src')).toBe(slideImageUrl(pack, slide));

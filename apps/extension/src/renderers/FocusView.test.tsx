@@ -62,6 +62,18 @@ describe('FocusView', () => {
     expect(container!.querySelector('.focus-pointer')).toBeNull();
   });
 
+  it('puts the reviewed description in the figure caption, where reading commands reach it, and nowhere hidden', () => {
+    const pack = AccessPackSchema.parse(reviewedBioPack);
+    const asset = pack.assets[1];
+    const region = asset.regions[0];
+    render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} />);
+    const figure = container!.querySelector('figure')!;
+    expect(figure.getAttribute('aria-label')).toBeNull();
+    expect(figure.querySelector('figcaption')!.textContent).toBe(region.shortDescription);
+    // Said once: the caption is the only place the short description appears.
+    expect(container!.textContent!.split(region.shortDescription).length - 1).toBe(1);
+  });
+
   it('uses the region label as the heading when the pack provides one, else the id', () => {
     const labelled = { ...validPack, assets: [{ ...validPack.assets[0], regions: [{ ...validPack.assets[0].regions[0], label: 'Mitochondrion' }] }] };
     render(<FocusView pack={labelled} assetId="cell-slide-03" regionId="mitochondrion" />);

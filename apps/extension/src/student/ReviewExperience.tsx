@@ -1,7 +1,6 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { AccessPack } from '../shared/contracts';
 import type { StudentPreferences } from '../shared/preferences';
-import { AudioView } from '../renderers/AudioView';
 import { FocusView } from '../renderers/FocusView';
 import { StructuredTextView } from '../renderers/StructuredTextView';
 import { loadReviewBookmarks, saveReviewBookmarks } from './reviewBookmarks';
@@ -12,7 +11,7 @@ const CellArView = React.lazy(async () => {
   return { default: module.CellArView };
 });
 
-type ReviewMode = 'focus' | 'read' | 'hear' | 'ar';
+type ReviewMode = 'focus' | 'read' | 'ar';
 
 interface Props {
   pack: AccessPack;
@@ -67,7 +66,7 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
   const bookmarked = bookmarks.includes(concept.id);
   const markedExplored = explored.includes(concept.id);
   const availableModes: Array<{ id: ReviewMode; label: string }> = [
-    { id: 'focus', label: 'Focus' }, { id: 'read', label: 'Read' }, { id: 'hear', label: 'Hear' },
+    { id: 'focus', label: 'Focus' }, { id: 'read', label: 'Read' },
     ...(concept.hasAr ? [{ id: 'ar' as const, label: 'AR' }] : []),
   ];
   const activeMode = availableModes.some((candidate) => candidate.id === mode) ? mode : 'read';
@@ -119,8 +118,7 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
       </div>
       <div className="student-content review-content" id={panelId} role="tabpanel" aria-labelledby={`review-mode-tab-${activeMode}`} tabIndex={0}>
         {activeMode === 'focus' ? <FocusView pack={pack} assetId={concept.assetId} regionId={concept.regionId} /> : null}
-        {activeMode === 'read' ? <StructuredTextView pack={pack} assetId={concept.assetId} regionId={concept.regionId} /> : null}
-        {activeMode === 'hear' ? <AudioView pack={pack} assetId={concept.assetId} regionId={concept.regionId} speechRate={preferences.speechRate} /> : null}
+        {activeMode === 'read' ? <StructuredTextView pack={pack} /> : null}
         {activeMode === 'ar' && concept.hotspotId ? <Suspense fallback={<p role="status">Loading the reviewed AR scene…</p>}><CellArView regionId={concept.regionId} hotspotId={concept.hotspotId} reducedMotion={preferences.reducedMotion} /></Suspense> : null}
       </div>
     </section>

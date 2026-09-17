@@ -10,6 +10,8 @@ import type { CaptionDeps } from './SpeechCaptions';
 import type { WhisperStreamOptions } from '../sources/voice/whisperStream';
 import { InstructorPanel } from './index';
 import { FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, solidFrame, testPack } from '../sources/screen/fixtures';
+import type { PresentingSlide, SlidesSource } from '../sources/slides';
+import { FakePublisher } from '../sources/stream/fixtures';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -35,18 +37,30 @@ afterEach(() => {
   root = null;
 });
 
-function render(host = new FakeCaptureHost(), selectedPack = pack) {
+function render(host = new FakeCaptureHost(), slides?: SlidesSource, selectedPack = pack) {
   container = document.createElement('div');
   document.body.appendChild(container);
   const client = new InMemorySessionClient();
   const scheduler = new FakeScheduler();
   const events: LiveEvent[] = [];
   client.subscribe(e => events.push(e));
+  const publisher = new FakePublisher();
   root = createRoot(container);
   act(() => root!.render(
-    <InstructorPanel client={client} pack={selectedPack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} />,
+    <InstructorPanel client={client} pack={selectedPack} host={host} scheduler={scheduler} clock={new FakeClock()} ids={fixedIds('JOIN42')} slides={slides} publisher={publisher} />,
   ));
-  return { host, client, scheduler, events, stream: host.stream };
+  return { host, client, scheduler, events, publisher, stream: host.stream };
+}
+
+/** A Google Slides deck presenting in this browser, driven by the test. */
+function fakeSlides(order: string[]) {
+  let listener: ((slide: PresentingSlide | null) => void) | null = null;
+  const source: SlidesSource = {
+    watcher: { watch(l) { listener = l; return () => { listener = null; }; } },
+    slideOrder: vi.fn(async () => order),
+  };
+  const present = (slide: PresentingSlide | null) => act(async () => { listener!(slide); await Promise.resolve(); await Promise.resolve(); });
+  return { source, present, watching: () => listener !== null };
 }
 
 /** Capture-control buttons only (Start/Pause/Resume/Stop/End Session), not form submit buttons. */
@@ -58,11 +72,6 @@ const button = (name: string) => {
 };
 const click = async (name: string) => act(async () => { button(name).dispatchEvent(new MouseEvent('click', { bubbles: true })); });
 const status = () => container!.querySelector('[role="status"]')!.textContent ?? '';
-const select = (id: string, value: string) => act(() => {
-  const el = container!.querySelector<HTMLSelectElement>(`#${id}`)!;
-  el.value = value;
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-});
 
 describe('InstructorPanel', () => {
   it('before Start, the host has no calls and only Start is offered', () => {
@@ -108,37 +117,40 @@ describe('InstructorPanel', () => {
     expect(events.map(e => e.type)).toEqual(['session.started', 'source.unmatched']);
   });
 
-  it('correcting to an asset and region emits asset.changed then region.changed and names the region', async () => {
-    const { events } = render();
-    await click('Start');
-    select('correct-asset', 'slide-04');
-    select('correct-region', 'nucleolus');
-    await click('Apply correction');
-    expect(events.slice(1)).toMatchObject([
-      { type: 'asset.changed', assetId: 'slide-04' },
-      { type: 'region.changed', assetId: 'slide-04', regionId: 'nucleolus' },
-    ]);
-    expect(status()).toContain('The nucleus');
-    expect(status()).toContain('nucleolus');
-  });
+  it('Follow Google Slides opens the session first, then follows the deck slide by slide once it presents', async () => {
+    const host = new FakeCaptureHost();
+    const deck = fakeSlides(['p', 'g1', 'g2']);
+    const { events } = render(host, deck.source);
+    expect(buttons()).toEqual(['Follow Google Slides', 'Share a window instead']);
 
-  it('indicating a region on the current asset emits its reviewed center pointer', async () => {
-    const { stream, scheduler, events } = render();
-    await click('Start');
-    stream.enqueue(loadDemoFrame('slide-05'));
-    act(() => scheduler.tick(1));
-    select('indicate-region', 'reticulum');
-    await click('Indicate region');
-    const region = pack.assets.find((asset) => asset.assetId === 'slide-05')!.regions.find((candidate) => candidate.regionId === 'reticulum')!;
-    expect(events.at(-1)).toMatchObject({
-      type: 'region.changed', assetId: 'slide-05', regionId: 'reticulum',
-      pointer: { x: region.bounds.x + region.bounds.width / 2, y: region.bounds.y + region.bounds.height / 2 },
-    });
-    expect(status()).toContain('reticulum');
+    await click('Follow Google Slides');
+    expect(host.calls).toEqual([]);
+    expect(events.map(e => e.type)).toEqual(['session.started']);
+    expect(container!.textContent).toContain('JOIN42');
+    expect(status()).toContain('Waiting for you to present');
+    expect(deck.watching()).toBe(true);
+
+    await deck.present({ deckId: 'deck', slideObjectId: 'g1' });
+    expect(events.at(-1)).toMatchObject({ type: 'asset.changed', assetId: pack.assets[1].assetId });
+    expect(status()).toContain(pack.assets[1].title);
+
+    await deck.present({ deckId: 'deck', slideObjectId: 'g1' });
+    expect(events).toHaveLength(2);
+    await deck.present({ deckId: 'deck', slideObjectId: 'p' });
+    expect(events.at(-1)).toMatchObject({ type: 'asset.changed', assetId: pack.assets[0].assetId });
+
+    await deck.present(null);
+    expect(status()).toContain('presentation ended');
+    expect(events).toHaveLength(3);
+
+    await click('Stop');
+    expect(events.at(-1)?.type).toBe('capture.stopped');
+    expect(deck.watching()).toBe(false);
+    expect(deck.source.slideOrder).toHaveBeenCalledTimes(3);
   });
 
   it('offers Find AR for a matched slide with a reviewed scene', async () => {
-    const { stream, scheduler, events } = render(new FakeCaptureHost(), arPack);
+    const { stream, scheduler, events } = render(new FakeCaptureHost(), undefined, arPack);
     await click('Start');
     stream.enqueue(loadDemoFrame('slide-03'));
     act(() => scheduler.tick(1));
@@ -188,7 +200,6 @@ describe('InstructorPanel', () => {
       expect((b.textContent?.trim() || b.getAttribute('aria-label') || '').length).toBeGreaterThan(0);
     }
     const controls = Array.from(container!.querySelectorAll<HTMLElement>('select, input, textarea'));
-    expect(controls.length).toBeGreaterThan(0);
     for (const control of controls) {
       const label = control.id ? container!.querySelector(`label[for="${control.id}"]`) : null;
       const named = (label?.textContent?.trim() || control.getAttribute('aria-label') || '').length > 0;
@@ -446,5 +457,87 @@ describe('InstructorPanel: live captions', () => {
     await click('Stop');
     expect(container.textContent).not.toContain('Stop live captions');
     expect(speak).toBeNull();
+  });
+});
+
+// ---- Live video controls ------------------------------------------------------
+
+/** The relay hands the instructor a publish token beside the capability; the in-memory client does not, so this one does. */
+class VideoSessionClient extends InMemorySessionClient {
+  override async create(sessionId: string) {
+    return { ...(await super.create(sessionId)), streamToken: 'publish-token-1' };
+  }
+}
+
+function renderWithVideo(surface: 'browser' | 'window' | 'monitor' = 'browser') {
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  const host = new FakeCaptureHost();
+  host.stream.surface = surface;
+  const client = new VideoSessionClient();
+  const publisher = new FakePublisher();
+  const events: LiveEvent[] = [];
+  client.subscribe(e => events.push(e));
+  root = createRoot(container);
+  act(() => root!.render(
+    <InstructorPanel client={client} pack={pack} host={host} scheduler={new FakeScheduler()} clock={new FakeClock()} ids={fixedIds('JOIN42')} publisher={publisher} />,
+  ));
+  return { host, publisher, events, stream: host.stream };
+}
+
+const findButton = (label: string) => Array.from(container!.querySelectorAll('button')).find(b => b.textContent?.trim() === label);
+
+describe('InstructorPanel: live video controls', () => {
+  it('offers Stream this window only once sharing, and it is the only path to publishing', async () => {
+    const { publisher } = renderWithVideo('browser');
+    expect(findButton('Stream this window')).toBeUndefined();
+    await click('Start');
+    expect(findButton('Stream this window')).toBeDefined();
+    expect(publisher.calls).toEqual([]);
+  });
+
+  it('shows what is streaming and a Stop streaming control while on, then returns to the offer', async () => {
+    const { publisher, events } = renderWithVideo('browser');
+    await click('Start');
+    await click('Stream this window');
+    expect(publisher.calls).toEqual(['publish']);
+    expect(container!.textContent).toContain('Streaming a tab');
+    expect(container!.textContent).toContain('never your whole screen');
+    expect(findButton('Stop streaming')).toBeDefined();
+    expect(events.map(e => e.type)).toEqual(['session.started', 'stream.started']);
+
+    await click('Stop streaming');
+    expect(publisher.calls).toEqual(['publish', 'stop']);
+    expect(container!.textContent).not.toContain('Streaming a tab');
+    expect(findButton('Stream this window')).toBeDefined();
+    // Sharing itself is untouched.
+    expect(findButton('Stop')).toBeDefined();
+    expect(events.map(e => e.type)).toEqual(['session.started', 'stream.started', 'stream.stopped']);
+  });
+
+  it('names a window when a window is streamed', async () => {
+    renderWithVideo('window');
+    await click('Start');
+    await click('Stream this window');
+    expect(container!.textContent).toContain('Streaming a window');
+  });
+
+  it('refuses a whole screen in words, publishes nothing, and keeps sharing', async () => {
+    const { publisher } = renderWithVideo('monitor');
+    await click('Start');
+    await click('Stream this window');
+    expect(publisher.calls).toEqual([]);
+    expect(container!.textContent).toContain('A whole screen is never streamed to students');
+    expect(findButton('Stop')).toBeDefined();
+    expect(findButton('Stream this window')).toBeDefined();
+  });
+
+  it('says video is unavailable when the session has no stage token', async () => {
+    const { publisher } = render();
+    await click('Start');
+    await click('Stream this window');
+    expect(publisher.calls).toEqual([]);
+    expect(container!.textContent).toContain('Live video is unavailable for this session');
+    expect((findButton('Stream this window') as HTMLButtonElement).disabled).toBe(true);
   });
 });

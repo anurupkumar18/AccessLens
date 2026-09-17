@@ -16,6 +16,7 @@ function fakeStream(): CaptureStream & { end(): void; stopped: ReturnType<typeof
     sampleFrame: () => null,
     stop: stopped,
     onEnded(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+    videoTrack: () => null,
     end() { listeners.forEach((listener) => listener()); },
     stopped,
   };

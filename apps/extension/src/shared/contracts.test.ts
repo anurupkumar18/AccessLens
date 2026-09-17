@@ -62,6 +62,19 @@ describe('AccessLens contracts',()=>{
       }
     );
 
+    it('accepts stream.started with a tab or window surface, and stream.stopped base-only', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'stream.started', surface:'browser'}).success).toBe(true);
+      expect(LiveEventSchema.safeParse({...base, type:'stream.started', surface:'window'}).success).toBe(true);
+      expect(LiveEventSchema.safeParse({...base, type:'stream.stopped'}).success).toBe(true);
+    });
+
+    it('rejects stream.started naming a whole monitor, missing its surface, or naming a slide', () => {
+      expect(LiveEventSchema.safeParse({...base, type:'stream.started', surface:'monitor'}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'stream.started'}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'stream.started', surface:'browser', assetId:'cell-slide-03'}).success).toBe(false);
+      expect(LiveEventSchema.safeParse({...base, type:'stream.stopped', surface:'browser'}).success).toBe(false);
+    });
+
     it('caption.appended carries caption text only, capped, and optionally the slide it was spoken over (T-16)', () => {
       const caption = { text:'The mitochondrion releases usable energy.', isFinal:false };
       expect(LiveEventSchema.safeParse({...base, type:'caption.appended', caption}).success).toBe(true);

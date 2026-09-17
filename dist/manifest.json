@@ -8,12 +8,14 @@
     "sidePanel",
     "identity",
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "https://*.cloudfront.net/*",
     "https://*.execute-api.us-east-1.amazonaws.com/*",
-    "https://*.s3.us-east-1.amazonaws.com/*"
+    "https://*.s3.us-east-1.amazonaws.com/*",
+    "https://slides.googleapis.com/*"
   ],
   "action": {
     "default_title": "Open AccessLens"

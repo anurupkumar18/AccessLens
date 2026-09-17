@@ -643,6 +643,16 @@ input[type='range'] { accent-color: var(--ink); }
 .dyslexic-view--enabled .dyslexic-reading li { max-width: 42rem; }
 .dyslexic-toggle { margin-top: .25rem; }
 
+/* Read / Dyslexic: the whole lesson, student-paced. */
+.read-contents { display: flex; flex-wrap: wrap; gap: .4rem 1rem; padding: 0; margin: 0 0 1rem; list-style: none; }
+.read-contents li { font-size: .9em; }
+.read-slide { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.read-slide h4 { margin: 0 0 .5rem; }
+.read-regions { padding-left: 1.25rem; margin: 0; }
+.read-regions li { margin: .6rem 0; }
+.read-regions h5 { margin: 0 0 .15rem; font-size: 1em; }
+.read-regions p { margin: 0 0 .25rem; }
+
 .active-concept {
   display: flex;
   flex-direction: column;
@@ -1005,3 +1015,14 @@ audio.media-player { background: transparent; }
 
 /* Kunj's instructor live captions control; the section spacing comes from .live-captions above. */
 .live-captions q { font-style: italic; }
+
+/* Live video of the instructor's tab or window: the instructor console's
+   control, and the student pane above the mode tabs. The pane is the lesson,
+   not decoration, so reduced-motion leaves it alone. */
+.stream { display: grid; gap: .5rem; margin-top: 1rem; }
+.stream .stream-label { display: flex; align-items: center; gap: .5rem; margin: 0; font: 600 .9rem/1.3 var(--sans); }
+.stream .stream-label[data-tone='live'] .glyph { color: var(--live); }
+.stream .stream-note { margin: 0; font-size: .85rem; opacity: .85; }
+.live-video { margin: 1rem 0; }
+.live-video video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; }
+.live-video p { margin: .35rem 0 0; }
