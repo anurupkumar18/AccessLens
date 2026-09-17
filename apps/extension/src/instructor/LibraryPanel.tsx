@@ -12,7 +12,7 @@ const KINDS: Array<{ value: DocumentKind; label: string }> = [
   { value: 'textbook', label: 'Textbook' },
   { value: 'slides', label: 'Slides' },
   { value: 'notes', label: 'Lecture notes' },
-  { value: 'problems', label: 'Problem set' },
+  { value: 'reading', label: 'Approved reading' },
   { value: 'syllabus', label: 'Syllabus' },
   { value: 'other', label: 'Other' },
 ];
@@ -200,7 +200,7 @@ export function LibraryPanel({ client, profiles, onProfilesChange, pollMs = 5000
                   {KINDS.map(kind => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
                 </select>
               </label>
-              <label htmlFor="library-doc-file">File (PDF, PPTX or DOCX)<input id="library-doc-file" ref={fileInput} type="file" accept=".pdf,.pptx,.docx" onChange={e => setNewDocument({ ...newDocument, file: e.target.files?.[0] ?? null })} /></label>
+              <label htmlFor="library-doc-file">File (PDF only)<input id="library-doc-file" ref={fileInput} type="file" accept="application/pdf,.pdf" onChange={e => setNewDocument({ ...newDocument, file: e.target.files?.[0] ?? null })} /></label>
               <button type="submit" disabled={busy || !newDocument.file || !newDocument.title.trim()}>Add to course</button>
             </form>
           </>

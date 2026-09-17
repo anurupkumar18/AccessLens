@@ -19,6 +19,7 @@ export interface Caller {
 }
 
 export type InstructorHandler = (event: ApiEvent, caller: Caller) => Promise<ApiResult>;
+export type GoogleUserHandler = InstructorHandler;
 
 function claim(claims: Record<string, unknown> | undefined, name: string): string | undefined {
   const value = claims?.[name];
@@ -39,5 +40,10 @@ export function callerOf(event: ApiEvent): Caller {
 
 /** `withErrors` plus the sign-in gate; every route except health uses it. */
 export function withInstructor(handler: InstructorHandler) {
+  return withErrors(event => handler(event, callerOf(event)));
+}
+
+/** Any verified Google account. Role checks live in the class membership store. */
+export function withGoogleUser(handler: GoogleUserHandler) {
   return withErrors(event => handler(event, callerOf(event)));
 }

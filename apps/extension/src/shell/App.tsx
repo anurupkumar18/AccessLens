@@ -6,11 +6,13 @@ import { CameraControl, InstructorPanel } from '../instructor';
 import { AuthoringPanel } from '../instructor/AuthoringPanel';
 import type { AuthoringClient, PublishedPackSummary } from '../shared/authoringClient';
 import { MediaPrepPanel } from '../mediaPrep/MediaPrepPanel';
+import type { ClassroomClient } from '../shared/classroomClient';
 import { createDisplayMediaHost, type CaptureHost, type Scheduler } from '../sources/screen';
 import { createBedrockScreenAnalyzer } from '../sources/screen/screenAnalyzer';
 import { createCameraMediaHost } from '../sources/camera';
 import { StudentExperience } from '../student/StudentExperience';
 import { ReviewExperience } from '../student/ReviewExperience';
+import { CourseAssistant } from '../student/CourseAssistant';
 import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pack.json';
 import { RoleNav, type Role } from './RoleNav';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -63,15 +65,17 @@ interface Props {
   fetchPublishedPack?: (packId: string, version: number) => Promise<AccessPack>;
   /** The authoring API client; injected in tests, otherwise built from the Google session. */
   authoringClient?: AuthoringClient;
+  /** Student class-library API client; injected in tests. */
+  classroomClient?: ClassroomClient;
   host?: CaptureHost;
   cameraHost?: CaptureHost;
   scheduler?: Scheduler;
   analyzer?: import('../sources/screen/screenAnalyzer').ScreenAnalyzer;
 }
 
-export function App({ client = defaultClient, pack, host = defaultHost, cameraHost = defaultCameraHost, scheduler, analyzer = defaultAnalyzer, fetchPublishedPack: fetchPack = fetchPublishedPack, authoringClient }: Props): React.ReactElement {
+export function App({ client = defaultClient, pack, host = defaultHost, cameraHost = defaultCameraHost, scheduler, analyzer = defaultAnalyzer, fetchPublishedPack: fetchPack = fetchPublishedPack, authoringClient, classroomClient }: Props): React.ReactElement {
   const [role, setRole] = useState<Role>('instructor');
-  const [studentSurface, setStudentSurface] = useState<'live' | 'review'>('live');
+  const [studentSurface, setStudentSurface] = useState<'live' | 'review' | 'class'>('live');
   const [instructorView, setInstructorView] = useState<'live' | 'media'>('live');
   const [event, setEvent] = useState<LiveEvent | null>(null);
   const [preferences, setPreferences] = useState<StudentPreferences>(defaultPreferences);
@@ -202,9 +206,12 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
             <nav className="student-surface-nav" aria-label="Student experience">
               <button type="button" aria-current={studentSurface === 'live'} onClick={() => setStudentSurface('live')}>Live lesson</button>
               <button type="button" aria-current={studentSurface === 'review'} onClick={() => setStudentSurface('review')}>Review</button>
+              <button type="button" aria-current={studentSurface === 'class'} onClick={() => setStudentSurface('class')}>Class library</button>
             </nav>
             {packError && <p role="alert" className="pack-error">{packError}</p>}
-            {studentSurface === 'live' ? <StudentExperience client={client} event={event} pack={studentPack} preferences={preferences} onPreferencesChange={updatePreferences} /> : <ReviewExperience pack={studentPack} preferences={preferences} />}
+            {studentSurface === 'live' ? <StudentExperience client={client} event={event} pack={studentPack} preferences={preferences} onPreferencesChange={updatePreferences} /> : null}
+            {studentSurface === 'review' ? <ReviewExperience pack={studentPack} preferences={preferences} /> : null}
+            {studentSurface === 'class' ? <CourseAssistant client={classroomClient} /> : null}
           </>
         )}
       </main>

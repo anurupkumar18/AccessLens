@@ -17,6 +17,9 @@ export type RecordCollection<T> = Map<string, T> | RecordStore<T>;
 
 export interface UploadRecord {
   key: string;
+  contentType?: string;
+  contentLength?: number;
+  firstBytes?: Uint8Array;
   /** Set on first registration so retrying the same upload reuses its docId. */
   docId?: string;
   /** Allows one presigned upload to be registered in more than one profile without key collisions. */
@@ -44,6 +47,7 @@ export interface StartIndexingInput {
   kind: DocumentRecord['kind'];
   title: string;
   citation?: string;
+  timeZone: string;
 }
 
 export interface LibraryRouteDeps {
@@ -58,6 +62,8 @@ export interface LibraryRouteDeps {
   /** Reads exact S3 Vectors keys recorded in the chunk manifest. */
   listChunkKeys?(docId: string): Promise<string[]>;
   retrieve(profileId: string, query: string, k: number, filter?: { kind?: DocumentRecord['kind']; docId?: string }): Promise<Excerpt[]>;
+  /** Library uploads are guarded before their staged object enters a durable class prefix. */
+  validateUpload?(upload: UploadRecord): void;
 }
 
 /** `ownerSub` is the caller's Google subject (D13). A profile owned by anyone else reads as not found. */
@@ -66,6 +72,7 @@ export interface CreateProfileInput {
   name: string;
   subject: string;
   level: string;
+  timeZone?: string;
 }
 export interface ProfilePath { profileId: string; ownerSub?: string }
 export interface DocumentPath { profileId: string; docId: string; ownerSub?: string }

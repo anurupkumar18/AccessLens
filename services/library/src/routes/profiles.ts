@@ -1,6 +1,7 @@
 import type { DocumentRecord, ProfileRecord } from '../../../shared/api';
 import type { Excerpt } from '../../../shared/references';
 import { RouteError, storeDelete, storeGet, storePut, storeValues, type CreateProfileInput, type DocumentPath, type LibraryRouteDeps, type ProfilePath, type RegisterDocumentInput, type SearchProfileInput } from './types';
+import { validateLibraryDocumentMetadata } from '../intake';
 
 type SearchResponse = { query: string; hits: Excerpt[] };
 
@@ -12,6 +13,8 @@ export async function createProfile(input: CreateProfileInput, deps: LibraryRout
     name: input.name,
     subject: input.subject,
     level: input.level,
+    timeZone: input.timeZone ?? 'UTC',
+    archiveState: 'active',
     createdAt: deps.now().toISOString(),
     vectorIndexName: profileId,
   };
@@ -46,9 +49,15 @@ export async function deleteProfile(input: ProfilePath, deps: LibraryRouteDeps):
 }
 
 export async function registerDocument(input: RegisterDocumentInput, deps: LibraryRouteDeps): Promise<DocumentRecord> {
-  await requireProfile(input.profileId, deps, input.ownerSub);
+  const profile = await requireProfile(input.profileId, deps, input.ownerSub);
+  // Archive is the first deletion step. Refuse work before allocating a
+  // document id or invoking the async indexer, otherwise an in-flight purge
+  // can be followed by a newly written source/chunk/vector record.
+  if (profile.archiveState !== 'active') throw new RouteError('conflict', 'archived classes cannot receive new documents');
+  try { validateLibraryDocumentMetadata(input); } catch (error) { throw new RouteError('bad-request', error instanceof Error ? error.message : 'course document was rejected'); }
   const upload = await storeGet(deps.uploads, input.uploadId);
   if (!upload) throw new RouteError('not-found', `upload ${input.uploadId} not found`);
+  try { deps.validateUpload?.(upload); } catch (error) { throw new RouteError('bad-request', error instanceof Error ? error.message : 'course upload was rejected'); }
 
   // The upload id is a deterministic document identity for this API surface.
   // Re-registration replaces the prior record and removes its vectors first.
@@ -70,7 +79,7 @@ export async function registerDocument(input: RegisterDocumentInput, deps: Libra
     status: 'pending',
   };
   await storePut(deps.documents, docId, record);
-  await deps.startIndexing({ profileId: input.profileId, docId, path: upload.key, kind: input.kind, title: input.title, citation: input.citation });
+  await deps.startIndexing({ profileId: input.profileId, docId, path: upload.key, kind: input.kind, title: input.title, citation: input.citation, timeZone: profile.timeZone });
   return record;
 }
 

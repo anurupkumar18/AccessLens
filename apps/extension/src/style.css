@@ -802,6 +802,16 @@ input[type='range'] { accent-color: var(--ink); }
 .answer .answer-sources .eyebrow { display: block; color: var(--ink); }
 .answer.declined { box-shadow: none; border-style: dashed; color: var(--muted); }
 
+.course-assistant { max-width: 860px; margin: 1.75rem auto; }
+.course-assistant > h2 { margin-top: 0; }
+.course-assistant form { margin: 1rem 0; }
+.private-tasks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.private-tasks > h3 { margin-top: 0; }
+.private-tasks ul { padding: 0; list-style: none; }
+.private-tasks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem 1rem; padding: .8rem 0; border-top: 1px solid var(--rule); }
+.private-tasks li span { grid-column: 1; color: var(--muted); }
+.private-tasks li button { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+
 /* ---------- Dyslexia-friendly reading --------------------------------- */
 
 /* OpenDyslexic replaces Plex Sans everywhere text is read. Mono stays for join

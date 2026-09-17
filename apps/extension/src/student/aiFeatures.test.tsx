@@ -100,6 +100,9 @@ describe('Ask this class', () => {
     expect(ai.ask).toHaveBeenCalledWith(expect.objectContaining({ token: 'signed-by-relay', role: 'student' }), 'bio-cell-demo', 1, 'What does the mitochondrion do?');
     expect(container!.textContent).toContain('It releases usable energy for the cell.');
     expect(container!.textContent).toContain('Mitochondrion (Mitochondria and Energy)');
+    await act(async () => { [...container!.querySelectorAll('button')].find(button => button.textContent === 'Add as a private task')!.click(); });
+    expect(container!.textContent).toContain('Saved privately on this device');
+    expect(window.localStorage.getItem('accesslens.private-class-tasks.v1')).toContain('What does the mitochondrion do?');
   });
 
   it('shows a plain decline instead of a guess', async () => {
