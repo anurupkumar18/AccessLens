@@ -76,6 +76,12 @@ jobs:
             echo "section 'One-time setup: GitHub deploy role'."
             exit 1
           fi
+          # Without the client id CDK deploys the placeholder audience and every
+          # instructor's Google sign-in stops verifying (infra/lib/access-lens-authoring-stack.ts).
+          if [ -z "${{ vars.GOOGLE_CLIENT_ID }}" ]; then
+            echo "::error::GOOGLE_CLIENT_ID repository variable is not set (the OAuth web client id, docs/DEPLOY.md section 2)."
+            exit 1
+          fi
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -97,31 +103,28 @@ jobs:
 
       # From infra/, where cdk.json names the app; run from the repo root, the
       # CDK CLI finds no app to deploy.
+      # AccessLensAuthoring packages two built directories as S3 assets: the
+      # viewer (apps/viewer/dist) and the hosted instructor/student shell
+      # (dist-web, the extension built for /app/). Neither is committed, so
+      # synth fails with CannotFindAsset unless they are built first, with the
+      # endpoints of the stacks as they stand (the same mapping the extension
+      # build below uses, from this deploy's outputs).
+      - name: Build the viewer and the hosted shell
+        run: |
+          node infra/scripts/shell-env.mjs --live
+          npx vite build --config apps/viewer/vite.config.ts
+          npx vite build --base /app/ --outDir dist-web
+
       - name: Deploy the stacks
         run: |
           npm ci
-          npx cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json
+          npx cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json \
+            -c "googleClientId=${{ vars.GOOGLE_CLIENT_ID }}"
         working-directory: infra
 
       - name: Rebuild the extension against the deployed endpoints
         run: |
-          node -e '
-            const o = require("/tmp/outputs.json");
-            const find = (k) => Object.values(o).map(s => s[k]).find(Boolean) ?? "";
-            const lines = [
-              `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
-              `VITE_ACCESSLENS_API_URL=${find("ApiUrl")}`,
-              `VITE_GOOGLE_CLIENT_ID=${find("GoogleClientId")}`,
-              `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
-              `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl")}`,
-              `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,
-              `VITE_ACCESSLENS_RECAP_ENDPOINT=${find("RecapUrl")}`,
-              `VITE_ACCESSLENS_TRANSLATE_ENDPOINT=${find("TranslateSpeakUrl")}`,
-              `VITE_ACCESSLENS_COURSE_MEDIA_ENDPOINT=${find("CourseMediaUrl")}`,
-            ];
-            require("fs").writeFileSync(".env.local", lines.join("\n") + "\n");
-            console.log(lines.join("\n"));
-          '
+          node infra/scripts/shell-env.mjs /tmp/outputs.json
           npm run build
 
       - name: Package the extension for download
