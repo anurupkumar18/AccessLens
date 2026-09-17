@@ -159,6 +159,11 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
       .catch((error: unknown) => setPackError(`Could not load the lesson pack ${event.packId} v${event.packVersion}: ${error instanceof Error ? error.message : String(error)}`));
   }, [event, pack, localStudentPack, bundledPack, publishedPack, fetchPack]);
   useEffect(() => { loadPreferences().then(setPreferences); }, []);
+  // Each role has its own colours (style.css, :root[data-role]).
+  useEffect(() => {
+    document.documentElement.dataset.role = role;
+    return () => { delete document.documentElement.dataset.role; };
+  }, [role]);
 
   function updatePreferences(next: StudentPreferences): void {
     setPreferences(next);
@@ -171,14 +176,18 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
         <header className="masthead">
           <div className="topbar">
             <span className="mark" aria-hidden="true" />
-            <RoleNav role={role} onSelect={setRole} />
-            <ReadingFontToggle />
-            <ThemeToggle />
-            {fullTabUrl && (
+            {/* Only the side panel needs a way out to the full tab; the full tab
+                itself does not link to itself. */}
+            {extensionSidePanel && fullTabUrl && (
               <a className="full-tab-link" href={fullTabUrl} target="_blank" rel="noopener">
                 Open in a full tab
               </a>
             )}
+            <RoleNav role={role} onSelect={setRole} />
+            <div className="masthead-tools">
+              <ReadingFontToggle />
+              <ThemeToggle />
+            </div>
           </div>
           <Wordmark />
           <p className="tagline">Accessible, instructor-authorized lesson sharing</p>
@@ -188,7 +197,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
             <ViewTabs label="Instructor tools" view={instructorView} onChange={setInstructorView} />
             {/* Both views stay mounted: unmounting the live panel would end
                 screen sharing mid-class just to upload a file. */}
-            <div id="view-panel-live" role="tabpanel" aria-labelledby="view-tab-live" hidden={instructorView !== 'live'}>
+            <div id="view-panel-live" className="view-panel" role="tabpanel" aria-labelledby="view-tab-live" hidden={instructorView !== 'live'}>
               {!pack && (
                 <p className="pack-picker">
                   <label htmlFor="pack-choice">Lesson pack</label>
@@ -219,7 +228,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
               <CameraControl host={cameraHost} />
               <AuthoringPanel client={authoringClient} onPublishedPacks={receivePublishedPacks} onLocalPack={setLocalPack} />
             </div>
-            <div id="view-panel-materials" role="tabpanel" aria-labelledby="view-tab-materials" hidden={instructorView !== 'materials'}>
+            <div id="view-panel-materials" className="view-panel" role="tabpanel" aria-labelledby="view-tab-materials" hidden={instructorView !== 'materials'}>
               <InstructorMaterials />
             </div>
           </>

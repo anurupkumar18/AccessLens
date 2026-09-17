@@ -2346,3 +2346,25 @@ evidence.
 
 **Next agent needs to know:** hard-refresh both localhost tabs, start a fresh
 session with `cell-slide-01`, choose AR, and verify the rotatable cell model.
+
+### RL-116 — 2026-09-17 — Part 1 + Part 3 — Omar Rizwan
+
+**Landed:** a compact layout for the Chrome side panel and phones (under 640px),
+and a colour per role. The masthead becomes three short rows (brand with "Open in
+a full tab", a full-width Instructor/Student switch, the reading and theme
+switches); tab strips (instructor views, student surfaces, lesson modes) wrap
+into even rows via a 1px grid gap; the instructor's view panels lost the frame
+that had pushed content against and past their border. Colours are set on
+`<html data-role>`: the instructor keeps the neon yellow, the student view is
+orange `#e8834a` with dark ink (~6:1). Light fills take `--on-highlight` ink and
+warnings a fixed amber `--caution`, whatever the role. Kunj's second caption
+control is retitled "Captions in another language" so the two start buttons are
+not confused, and the orb content script no longer mounts on AccessLens's own
+page (`meta[name="accesslens-app"]`), where it covered End Session. Checked at
+320, 360, 400, 520 and 1180px in light, dark and dyslexia modes, in the built
+extension, and with the browser QA suite (24/24 against the deployed relay and
+study chat).
+**Threads touched:** none opened.
+**Next agent needs to know:** `dist/` was not rebuilt in this change. The
+slide-region outline and pointer stay yellow in both roles on purpose: they mark
+slide content, not interface chrome.

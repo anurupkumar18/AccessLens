@@ -57,6 +57,9 @@ async function readEndpoint(): Promise<string> {
 
 function start(): void {
   if (document.documentElement.hasAttribute(ALREADY_MOUNTED)) return;
+  // AccessLens's own pages already have these tools, and a floating orb there
+  // only covers the lesson controls (End Session sits in that corner).
+  if (document.querySelector('meta[name="accesslens-app"]')) return;
   document.documentElement.setAttribute(ALREADY_MOUNTED, '');
 
   const speaker = createSpeaker();
