@@ -135,6 +135,8 @@ jobs:
               `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
               `VITE_ACCESSLENS_API_URL=${find("ApiUrl") || process.env.VITE_ACCESSLENS_API_URL || ""}`,
               `VITE_GOOGLE_CLIENT_ID=${find("GoogleClientId") || process.env.VITE_GOOGLE_CLIENT_ID || ""}`,
+              `VITE_ACCESSLENS_AI_URL=${find("AiApiUrl")}`,
+              `VITE_ACCESSLENS_CHAT_URL=${find("StudyChatUrl")}`,
               `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
               `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl") || process.env.VITE_ACCESSLENS_ASSET_BASE_URL || ""}`,
               `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,
