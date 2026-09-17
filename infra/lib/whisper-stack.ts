@@ -6,8 +6,8 @@
  * hour whether or not anyone is teaching, so it must be possible to create it
  * for a rehearsal or demo and destroy it afterwards without touching the relay:
  *
- *   npx cdk deploy AccessLensWhisper    # about 10-15 minutes to InService
- *   npx cdk destroy AccessLensWhisper   # stops the hourly charge
+ *   npx cdk deploy -c withWhisper=true AccessLensWhisper    # about 10-15 minutes to InService
+ *   npx cdk destroy -c withWhisper=true AccessLensWhisper   # stops the hourly charge
  *
  * The AI gateway refers to the endpoint by its fixed name and answers
  * `whisper-unavailable` while it does not exist, so neither stack depends on

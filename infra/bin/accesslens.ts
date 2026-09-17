@@ -39,18 +39,21 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
 };
 
+// Created first so the relay below can read published packs from its distribution.
+const authoring = new AccessLensAuthoringStack(app, 'AccessLensAuthoring');
+
 new LiveSessionStack(app, 'AccessLensLiveSession', {
   env,
   description: 'AccessLens temporary live session service and WebSocket relay',
-  // The authoring distribution's URL, from .env.local (make deploy sources it),
-  // so the relay can read any published pack the way students do.
-  packBaseUrl: process.env.VITE_ACCESSLENS_ASSET_BASE_URL || undefined,
+  // Where published packs live, so the relay can read any of them the way
+  // students do. .env.local can override it; otherwise it is the authoring
+  // distribution itself, so a deploy that sets nothing (CI) still resolves
+  // packs instead of refusing every one that is not bundled.
+  packBaseUrl: process.env.VITE_ACCESSLENS_ASSET_BASE_URL || `https://${authoring.distribution.distributionDomainName}`,
   // Set when the team's Knowledge Base over the instructors' S3 uploads exists:
   // `cdk deploy -c studyChatKnowledgeBaseId=XXXXXXXXXX AccessLensLiveSession`.
   studyChatKnowledgeBaseId: app.node.tryGetContext('studyChatKnowledgeBaseId') || process.env.STUDY_CHAT_KNOWLEDGE_BASE_ID || undefined,
 });
-new AccessLensAuthoringStack(app, 'AccessLensAuthoring');
-
 // Captions, catch-up, and translation. Separate from the live plane so the
 // instructor-led product stays deployable without them.
 new AccessibilityServicesStack(app, 'AccessLensAccessibility', {
@@ -93,7 +96,11 @@ new OrbExplainStack(app, 'AccessLensOrbExplain', {
 });
 
 // Deployed only on request: a GPU endpoint that bills hourly (see whisper-stack.ts).
-new WhisperStack(app, 'AccessLensWhisper', {
-  env,
-  description: 'AccessLens Whisper speech recognition endpoint for live captions (destroy when not in use)',
-});
+// Behind a context flag so `cdk deploy --all`, which CI runs on every push,
+// never starts it: `npx cdk deploy -c withWhisper=true AccessLensWhisper`.
+if (app.node.tryGetContext('withWhisper') === 'true') {
+  new WhisperStack(app, 'AccessLensWhisper', {
+    env,
+    description: 'AccessLens Whisper speech recognition endpoint for live captions (destroy when not in use)',
+  });
+}

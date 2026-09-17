@@ -58,7 +58,7 @@ export class LibraryExtension extends Construct {
       code: lambda.DockerImageCode.fromImageAsset(props.root, {
         file: 'services/ingest/Dockerfile',
         platform: ecrAssets.Platform.LINUX_AMD64,
-        exclude: ['node_modules', '.worktrees', 'dist', 'cdk.out', '.git', 'apps/viewer/dist'],
+        exclude: ['node_modules', '.worktrees', '.claude', 'dist', 'cdk.out', 'infra/cdk.out', '.git', 'apps/viewer/dist'],
         cmd: ['library.handler'],
       }),
       architecture: lambda.Architecture.X86_64,
@@ -77,6 +77,8 @@ export class LibraryExtension extends Construct {
     this.retrieve = new nodejs.NodejsFunction(this, 'RetrieveFunction', {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: `${props.root}/services/library/src/retrieveHandler.ts`,
+      projectRoot: props.root,
+      depsLockFilePath: `${props.root}/package-lock.json`,
       handler: 'handler',
       timeout: Duration.minutes(2),
       memorySize: 1024,

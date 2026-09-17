@@ -5,7 +5,9 @@ name: Deploy
 # never deploys something that did not pass.
 on:
   push:
-    branches: [accesslens-extension-ar-pivot, master]
+    # master only. Both lines used to deploy the same stacks, so a push to the
+    # integration line redeployed its older infra over master's.
+    branches: [master]
   workflow_dispatch:
     inputs:
       skip_checks:
@@ -46,6 +48,10 @@ jobs:
             [ -f "${dir}package.json" ] || continue
             npm ci --prefix "$dir"
           done
+      # The ingest acceptance tests render the checked-in deck with Poppler and
+      # LibreOffice, as in check.yml; without them make check fails and nothing
+      # on master ever deploys.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils libreoffice-impress
       - run: make check
 
   deploy:

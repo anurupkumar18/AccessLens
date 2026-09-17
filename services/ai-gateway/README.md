@@ -150,8 +150,8 @@ and destroy it afterwards; nothing else depends on it:
 
 ```sh
 cd infra
-npx cdk deploy AccessLensWhisper    # 10-15 minutes until the endpoint is InService
-npx cdk destroy AccessLensWhisper   # stops the charge
+npx cdk deploy -c withWhisper=true AccessLensWhisper    # 10-15 minutes until the endpoint is InService
+npx cdk destroy -c withWhisper=true AccessLensWhisper   # stops the charge
 ```
 
 The smoke test sends Polly speech to Whisper as one clip and skips that check

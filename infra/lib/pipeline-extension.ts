@@ -53,7 +53,7 @@ export class PipelineExtensionPoints extends Construct {
       code: lambda.DockerImageCode.fromImageAsset(props.root, {
         file: 'services/ingest/Dockerfile',
         platform: ecrAssets.Platform.LINUX_AMD64,
-        exclude: ['node_modules', '.worktrees', 'dist', 'cdk.out', '.git', 'apps/viewer/dist'],
+        exclude: ['node_modules', '.worktrees', '.claude', 'dist', 'cdk.out', 'infra/cdk.out', '.git', 'apps/viewer/dist'],
       }),
       architecture: lambda.Architecture.X86_64,
       memorySize: 3008,
@@ -119,6 +119,8 @@ export class PipelineExtensionPoints extends Construct {
     const fn = new nodejs.NodejsFunction(this, `${id}Function`, {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: `${props.root}/${entry}`,
+      projectRoot: props.root,
+      depsLockFilePath: `${props.root}/package-lock.json`,
       handler: 'handler',
       timeout: Duration.minutes(5),
       memorySize: 1024,

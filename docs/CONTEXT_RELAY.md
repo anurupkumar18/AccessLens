@@ -2013,3 +2013,26 @@ deployed and the Deploy workflow completes.
 **Next agent needs to know:** merge this P1 policy correction, rerun the
 single `AccessLensGitHubDeploy` stack, then rerun `deploy.yml`. The role must
 not be widened to arbitrary repositories or an unconditioned OIDC principal.
+
+### RL-091 — 2026-09-16 — cross-cutting — Claude (at Omar Rizwan's direction)
+
+**Landed:** the Deploy workflow can deploy master and only master. Two branches
+deployed the same stacks: at 19:10 local a push to `accesslens-extension-ar-pivot`
+redeployed its `AccessLensLiveSession` (relay only, no `PACK_BASE_URL`, no IVS, no
+AI or study chat functions) over master's, so every published pack such as
+`introduction-to-hnsw` was refused. Meanwhile master never deployed: the workflow's
+check job had no Poppler or LibreOffice, and from `infra/` the authoring stack
+resolved its paths from the working directory. Fixed: `deploy.yml` triggers on
+`master` only and installs Poppler and LibreOffice; the relay's `packBaseUrl` falls
+back to the authoring distribution (a cross-stack import) when `.env.local` sets
+none; the authoring stack finds the repository root from its own file, its
+Node.js functions bundle from that root, and its Docker assets skip
+`infra/cdk.out`; `AccessLensWhisper` is behind `-c withWhisper=true` so
+`cdk deploy --all` never starts the hourly GPU endpoint. `cdk ls` from `infra/`
+lists six stacks; the synthesized live-session template has four functions and
+imports the distribution domain for `PACK_BASE_URL`.
+**Threads touched:** T-49 cause found (two auto-deploying branches, see above);
+T-47 still OPEN until a master Deploy run completes.
+**Next agent needs to know:** deploy from master (push, or run the workflow). A push
+to the integration line no longer deploys. Whisper is deployed and destroyed only
+with the flag, as `services/ai-gateway/README.md` now shows.

@@ -12,6 +12,8 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ROUTES, type RouteSpec } from '../../services/shared/api';
 import { AgentsExtension } from './agents-extension';
 import { HarnessExtension } from './harness-extension';
@@ -21,7 +23,9 @@ import { PipelineExtensionPoints } from './pipeline-extension';
 import { StateMachinesExtension } from './state-machines-extension';
 import { VectorsExtension } from './vectors-extension';
 
-const ROOT = process.cwd();
+// The repository root, found from this file rather than the working directory:
+// CI runs cdk from infra/ and infra/scripts/deploy.sh runs it from the root.
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /**
  * Instructors sign in with Google (D12). API Gateway verifies each ID token
@@ -303,6 +307,9 @@ export class AccessLensAuthoringStack extends Stack {
     const fn = new nodejs.NodejsFunction(this, `${id}Function`, {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: `${ROOT}/services/api/${file}`,
+      // Bundled from the root workspace wherever cdk runs (CI runs it from infra/).
+      projectRoot: ROOT,
+      depsLockFilePath: `${ROOT}/package-lock.json`,
       handler: 'handler',
       timeout,
       memorySize: 512,
