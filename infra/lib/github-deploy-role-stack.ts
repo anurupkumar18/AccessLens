@@ -95,6 +95,9 @@ export class GitHubDeployRoleStack extends Stack {
           's3:PutObject',
           's3:DeleteObject',
           's3:ListBucket',
+          // The workflow resolves the published distribution by its public
+          // domain before invalidating stable installer and pack paths.
+          'cloudfront:ListDistributions',
           'cloudfront:CreateInvalidation',
         ],
         resources: ['*'],

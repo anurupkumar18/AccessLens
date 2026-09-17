@@ -2093,3 +2093,17 @@ existing `cloudfront:CreateInvalidation` permission.
 **Next agent needs to know:** verify the public ZIP's hash or its embedded
 authoring configuration after a deployment before telling an instructor to
 reload. The workflow artifact alone is not proof that CloudFront is current.
+
+### RL-096 — 2026-09-16 — deployment configuration — Codex
+
+**Landed:** the CloudFront invalidation workflow also needs the read-only
+`cloudfront:ListDistributions` action to resolve the distribution from its
+public domain before it can call `CreateInvalidation`. The deploy role already
+had the write action but the first automated run failed at that lookup after
+successfully publishing the ZIP and pack. The role remains scoped to this
+repository and is not granted broader identity or content access.
+**Threads touched:** T-47 remains OPEN until this role-policy update is
+deployed and a master Deploy run completes.
+**Next agent needs to know:** deploy `AccessLensGitHubDeploy` once from fresh
+human-provided workshop credentials, then rerun the master workflow and verify
+the public ZIP rather than trusting the workflow artifact alone.
