@@ -256,7 +256,7 @@ export function AuthoringPanel({
         </label>
         <button type="submit" disabled={!file}>Load local slide</button>
       </form>
-      {localImageUrl && <figure className="slide-figure"><div className="slide-frame"><img className="slide-image" src={localImageUrl} alt={title || file?.name || 'Selected local slide'} /></div><figcaption className="supporting-text">Keep this tab or window visible when you click Start so the local matcher can recognize the slide.</figcaption></figure>}
+      {localImageUrl && <figure className="slide-figure"><div className="slide-frame"><img className="slide-image" src={localImageUrl} alt={title || file?.name || 'Selected local slide'} /></div><figcaption className="supporting-text">Share the image-only tab for the cleanest local match: <a href={localImageUrl} target="_blank" rel="noopener">Open slide image in a tab</a>.</figcaption></figure>}
       {localReady && <p role="status">Local slide loaded. Start sharing this image or open Student mode and choose AR.</p>}
       {localError && <p role="alert">{localError}</p>}
     </section>;
