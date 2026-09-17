@@ -177,7 +177,7 @@ jobs:
             exit 1
           fi
           aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
-            --paths '/accesslens-extension.zip' '/index.html' '/packs/bio-cell-demo/*'
+            --paths '/accesslens-extension.zip' '/index.html' '/app/*' '/packs/bio-cell-demo/*'
 
       - name: Summarise what is live
         run: |
