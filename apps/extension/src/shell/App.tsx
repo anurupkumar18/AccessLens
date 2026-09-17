@@ -137,7 +137,14 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
   const requestedPack = useRef<string | null>(null);
   const bundledPack = event ? packChoices.find(c => c.pack.packId === event.packId && c.pack.version === event.packVersion)?.pack : undefined;
   const publishedPack = event && fetchedPack && fetchedPack.packId === event.packId && fetchedPack.version === event.packVersion ? fetchedPack : undefined;
-  const localStudentPack = event && localPack && localPack.packId === event.packId && localPack.version === event.packVersion ? localPack : undefined;
+  // A student tab is commonly opened before the instructor uploads the local
+  // slide. Its initial React state cannot see a later localStorage write, so
+  // re-read the device-local pack when matching a live event. This keeps a
+  // local preview out of the published `/packs/...` fetch path.
+  const latestLocalPack = event ? loadLatestLocalPack() : null;
+  const localStudentPack = event
+    ? [localPack, latestLocalPack].find(candidate => candidate?.packId === event.packId && candidate?.version === event.packVersion)
+    : undefined;
   const studentPack = pack ?? localStudentPack ?? bundledPack ?? publishedPack ?? choice.pack;
 
   useEffect(() => client.subscribe(setEvent), [client]);
@@ -224,7 +231,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
               <button type="button" aria-current={studentSurface === 'class'} onClick={() => setStudentSurface('class')}>Class library</button>
               <button type="button" aria-current={studentSurface === 'materials'} onClick={() => setStudentSurface('materials')}>Course materials</button>
             </nav>
-            {packError && <p role="alert" className="pack-error">{packError}</p>}
+            {packError && !localStudentPack && <p role="alert" className="pack-error">{packError}</p>}
             {/* The live lesson stays mounted so looking at another surface does
                 not drop the student out of the session. */}
             <div hidden={studentSurface !== 'live'}>

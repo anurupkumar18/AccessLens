@@ -16,6 +16,11 @@ biology deck, one instructor extension, two student extensions, a synchronized A
 cell model, and an AWS WebSocket relay. Production Canvas integration remains
 deferred and gated.
 
+The local AR work branch also contains an automatic, subject-neutral spatial
+slide renderer: uploaded slide regions become raised 3D tiles over the source
+image, with drag and keyboard rotation. Camera and WebXR remain optional, and
+the equivalent semantic slide controls remain available.
+
 Current sources of truth:
 
 - `docs/CONTEXT_RELAY.md` — live state, open threads, and the relay log
@@ -69,6 +74,12 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0079-layered-spatial-slide-renderer.md` (cross-cutting: the generic pack-driven AR view now uses a layered 3D slide board with raised regions, anchors, and connectors)
+- `episodic/0080-local-pack-late-tab-race.md` (cross-cutting: student tabs now re-read a newly uploaded same-origin local pack before attempting a remote fetch)
+- `episodic/0081-circular-spatial-markers.md` (cross-cutting: generic slide AR now uses spherical markers, halos, and depth tethers instead of square overlays)
+- `episodic/0082-independent-spatial-lesson-model.md` (cross-cutting: AR now uses an independent 3D lesson model instead of a slide background)
+- `episodic/0083-reviewed-cell-ar-renderer.md` (Part 3: the reviewed cell lesson uses the existing tested mitochondria-style 3D renderer)
+- `episodic/0084-cell-slide-01-ar-bridge.md` (Part 3: local/uploaded `cell-slide-01` now selects the mitochondria-style 3D renderer)
 - `episodic/0078-side-panel-capture-lifetime.md` (Part 2: side-panel capture must start from the persistent full-tab view)
 - `episodic/0077-published-pack-cors-local-dev.md` (cross-cutting: every published pack beyond the two bundled demo packs failed to load locally, self-inflicted by an earlier same-session `.env.local` change; root-caused to bypassing the vite `/packs` proxy, not a CloudFront bug; fixed and verified with a real 23-slide instructor deck; deployed extension unaffected)
 - `episodic/0076-local-dev-e2e-debugging.md` (cross-cutting: found and fixed a dead untracked dev server and a stale/missing `.env.local`/`vite.config.ts` local config against deployed AI/chat/course-media endpoints; verified relay, Ask-this-class, guardrail, Transcribe, and live multi-slide sync end to end on real Chrome; added `deck-preview.html` for local multi-slide rehearsal; opened T-52)

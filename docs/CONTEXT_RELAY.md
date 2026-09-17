@@ -2218,3 +2218,131 @@ remain active. T-34 / AL-001 remains open for physical capture evidence.
 
 **Next agent needs to know:** share a window or entire screen to include the
 cursor. A browser tab share can match the slide but cannot drive cursor focus.
+
+### RL-107 — 2026-09-17 — Part 3 layered spatial slide renderer — Codex
+
+**Landed:** the generic pack-driven AR renderer now presents each shared slide
+as a layered 3D board: the source image sits behind a framed stage, regions are
+raised translucent tiles, and each tile has a depth connector and spatial
+anchor. Drag, arrow-key rotation, reduced-motion behavior, synchronized region
+highlighting, and the equivalent semantic controls remain available. The
+renderer still does not require a camera or WebXR; immersive AR remains an
+optional enhancement.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence; no contract or privacy boundary changed.
+
+**Next agent needs to know:** test locally on the AR tab with the uploaded
+slide. The scene is intentionally subject-neutral: uploaded bounds determine
+placement, and the semantic text remains the source of instructional meaning.
+
+### RL-108 — 2026-09-17 — Part 3 local pack late-tab race — Codex
+
+**Landed:** student live-session matching now re-reads the latest same-origin
+local preview pack when a live event arrives. A student tab opened before the
+instructor uploads a slide therefore adopts the matching `local-*` pack instead
+of attempting a remote `/packs/local-*/1.json` fetch. A stale fetch error is
+hidden once the local pack matches.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence; published-pack fetching is unchanged.
+
+**Next agent needs to know:** refresh the student tab, join a newly started
+session, and confirm the incompatible/HTTP 502 message does not return.
+
+### RL-109 — 2026-09-17 — Part 3 circular spatial markers — Codex
+
+**Landed:** replaced the generic square region overlays with floating spherical
+markers, circular halos, and depth tethers. The visual treatment now follows
+the existing mitochondria/cell AR renderer: a movable 3D composition with
+rounded forms and active-region glow, while the uploaded slide remains the
+source-reference plane behind the markers.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence; no camera, WebXR, contract, or privacy behavior changed.
+
+**Next agent needs to know:** hard-refresh the student page after Vite reload,
+start a fresh local session, choose AR, and drag the circular scene to verify
+the depth and active-region highlight.
+
+### RL-110 — 2026-09-17 — Part 3 renderer regression rollback — Codex
+
+**Landed:** the experimental circular-marker renderer was rolled back after
+the local real-browser run stopped delivering a usable live asset to Focus,
+Read, and AR. The last working pack-driven renderer is restored while the
+local-pack/session fixes remain in place.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** verify the restored renderer first before making
+another visual AR change.
+
+### RL-111 — 2026-09-17 — Part 3 circular spatial markers — Codex
+
+**Landed:** changed only the working pack-driven AR renderer's visual layer.
+Region bounds now produce visible floating spheres, circular halos, and depth
+tethers over the shared slide. Capture, matching, Focus, Read, session
+transport, and the equivalent semantic controls are unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh the student page, start a fresh
+session, choose AR, and verify the circular markers rotate and highlight the
+current region.
+
+### RL-112 — 2026-09-17 — Part 3 independent spatial lesson model — Codex
+
+**Landed:** replaced the slide-background AR composition with an independent
+Three.js spatial lesson model: a translucent central core, orbiting region
+objects, visible halos, and depth tethers. Region bounds still determine the
+node set and live events still determine focus. The uploaded slide is no longer
+painted behind the 3D scene, and Focus/Read/capture behavior is unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh both localhost tabs, start a fresh
+session, choose AR, and verify the model rotates independently of the source
+slide while the active region glow follows instructor events.
+
+### RL-113 — 2026-09-17 — Part 3 standalone model rollback — Codex
+
+**Landed:** rolled back the standalone spatial-model rewrite after the local
+browser run stopped keeping the student experience usable. The last committed
+PackArView renderer is restored; session, matching, Focus, Read, and local-pack
+fixes remain unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh both tabs and verify the working
+baseline before attempting another AR visual redesign.
+
+### RL-114 — 2026-09-17 — Part 3 reviewed cell AR renderer — Codex
+
+**Landed:** the reviewed `bio-cell-demo` now selects the existing tested
+mitochondria-style `CellArView` for the student AR mode. Other packs continue
+using the pack-driven renderer. Capture, matching, Focus, Read, and session
+transport were not changed.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh the student tab, start a fresh cell
+lesson session, choose AR, and verify the rotatable cell model and semantic
+hotspot controls.
+
+### RL-115 — 2026-09-17 — Part 3 cell-slide-01 AR bridge — Codex
+
+**Landed:** the student AR selector now routes the reviewed `bio-cell-demo` and
+the local/uploaded `cell-slide-01` asset to the existing mitochondria-style
+`CellArView`. All other packs and slides retain `PackArView`; capture,
+matching, Focus, Read, and session transport are unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh both localhost tabs, start a fresh
+session with `cell-slide-01`, choose AR, and verify the rotatable cell model.
