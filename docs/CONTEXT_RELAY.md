@@ -1884,3 +1884,29 @@ message in the frozen protocol, a team decision).
 they drive the relay without the extension client, so they show the relay's
 own behaviour that the client now works around. Test the unpacked build, not
 only `npx vite`: three of these bugs existed only under the extension origin.
+
+### RL-083 — 2026-09-16 — cross-cutting — Claude (branch consolidation onto master, at Omar Rizwan's direction)
+
+**Landed:** every branch with unmerged work is merged into `master`:
+`codex/demo-proof-sprint-qa` (with `accesslens-extension-ar-pivot`),
+`codex/class-library-deletion-jobs` (with `course-library-assistant` and
+`student-course-experience`), `lane/screen-reader` (with `integ/ui-api` and
+`lane/window-stream`), the parts of `ui/blacksmith-revamp` not already here
+(the quality bench, RL-082), and `claude/accesslens-demo-proof-qa-31tqrj`
+(already integrated; recorded with `-s ours`). Where two lines contradicted each
+other the newer change was kept: Hear mode stays removed (RL-081), so the
+Review surface lost its Hear tab and the student settings lost the read-aloud
+voice and speed selects that only `AudioView` used; "Fix a wrong match" and
+"Point students at a region" stay removed (`lane/screen-reader`). Everything else is the
+union: screen analysis, captions (2000 characters with `lang`), pointer
+following, Find AR, Slides following, live video, the class library. Log entries
+renumbered RL-075..078, RL-079..081 and RL-082; threads T-48, T-49 and T-50.
+`make check` passes except the three `[slow]` ingest tests that need Poppler and
+LibreOffice locally.
+**Threads touched:** T-48, T-49, T-50 renumbered in (see above); none opened.
+**Next agent needs to know:** `codex/live-workspace-foundation` (three commits,
+2026-08-28, the superseded Evidence Engine prototype) was deliberately not
+merged. `scripts/qa/live-bench.cjs` and `extension-load.cjs` still drive the
+removed "Indicate region" and "Apply correction" forms, so those steps fail
+until the bench is pointed at pointer following or Slides following instead.
+`ScreenAnalysisView` still has a `hear` branch that nothing selects.
