@@ -168,7 +168,11 @@ gh api repos/anurupkumar18/Mind-Machine -q .permissions.admin   # must print tru
 
 # 1. Build every Lambda bundle. CDK validates all asset paths at synth time,
 #    even when deploying a single stack, and services/*/dist is not committed.
-for dir in services/*/; do npm ci --prefix "$dir" && npm run build --prefix "$dir"; done
+for dir in services/*/; do
+  [ -f "${dir}package.json" ] || continue
+  npm ci --prefix "$dir"
+  npm run build --prefix "$dir"
+done
 
 # 2. Reuse the account's GitHub OIDC provider if one exists; an account may
 #    hold only one per issuer, and creating a second fails EntityAlreadyExists.
