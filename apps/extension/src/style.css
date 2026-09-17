@@ -705,6 +705,9 @@ input[type='range'] { accent-color: var(--ink); }
 .read-regions li { margin: .6rem 0; }
 .read-regions h5 { margin: 0 0 .15rem; font-size: 1em; }
 .read-regions p { margin: 0 0 .25rem; }
+.read-slide--current { border-left: 3px solid var(--accent); padding-left: .75rem; }
+.read-here { font-size: .8em; font-weight: normal; color: var(--muted); }
+.read-regions li[aria-current="true"] { outline: 2px solid var(--accent); outline-offset: 4px; }
 
 .active-concept {
   display: flex;

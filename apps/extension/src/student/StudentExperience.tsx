@@ -74,8 +74,8 @@ interface Props {
 }
 
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
-  { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
+  { id: 'focus', label: 'Focus' },
   // HIDDEN FOR DEMO 2026-09-17: Reading spacing (dyslexic mode). Restore this
   // line to bring the tab back; DyslexicTextView and its render path (below,
   // `activeMode === 'dyslexic'`) are untouched.
@@ -204,7 +204,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
 
   const modes = modesFor(pack);
   // A saved preference can name a mode this pack does not offer.
-  const activeMode = modes.some((mode) => mode.id === preferences.mode) ? preferences.mode : 'focus';
+  const activeMode = modes.some((mode) => mode.id === preferences.mode) ? preferences.mode : 'structured-text';
   const panelId = `student-panel-${activeMode}`;
 
   return (
@@ -280,7 +280,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       )}
 
       <p id="mode-help" className="supporting-text">
-        Screen readers read every description here. Focus announces the slide and region the instructor is on; Read holds the whole lesson.
+        Read opens first: the whole lesson as text, with the instructor's current slide marked so a screen reader can jump to it. Focus shows only where the instructor is.
       </p>
       <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson" aria-describedby="mode-help">
         {modes.map((mode, index) => (
@@ -303,7 +303,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       <div className="student-content" id={panelId} role="tabpanel" aria-labelledby={`mode-tab-${activeMode}`} tabIndex={0}>
         {live.analysis && activeMode !== 'ar' ? <ScreenAnalysisView analysis={live.analysis} mode={activeMode === 'structured-text' ? 'read' : activeMode} /> : null}
         {!live.analysis && activeMode === 'focus' ? <FocusView pack={pack} assetId={live.assetId} regionId={live.regionId} pointer={live.pointer} /> : null}
-        {!live.analysis && activeMode === 'structured-text' ? <StructuredTextView pack={pack} /> : null}
+        {!live.analysis && activeMode === 'structured-text' ? <StructuredTextView pack={pack} assetId={live.assetId} regionId={live.regionId} /> : null}
         {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>

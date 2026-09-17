@@ -28,7 +28,7 @@ export type StudentPreferences = z.infer<typeof StudentPreferencesSchema>;
 
 export const defaultPreferences: StudentPreferences = {
   schemaVersion: '1.0',
-  mode: 'focus',
+  mode: 'structured-text',
   textScale: 1,
   fontFamily: 'system',
   lineSpacing: 'comfortable',

@@ -68,10 +68,12 @@ describe('StudentExperience', () => {
     return { get preferences() { return state.preferences; }, rerender };
   }
 
-  it('follows an instructor event and renders Focus mode first', () => {
+  it('opens in Read mode with the whole lesson and the instructor\'s slide marked', () => {
     renderExperience();
     expect(container?.textContent).toContain('mitochondrion: The mitochondrion releases usable energy for the cell.');
-    expect(container?.textContent).toContain('Focus view');
+    expect(container!.querySelector('.read-view')).not.toBeNull();
+    expect(container!.querySelector(`article#read-${validPack.assets[0].assetId}`)?.getAttribute('aria-current')).toBe('true');
+    expect(container!.querySelector<HTMLAnchorElement>('.read-view .skip-link')?.getAttribute('href')).toBe(`#read-${validPack.assets[0].assetId}`);
   });
 
 
@@ -108,7 +110,7 @@ describe('StudentExperience', () => {
     renderExperience(validEvent, validPack);
     const tabs = Array.from(container!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
     // Reading spacing hidden for the 2026-09-17 demo (see allModes in StudentExperience.tsx); restore 'Reading spacing' here when it comes back.
-    expect(tabs).toEqual(['Focus', 'Read', 'AR']);
+    expect(tabs).toEqual(['Read', 'Focus', 'AR']);
     expect(container!.querySelector('#mode-tab-ar')).not.toBeNull();
   });
 
@@ -150,10 +152,10 @@ describe('StudentExperience', () => {
 
   it('supports arrow-key movement between mode tabs', async () => {
     const harness = renderExperience();
-    const focusTab = container!.querySelector('#mode-tab-focus') as HTMLButtonElement;
-    await act(async () => focusTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
-    expect(harness.preferences.mode).toBe('structured-text');
-    expect(container?.textContent).toContain('Structured text');
+    const readTab = container!.querySelector('#mode-tab-structured-text') as HTMLButtonElement;
+    await act(async () => readTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
+    expect(harness.preferences.mode).toBe('focus');
+    expect(container?.textContent).toContain('Focus view');
   });
 
   it('updates local reading controls through their native keyboard-accessible inputs', async () => {

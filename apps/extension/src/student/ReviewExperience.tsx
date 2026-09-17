@@ -66,7 +66,7 @@ export function ReviewExperience({ pack, preferences }: Props): React.ReactEleme
   const bookmarked = bookmarks.includes(concept.id);
   const markedExplored = explored.includes(concept.id);
   const availableModes: Array<{ id: ReviewMode; label: string }> = [
-    { id: 'focus', label: 'Focus' }, { id: 'read', label: 'Read' },
+    { id: 'read', label: 'Read' }, { id: 'focus', label: 'Focus' },
     ...(concept.hasAr ? [{ id: 'ar' as const, label: 'AR' }] : []),
   ];
   const activeMode = availableModes.some((candidate) => candidate.id === mode) ? mode : 'read';

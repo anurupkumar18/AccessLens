@@ -14,7 +14,7 @@ describe('StudentPreferencesSchema', () => {
 
   it('fills safe reading-control defaults for an existing stored preference', () => {
     const legacyPreference = {
-      schemaVersion: '1.0', mode: 'focus', textScale: 1,
+      schemaVersion: '1.0', mode: 'structured-text', textScale: 1,
       reducedMotion: false, captionsEnabled: true,
     };
     expect(StudentPreferencesSchema.parse(legacyPreference)).toEqual(defaultPreferences);
