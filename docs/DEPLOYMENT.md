@@ -198,7 +198,7 @@ gh run watch --repo anurupkumar18/Mind-Machine \
 
 **Done when:** the run is green, its summary lists `WebSocketUrl`,
 `OrbExplainUrl`, `CaptionsUrl`, `RecapUrl`, `TranslateSpeakUrl`,
-`MediaAccessUrl` and `DistributionUrl`, and the `accesslens-extension` artifact
+`CourseMediaUrl` and `DistributionUrl`, and the `accesslens-extension` artifact
 is attached. Every later push to `accesslens-extension-ar-pivot` deploys on its
 own.
 

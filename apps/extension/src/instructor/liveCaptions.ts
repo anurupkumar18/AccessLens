@@ -11,7 +11,7 @@
  * after the one spoken after it is worse than one that arrives late.
  */
 import { callService, ServiceUnavailable } from '../accessibility/endpoints';
-import { toPcm16Base64 } from '../mediaPrep/audio';
+import { toPcm16Base64 } from '../sources/audio/pcm';
 import { browserMicrophone, type MicrophoneHost, type MicrophoneStream } from '../sources/audio/microphone';
 import { UtteranceSegmenter } from '../sources/audio/segmenter';
 
