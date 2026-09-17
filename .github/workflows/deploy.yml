@@ -38,8 +38,14 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      # Every service is its own package with its own lockfile, as in check.yml.
-      - run: for dir in services/*/; do npm ci --prefix "$dir"; done
+      # Only service packages have lockfiles. services/api is bundled by CDK
+      # from the root workspace, so attempting npm ci there fails before the
+      # deployment can reach its OIDC role.
+      - run: |
+          for dir in services/*/; do
+            [ -f "${dir}package.json" ] || continue
+            npm ci --prefix "$dir"
+          done
       - run: make check
 
   deploy:
@@ -78,7 +84,9 @@ jobs:
         run: |
           npm ci
           for dir in services/*/; do
-            npm ci --prefix "$dir" && npm run build --prefix "$dir"
+            [ -f "${dir}package.json" ] || continue
+            npm ci --prefix "$dir"
+            npm run build --prefix "$dir"
           done
 
       # From infra/, where cdk.json names the app; run from the repo root, the

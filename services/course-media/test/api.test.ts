@@ -31,7 +31,7 @@ vi.mock('../src/store.js', async importOriginal => {
   };
 });
 
-import { handler } from '../src/api.js';
+import { contentTypeFor, handler } from '../src/api.js';
 
 const call = async (body: unknown) => {
   const result = await handler({ requestContext: { http: { method: 'POST' } }, body: JSON.stringify(body) });
@@ -93,5 +93,14 @@ describe('course media API', () => {
     expect((await call({ action: 'delete', classCode: made.classCode, itemId: up.body.itemId })).status).toBe(403);
     expect((await call({ action: 'delete', classCode: made.classCode, instructorKey: made.instructorKey, itemId: up.body.itemId })).status).toBe(200);
     expect(store.items.size).toBe(0);
+  });
+});
+
+describe('contentTypeFor', () => {
+  it('gives caption tracks and media the types browsers require', () => {
+    expect(contentTypeFor('derived/X/transcribe/accesslens-X.vtt')).toBe('text/vtt');
+    expect(contentTypeFor('uploads/X/Y/Podcast.MP3')).toBe('audio/mpeg');
+    expect(contentTypeFor('derived/X/pages/0001.jpg')).toBe('image/jpeg');
+    expect(contentTypeFor('derived/X/manifest.json')).toBeUndefined();
   });
 });

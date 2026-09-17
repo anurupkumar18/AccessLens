@@ -168,7 +168,11 @@ gh api repos/anurupkumar18/Mind-Machine -q .permissions.admin   # must print tru
 
 # 1. Build every Lambda bundle. CDK validates all asset paths at synth time,
 #    even when deploying a single stack, and services/*/dist is not committed.
-for dir in services/*/; do npm ci --prefix "$dir" && npm run build --prefix "$dir"; done
+for dir in services/*/; do
+  [ -f "${dir}package.json" ] || continue
+  npm ci --prefix "$dir"
+  npm run build --prefix "$dir"
+done
 
 # 2. Reuse the account's GitHub OIDC provider if one exists; an account may
 #    hold only one per issuer, and creating a second fails EntityAlreadyExists.
@@ -216,4 +220,6 @@ If it fails:
 The trust policy is scoped to the repository but open on ref, because every
 agent works on its own branch and pinning to `main` would mean nothing deploys
 until the final merge — exactly when nobody wants to discover the deploy is
-broken. **Narrow the ref condition before this outlives the event.**
+broken. It accepts both GitHub's original `repo:owner/repo:*` subject and its
+repository-ID subject template, while keeping the owner and repository names
+fixed. **Narrow the ref condition before this outlives the event.**

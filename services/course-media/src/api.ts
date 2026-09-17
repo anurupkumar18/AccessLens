@@ -66,7 +66,25 @@ const publicItem = (item: ItemRecord) => ({
   createdAt: item.createdAt,
 });
 
-const sign = (key: string) => getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: VIEW_URL_SECONDS });
+/**
+ * Uploads arrive without a Content-Type and Transcribe writes captions as
+ * binary/octet-stream. Chrome sniffs past that; other browsers refuse a
+ * caption track that is not text/vtt. So the type is set on the signed URL.
+ */
+const CONTENT_TYPES: Record<string, string> = {
+  vtt: 'text/vtt', jpg: 'image/jpeg', mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm',
+  mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', flac: 'audio/flac',
+};
+
+export function contentTypeFor(key: string): string | undefined {
+  return CONTENT_TYPES[key.split('.').pop()?.toLowerCase() ?? ''];
+}
+
+const sign = (key: string) => getSignedUrl(
+  s3,
+  new GetObjectCommand({ Bucket: BUCKET, Key: key, ResponseContentType: contentTypeFor(key) }),
+  { expiresIn: VIEW_URL_SECONDS },
+);
 
 async function signManifest(manifest: Manifest): Promise<Record<string, string>> {
   const wanted = new Set<string>();
