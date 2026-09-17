@@ -49,3 +49,33 @@ uploaded slides and does not wait for instructor approval in this MVP. The
 automatic local path uses neutral spatial area labels rather than claiming
 semantic facts the system has not established. Cursor-driven focus still
 requires a window or screen share because browser tab capture omits the cursor.
+
+## Goal
+
+Keep browser capture alive while the instructor switches from the AccessLens
+side panel to the slide tab, and make local slide AR testable in a second tab.
+
+## Changed files
+
+- `apps/extension/src/instructor/InstructorPanel.tsx`
+- `apps/extension/src/shell/App.tsx`
+- `apps/extension/src/shared/localPack.ts`
+
+## Validation evidence
+
+Focused instructor, shell, media, AR, and student tests pass. Production build
+and relay validation pass. Physical Chrome capture remains open follow-up QA.
+
+## Blocker
+
+No implementation blocker. Physical Chrome capture and cursor-following smoke
+testing remain open.
+
+## Owner
+
+Codex / Part 2 capture and Part 3 local AR.
+
+## Next action
+
+Run the full-tab instructor flow, share a window or screen, and verify the
+student AR region changes on a real browser.
