@@ -220,4 +220,6 @@ If it fails:
 The trust policy is scoped to the repository but open on ref, because every
 agent works on its own branch and pinning to `main` would mean nothing deploys
 until the final merge — exactly when nobody wants to discover the deploy is
-broken. **Narrow the ref condition before this outlives the event.**
+broken. It accepts both GitHub's original `repo:owner/repo:*` subject and its
+repository-ID subject template, while keeping the owner and repository names
+fixed. **Narrow the ref condition before this outlives the event.**
