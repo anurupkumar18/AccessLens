@@ -269,7 +269,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
-            <PackArView asset={currentAsset} regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            <PackArView packId={pack.packId} asset={currentAsset} regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
           </Suspense>
         ) : null}
       </div>

@@ -355,18 +355,34 @@ button {
   cursor: pointer;
   transition: background-color .12s ease, color .12s ease, border-color .12s ease;
 }
+/* The side-panel capture handoff is an anchor, but it should retain the same
+   explicit-action affordance as the Start button. */
+a.button {
+  display: inline-block;
+  font: 500 .82rem/1 var(--sans);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .95rem 1.5rem;
+  margin: .3rem .45rem .3rem 0;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
 button:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
 button:disabled { cursor: not-allowed; opacity: .45; }
 
 /* The accent pill: yellow fill, ink outline. Hover inverts it to ink with
    yellow type, the same contrast pair reversed. */
 button.primary,
+.button.primary,
 .join-form button {
   background: var(--accent);
   border-color: var(--primary-border);
   color: var(--on-accent);
 }
 button.primary:hover:not(:disabled),
+.button.primary:hover,
 .join-form button:hover:not(:disabled) { background: #202020; border-color: var(--primary-border); color: var(--accent); }
 button.quiet { border-color: transparent; color: var(--muted); }
 button.quiet:hover:not(:disabled) { background: transparent; color: var(--ink); border-color: var(--ink); }
@@ -382,6 +398,7 @@ button.stop:hover:not(:disabled) { background: var(--warn); border-color: var(--
 [role='group'][aria-label='Capture controls'] { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.25rem; }
 [role='group'][aria-label='Capture controls'] button { margin: 0; }
 [role='group'][aria-label='Capture controls'] button.primary { flex: 1 1 auto; }
+[role='group'][aria-label='Capture controls'] .button.primary { flex: 1 1 auto; }
 
 /* ---------- Status ---------------------------------------------------- */
 

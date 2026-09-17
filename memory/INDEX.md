@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0078-side-panel-capture-lifetime.md` (Part 2: side-panel capture must start from the persistent full-tab view)
 - `episodic/0077-published-pack-cors-local-dev.md` (cross-cutting: every published pack beyond the two bundled demo packs failed to load locally, self-inflicted by an earlier same-session `.env.local` change; root-caused to bypassing the vite `/packs` proxy, not a CloudFront bug; fixed and verified with a real 23-slide instructor deck; deployed extension unaffected)
 - `episodic/0076-local-dev-e2e-debugging.md` (cross-cutting: found and fixed a dead untracked dev server and a stale/missing `.env.local`/`vite.config.ts` local config against deployed AI/chat/course-media endpoints; verified relay, Ask-this-class, guardrail, Transcribe, and live multi-slide sync end to end on real Chrome; added `deck-preview.html` for local multi-slide rehearsal; opened T-52)
 - `episodic/0075-durable-class-library-deletion-jobs.md` (Part 6: archive-first durable purge jobs; feature gate and real-course activation remain off)

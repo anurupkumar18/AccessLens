@@ -2145,3 +2145,76 @@ behavior is unchanged.
 
 **Next agent needs to know:** local preview accepts slide images, not PPTX/PDF
 parsing. Use an exported slide image for local matching and AR.
+
+### RL-102 — 2026-09-17 — Part 2 capture lifetime — Codex
+
+**Landed:** the extension side panel no longer starts browser capture directly.
+When it detects the side-panel context, it offers the persistent full-tab
+instructor view instead. This prevents choosing a slide tab from unloading the
+capture-owning React document and releasing the stream. The full tab keeps the
+existing explicit Start and browser-permission flow; its URL is marked with
+`surface=full`.
+
+**Threads touched:** T-34 / AL-001 physical capture matrix remains IN PROGRESS.
+
+**Next agent needs to know:** this is a lifecycle workaround, not physical
+Chrome evidence. Test the unpacked extension by opening the full tab first,
+then sharing the image or deck tab and confirming the session survives tab
+switches.
+
+### RL-103 — 2026-09-17 — Part 2 local recognition — Codex
+
+**Landed:** local image-pack fingerprints now use the same centred 16:9 crop as
+the live tab sampler. This removes browser/image-tab letterboxing as a source
+of false `source.unmatched` states while keeping the existing reviewed-pack
+matcher and thresholds unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for physical Chrome evidence.
+
+**Next agent needs to know:** reload the local slide pack after this code change,
+then start a fresh share; an already-created local pack retains its old
+fingerprint.
+
+### RL-104 — 2026-09-17 — Part 3 local student handoff — Codex
+
+**Landed:** localhost local preview packs now persist their pack JSON and image
+data URL in same-origin browser storage. A student tab can therefore restore
+the same local pack named by the session instead of fetching a nonexistent
+`/packs/local-*/1.json` resource. The published/authenticated pack path is
+unchanged.
+
+**Threads touched:** no contract or privacy thread; T-34 / AL-001 remains open
+for real-browser capture evidence.
+
+**Next agent needs to know:** stop the old session, reload the local slide once,
+then start a new session so both tabs pick up the persisted local pack.
+
+### RL-105 — 2026-09-17 — Part 3 local matching follow-up — Codex
+
+**Landed:** the student shell now uses a persisted local pack only when its
+pack ID/version matches the live session, and it no longer tries the remote
+`/packs` fetch for that local case. Local preview recognition also uses the
+reviewed capture tolerance (26 bits), while the same no-invention unmatched
+state remains in force.
+
+**Threads touched:** no new thread; T-34 / AL-001 remains open for physical
+Chrome evidence.
+
+**Next agent needs to know:** hard-refresh both tabs, load the image again,
+start a new instructor session, and join with its new code.
+
+### RL-106 — 2026-09-17 — Part 3 automatic spatial AR — Codex
+
+**Landed:** product direction was clarified to make spatial AR automatic for
+uploaded slides without an instructor approval step in this MVP. The renderer
+now places the slide image behind spatial region cards derived from each asset's
+geometry, and the existing semantic region events focus the card under the
+instructor cursor. Local uploaded images receive deterministic neutral grid
+areas so the path works without inventing subject-matter claims.
+
+**Threads touched:** this supersedes the current AR review-gate wording for
+this MVP path; the charter's no-invention and equivalent-access requirements
+remain active. T-34 / AL-001 remains open for physical capture evidence.
+
+**Next agent needs to know:** share a window or entire screen to include the
+cursor. A browser tab share can match the slide but cannot drive cursor focus.

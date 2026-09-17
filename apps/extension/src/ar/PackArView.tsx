@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { AccessPack } from '../shared/contracts';
+import { slideImageUrl } from '../shared/packMedia';
 
 type Asset = AccessPack['assets'][number];
 type Region = Asset['regions'][number];
 
 interface Props {
+  packId: string;
   asset?: Asset;
   regionId?: string;
   hotspotId?: string;
@@ -18,6 +20,7 @@ interface ArItem {
   label: string;
   description: string;
   nodeName?: string;
+  bounds: Region['bounds'];
 }
 
 interface XrSystemLike {
@@ -35,6 +38,7 @@ function itemsFor(asset: Asset): ArItem[] {
       label: hotspot?.label ?? region.label ?? region.regionId,
       description: region.shortDescription,
       nodeName: hotspot?.nodeName,
+      bounds: region.bounds,
     };
   });
 }
@@ -44,7 +48,7 @@ function itemsFor(asset: Asset): ArItem[] {
  * the source of truth, so a new shared slide changes the scene without a new
  * biology-specific renderer or an invented description.
  */
-export function PackArView({ asset, regionId, hotspotId, reducedMotion }: Props): React.ReactElement {
+export function PackArView({ packId, asset, regionId, hotspotId, reducedMotion }: Props): React.ReactElement {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const groupRef = useRef<THREE.Group | null>(null);
@@ -53,6 +57,7 @@ export function PackArView({ asset, regionId, hotspotId, reducedMotion }: Props)
   const [arAvailability, setArAvailability] = useState<'checking' | 'supported' | 'unavailable'>('checking');
   const [localRegion, setLocalRegion] = useState(regionId);
   const items = useMemo(() => asset ? itemsFor(asset) : [], [asset]);
+  const slideUrl = asset ? slideImageUrl({ packId }, asset) : null;
   const syncedItem = items.find(item => item.id === regionId || item.hotspotId === hotspotId);
   const activeId = localRegion && items.some(item => item.id === localRegion)
     ? localRegion
@@ -101,15 +106,26 @@ export function PackArView({ asset, regionId, hotspotId, reducedMotion }: Props)
       const group = new THREE.Group();
       groupRef.current = group;
       scene.add(group);
-      const columns = Math.max(1, Math.ceil(Math.sqrt(items.length)));
+      let slideTexture: THREE.Texture | null = null;
+      if (slideUrl) {
+        slideTexture = new THREE.TextureLoader().load(slideUrl);
+        slideTexture.colorSpace = THREE.SRGBColorSpace;
+        const slide = new THREE.Mesh(
+          new THREE.PlaneGeometry(4, 2.25),
+          new THREE.MeshBasicMaterial({ map: slideTexture, transparent: true, opacity: 0.92 }),
+        );
+        slide.position.z = -0.3;
+        slide.name = 'shared-slide';
+        group.add(slide);
+      }
       items.forEach((item, index) => {
-        const column = index % columns;
-        const row = Math.floor(index / columns);
-        const x = (column - (columns - 1) / 2) * 1.55;
-        const y = ((Math.ceil(items.length / columns) - 1) / 2 - row) * 1.35;
+        const x = (item.bounds.x + item.bounds.width / 2 - 0.5) * 4;
+        const y = (0.5 - item.bounds.y - item.bounds.height / 2) * 2.25;
+        const width = Math.max(item.bounds.width * 4 - 0.06, 0.24);
+        const height = Math.max(item.bounds.height * 2.25 - 0.06, 0.2);
         const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(1.05, 0.78, 0.18),
-          new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL((index / Math.max(items.length, 1)) * 0.72, 0.62, 0.56), roughness: 0.48 }),
+          new THREE.BoxGeometry(width, height, 0.12),
+          new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL((index / Math.max(items.length, 1)) * 0.72, 0.62, 0.56), roughness: 0.48, transparent: true, opacity: 0.38 }),
         );
         mesh.name = item.nodeName ?? item.id;
         mesh.position.set(x, y, 0);
@@ -150,12 +166,13 @@ export function PackArView({ asset, regionId, hotspotId, reducedMotion }: Props)
         renderer?.domElement.removeEventListener('pointerdown', pointerDown); renderer?.domElement.removeEventListener('pointermove', pointerMove);
         renderer?.domElement.removeEventListener('pointerup', pointerUp); renderer?.domElement.removeEventListener('pointerleave', pointerUp); renderer?.domElement.removeEventListener('keydown', keyDown);
         scene.traverse(object => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach(material => material.dispose()); } });
+        slideTexture?.dispose();
         renderer?.dispose(); renderer?.domElement.remove(); rendererRef.current = null; groupRef.current = null; meshes.clear();
       };
     } catch {
       renderer?.dispose(); setWebglUnavailable(true);
     }
-  }, [asset, items, reducedMotion]);
+  }, [asset, items, reducedMotion, slideUrl]);
 
   useEffect(() => {
     meshesRef.current.forEach((mesh, id) => {

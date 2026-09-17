@@ -27,6 +27,8 @@ interface Props {
   slides?: SlidesSource;
   /** Publishes live video of the shared tab or window; defaults to Amazon IVS Real-Time. */
   publisher?: StreamPublisher;
+  /** When supplied, capture must be started from this persistent full-tab view. */
+  fullTabUrl?: string;
 }
 
 // Constructing the publisher loads nothing and connects to nothing; video
@@ -94,7 +96,7 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids, analyzer, ai = defaultAiClient, captionDeps, microphone, transcribe, slides, publisher = defaultPublisher }: Props): React.ReactElement {
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, analyzer, ai = defaultAiClient, captionDeps, microphone, transcribe, slides, publisher = defaultPublisher, fullTabUrl }: Props): React.ReactElement {
   const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, analyzer, slides, publisher }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [captionText, setCaptionText] = useState('');
@@ -168,7 +170,9 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
 
       <div role="group" aria-label="Capture controls">
         {state.phase === 'idle' && slides && <button type="button" className="primary" onClick={() => { void controller.followSlides(); }}>Follow Google Slides</button>}
-        {state.phase === 'idle' && <button type="button" className={slides ? undefined : 'primary'} onClick={() => { void controller.start(); }}>{slides ? 'Share a window instead' : 'Start'}</button>}
+        {state.phase === 'idle' && fullTabUrl
+          ? <a className={slides ? 'full-tab-link' : 'button primary'} href={fullTabUrl} target="_blank" rel="noopener">Open in a full tab to share</a>
+          : state.phase === 'idle' && <button type="button" className={slides ? undefined : 'primary'} onClick={() => { void controller.start(); }}>{slides ? 'Share a window instead' : 'Start'}</button>}
         {state.phase === 'sharing' && <button type="button" onClick={() => guarded(() => controller.pause())}>Pause</button>}
         {state.phase === 'paused' && <button type="button" className="primary" onClick={() => guarded(() => controller.resume())}>Resume</button>}
         {active && <button type="button" className="stop" onClick={() => guarded(() => controller.stop())}>Stop</button>}
@@ -176,6 +180,11 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
           <button type="button" className="quiet" onClick={() => guarded(() => controller.endSession())}>End Session</button>
         )}
       </div>
+      {state.phase === 'idle' && fullTabUrl && (
+        <p className="caption-option muted" role="note">
+          This side panel closes when Chrome switches to the tab you share. Open the instructor in a full tab first so sharing stays active.
+        </p>
+      )}
 
       {state.sessionId && state.phase !== 'closed' && (state.surface === 'slides' || state.surface === 'browser' ? (
         // Neither sees the mouse: Slides following reads only the tab's URL, and
