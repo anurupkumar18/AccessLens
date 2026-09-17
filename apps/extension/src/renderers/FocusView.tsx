@@ -23,7 +23,13 @@ export function FocusView({ pack, assetId, regionId, pointer }: Props): React.Re
   // No fallback to assets[0]: an assetId that names nothing in the pack means
   // recognition has not confirmed a slide yet, not that the first slide is showing.
   const asset = pack.assets.find((candidate) => candidate.assetId === assetId);
-  if (!asset) return <p role="status">Waiting for a reviewed slide.</p>;
+  if (!asset) {
+    return (
+      <p role="status">
+        This slide has not been reviewed yet, so Focus has no extra guidance for it. If your instructor turned on live video, check it above for the raw view.
+      </p>
+    );
+  }
 
   const imageUrl = slideImageUrl(pack, asset);
   // Only a region the instructor pointed at is outlined. Moving to a slide
