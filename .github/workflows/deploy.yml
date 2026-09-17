@@ -166,15 +166,14 @@ jobs:
           aws s3 sync packages/access-packs/bio-cell-demo "s3://$BUCKET/packs/bio-cell-demo" --delete
           aws s3 cp docs/install.html "s3://$BUCKET/index.html" || true
 
-          DOMAIN=$(node -e '
+          # Read from the stack output: the deploy role can create invalidations
+          # but is not allowed cloudfront:ListDistributions.
+          DISTRIBUTION_ID=$(node -e '
             const o = require("/tmp/outputs.json");
-            const url = Object.values(o).map(s => s.DistributionUrl).find(Boolean) ?? "";
-            console.log(url ? new URL(url).hostname : "");
+            console.log(Object.values(o).map(s => s.DistributionId).find(Boolean) ?? "");
           ')
-          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
-            --query "DistributionList.Items[?DomainName=='${DOMAIN}'].Id | [0]" --output text)
-          if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" = "None" ]; then
-            echo "::error::Could not resolve the CloudFront distribution for ${DOMAIN}."
+          if [ -z "$DISTRIBUTION_ID" ]; then
+            echo "::error::AccessLensDistribution has no DistributionId output."
             exit 1
           fi
           aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
