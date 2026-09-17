@@ -73,7 +73,7 @@ jobs:
 
       # `cdk deploy --all` packages every Lambda from services/*/dist, which is
       # not committed. Building only some of them fails synth for the
-      # accessibility stack (captions, recap, translate-speak, media-access).
+      # accessibility stack (captions, recap, translate-speak) and course media.
       - name: Build the Lambda bundles
         run: |
           npm ci
@@ -101,7 +101,7 @@ jobs:
               `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,
               `VITE_ACCESSLENS_RECAP_ENDPOINT=${find("RecapUrl")}`,
               `VITE_ACCESSLENS_TRANSLATE_ENDPOINT=${find("TranslateSpeakUrl")}`,
-              `VITE_ACCESSLENS_MEDIA_ENDPOINT=${find("MediaAccessUrl")}`,
+              `VITE_ACCESSLENS_COURSE_MEDIA_ENDPOINT=${find("CourseMediaUrl")}`,
             ];
             require("fs").writeFileSync(".env.local", lines.join("\n") + "\n");
             console.log(lines.join("\n"));
