@@ -95,34 +95,63 @@ jobs:
             npm run build --prefix "$dir"
           done
 
+      # AccessLensAuthoring uploads two built web apps, so synth fails with
+      # CannotFindAsset until they exist: the viewer (apps/viewer/dist) and the
+      # hosted instructor/student shell (dist-web). infra/scripts/deploy.sh
+      # builds both by hand; CI must too. dist-web is built against the
+      # endpoints already deployed, and rebuilt below if the deploy changed them.
+      - name: Build the web apps the authoring stack uploads
+        run: |
+          aws cloudformation describe-stacks --output json > /tmp/stacks-before.json
+          node infra/scripts/extension-env.mjs /tmp/stacks-before.json > .env.local
+          cp .env.local /tmp/env-before
+          npx vite build --config apps/viewer/vite.config.ts
+          npx vite build --base /app/ --outDir dist-web
+
+      # The authoring stack's Google sign-in client id is a context value, not
+      # code. Without it CDK deploys a placeholder and sign-in stops working,
+      # so keep the one already deployed unless the repository sets another.
+      - name: Resolve the Google sign-in client id
+        run: |
+          ID="${{ vars.GOOGLE_CLIENT_ID }}"
+          if [ -z "$ID" ]; then
+            ID=$(node -e '
+              const s = require("/tmp/stacks-before.json").Stacks.find(s => s.StackName === "AccessLensAuthoring");
+              const id = (s?.Outputs ?? []).find(o => o.OutputKey === "GoogleClientId")?.OutputValue ?? "";
+              console.log(id.startsWith("unconfigured.") ? "" : id);
+            ')
+          fi
+          if [ -z "$ID" ]; then
+            echo "::warning::No Google client id (set the GOOGLE_CLIENT_ID repository variable); instructor sign-in will not work."
+          fi
+          echo "GOOGLE_CLIENT_ID=$ID" >> "$GITHUB_ENV"
+
       # From infra/, where cdk.json names the app; run from the repo root, the
       # CDK CLI finds no app to deploy.
       - name: Deploy the stacks
         run: |
           npm ci
-          npx cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json
+          npx cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json \
+            ${GOOGLE_CLIENT_ID:+-c googleClientId=$GOOGLE_CLIENT_ID}
         working-directory: infra
 
       - name: Rebuild the extension against the deployed endpoints
         run: |
-          node -e '
-            const o = require("/tmp/outputs.json");
-            const find = (k) => Object.values(o).map(s => s[k]).find(Boolean) ?? "";
-            const lines = [
-              `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
-              `VITE_ACCESSLENS_API_URL=${find("ApiUrl")}`,
-              `VITE_GOOGLE_CLIENT_ID=${find("GoogleClientId")}`,
-              `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
-              `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl")}`,
-              `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,
-              `VITE_ACCESSLENS_RECAP_ENDPOINT=${find("RecapUrl")}`,
-              `VITE_ACCESSLENS_TRANSLATE_ENDPOINT=${find("TranslateSpeakUrl")}`,
-              `VITE_ACCESSLENS_COURSE_MEDIA_ENDPOINT=${find("CourseMediaUrl")}`,
-            ];
-            require("fs").writeFileSync(".env.local", lines.join("\n") + "\n");
-            console.log(lines.join("\n"));
-          '
+          node infra/scripts/extension-env.mjs /tmp/outputs.json > .env.local
+          cat .env.local
           npm run build
+
+      # First deploy, or an endpoint changed: the hosted shell was built with the
+      # old values, so rebuild it and redeploy only the stack that serves it.
+      - name: Refresh the hosted shell if endpoints changed
+        run: |
+          if cmp -s .env.local /tmp/env-before; then
+            echo "Endpoints unchanged; dist-web is current."
+            exit 0
+          fi
+          npx vite build --base /app/ --outDir dist-web
+          cd infra && npx cdk deploy AccessLensAuthoring --exclusively --require-approval never \
+            ${GOOGLE_CLIENT_ID:+-c googleClientId=$GOOGLE_CLIENT_ID}
 
       - name: Package the extension for download
         run: |

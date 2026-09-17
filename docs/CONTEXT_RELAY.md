@@ -2052,3 +2052,9 @@ outputs in a successful release summary.
 published extension artifact before testing Upload slides. Google sign-in still
 depends on the Google Console origin and the deployed instructor allowlist; a
 failed sign-in is not permission to weaken either boundary.
+
+### RL-093 — 2026-09-16 — deployment — Kunj Rathod
+
+**Landed:** Deploys from master were failing twice over. CI stopped at synth with `CannotFindAsset .../dist-web`: `AccessLensAuthoring` uploads `apps/viewer/dist` and `dist-web`, which only `infra/scripts/deploy.sh` built. `deploy.yml` now builds both (dist-web against the endpoints already deployed, via `infra/scripts/extension-env.mjs`), keeps the deployed Google client id (or `vars.GOOGLE_CLIENT_ID`) so CI no longer deploys the unconfigured placeholder, and rebuilds dist-web and redeploys only the authoring stack if outputs changed. Separately, laptop deploys of `AccessLensLiveSession` rolled back on `StudyChatGuardrail`: its topic definition was 215 characters and Bedrock's limit is 200; it is now 186, and that exact synthesized guardrail was created and deleted in Bedrock to confirm it is accepted.
+**Threads touched:** none.
+**Next agent needs to know:** `AccessLensLiveSession` now imports the distribution domain exported by `AccessLensAuthoring`, so the relay cannot deploy before the authoring stack is updated; `--exclusively` on the relay fails with "No export named AccessLensAuthoring:...". Deploy with `--all` (CI does). The authoring stack builds a Docker image, so a laptop without Docker cannot deploy it.

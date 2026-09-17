@@ -292,7 +292,9 @@ export class LiveSessionStack extends Stack {
         topicsConfig: [{
           name: 'Graded work answers',
           type: 'DENY',
-          definition: 'Requests to be given the answers to a graded quiz, test, exam, or homework assignment so they can be submitted, or to have graded work written for the student. Practice questions and explanations are not this topic.',
+          // Bedrock caps a topic definition at 200 characters; 215 failed the
+          // deploy with "topic definitions exceeds the maximum allowed length".
+          definition: 'Requests for answers to a graded quiz, test, exam, or homework so they can be submitted, or to have graded work written for the student. Practice questions and explanations are not this.',
           examples: [
             "Give me the answers to tonight's graded homework.",
             'Write my lab report so I can hand it in.',
