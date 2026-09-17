@@ -2079,3 +2079,17 @@ configuration without inventing endpoints or weakening sign-in.
 asking an instructor to retest Upload slides. A successful build exposes the
 sign-in control; authorization still depends on the configured Google origin
 and instructor allowlist.
+
+### RL-095 — 2026-09-16 — deployment configuration — Codex
+
+**Landed:** the deploy workflow now invalidates CloudFront's stable extension,
+install-page, and demo-pack paths after publishing them. The master deployment
+artifact contained the authoring API and Google client configuration, but the
+public `accesslens-extension.zip` still served an older cache entry; a targeted
+invalidation was issued to restore the current installer immediately. Future
+deployments create that invalidation themselves, using the deploy role's
+existing `cloudfront:CreateInvalidation` permission.
+**Threads touched:** none.
+**Next agent needs to know:** verify the public ZIP's hash or its embedded
+authoring configuration after a deployment before telling an instructor to
+reload. The workflow artifact alone is not proof that CloudFront is current.
