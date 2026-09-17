@@ -142,8 +142,8 @@ export class PipelineExtensionPoints extends Construct {
           beforeBundling: () => [],
           beforeInstall: () => [],
           afterBundling: (inputDir: string, outputDir: string) => [
-            `mkdir -p ${outputDir}/prompts`,
-            `cp ${inputDir}/docs/prompts/viz/*.md ${outputDir}/prompts/`,
+            `mkdir -p "${outputDir}/prompts"`,
+            `cp "${inputDir}"/docs/prompts/viz/*.md "${outputDir}/prompts/"`,
           ],
         } : undefined,
       },

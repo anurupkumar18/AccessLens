@@ -68,7 +68,11 @@ gets the current values, and note the change in
 
 - **Dev server dies silently.** If `localhost:5173` stops responding, the
   Vite process just isn't running anymore (nothing keeps it alive between
-  reboots/terminal closes). Restart it; nothing is actually broken.
+  reboots/terminal closes). Restart it; nothing is actually broken. **For a
+  live demo, run `scripts/dev-resilient.sh` instead of a plain `npx vite`** —
+  it auto-restarts the server within a second if it ever crashes or exits
+  unexpectedly (tested by killing the process outright), so a crash mid-demo
+  doesn't leave you stuck on a dead tab. Ctrl+C still stops it for real.
 - **New AR / local-slide-preview panel is invisible.** `AuthoringPanel`'s
   "Local slide preview" section only renders when `VITE_ACCESSLENS_API_URL`
   and `VITE_GOOGLE_CLIENT_ID` are both **empty** — it's mutually exclusive
