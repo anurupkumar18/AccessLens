@@ -338,7 +338,9 @@ function LiveCaptionsControl({ controller, microphone, transcribe }: {
 
   return (
     <div className="live-captions" aria-labelledby="live-captions-heading">
-      <h3 id="live-captions-heading">Live captions</h3>
+      {/* Titled apart from the captions section above so the two start
+          buttons are not mistaken for one another. */}
+      <h3 id="live-captions-heading">Captions in another language</h3>
       <p>
         <label htmlFor="live-captions-lang">Language you are speaking</label>
         <select id="live-captions-lang" value={lang} onChange={e => setLang(e.target.value)}>
