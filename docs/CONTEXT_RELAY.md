@@ -2451,3 +2451,9 @@ study chat).
 **Next agent needs to know:** `dist/` was not rebuilt in this change. The
 slide-region outline and pointer stay yellow in both roles on purpose: they mark
 slide content, not interface chrome.
+
+### RL-122 — 2026-09-17 — deployment — Kunj Rathod
+
+**Landed:** `docs/install.html` (served as the CloudFront index) is now a landing page rather than a download page: hero with the shared-region moment, four measured numbers, how it works, a feature grid led by course materials, the audiences section, an AWS strip, install, and the unchanged limits section. Two decorative React islands from libraries.dev — `border-beam` and `thinking-orbs`, the latter already an extension dependency — are imported from esm.sh and mounted only when the reader has not asked for reduced motion; the page is complete without them.
+**Threads touched:** none.
+**Next agent needs to know:** the numbers on the page are the ones measured on 2026-09-17 (about 5 s speech-to-caption, about 60 s from upload to ready across five files). Checked in Chrome at 1440 and 390 px, light and dark: axe reports no violations, no horizontal scroll, and nothing mounts under prefers-reduced-motion.
