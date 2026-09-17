@@ -251,7 +251,7 @@ nav[aria-label='Role navigation'] button {
   box-shadow: none;
 }
 
-.student-surface-nav { display: flex; gap: .5rem; margin-top: 1.25rem; }
+.student-surface-nav { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; }
 .student-surface-nav button { margin: 0; }
 .student-surface-nav [aria-current='true'] { background: var(--ink); color: var(--paper); }
 nav[aria-label='Role navigation'] button + button { border-left: 1px solid var(--line); }

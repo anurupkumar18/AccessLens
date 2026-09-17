@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Cell Structure — deck preview</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #stage { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
+  img { max-width: 100vw; max-height: 100vh; }
+  #hint { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); color: #888; font: 12px system-ui; }
+</style>
+</head>
+<body>
+<div id="stage"><img id="slide" src="slides/cell-slide-01.png" /></div>
+<div id="hint">Slide 1 / 5 — use arrow keys or click to advance</div>
+<script>
+  const slides = [1, 2, 3, 4, 5];
+  let i = 0;
+  const img = document.getElementById('slide');
+  const hint = document.getElementById('hint');
+  function render() {
+    const n = String(slides[i]).padStart(2, '0');
+    img.src = `slides/cell-slide-${n}.png`;
+    hint.textContent = `Slide ${i + 1} / ${slides.length} — use arrow keys or click to advance`;
+  }
+  function next() { i = (i + 1) % slides.length; render(); }
+  function prev() { i = (i - 1 + slides.length) % slides.length; render(); }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') next();
+    if (e.key === 'ArrowLeft') prev();
+  });
+  document.addEventListener('click', next);
+</script>
+</body>
+</html>

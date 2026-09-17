@@ -69,6 +69,7 @@ The active AccessLens contracts live in `docs/SYSTEM_DESIGN.md`.
 Parallel workstreams number their own episodic records (T-17), so there is no
 longer one single "latest" file. Each part's newest record:
 
+- `episodic/0076-local-dev-e2e-debugging.md` (cross-cutting: found and fixed a dead untracked dev server and a stale/missing `.env.local`/`vite.config.ts` local config against deployed AI/chat/course-media endpoints; verified relay, Ask-this-class, guardrail, Transcribe, and live multi-slide sync end to end on real Chrome; added `deck-preview.html` for local multi-slide rehearsal; opened T-52)
 - `episodic/0075-durable-class-library-deletion-jobs.md` (Part 6: archive-first durable purge jobs; feature gate and real-course activation remain off)
 - `episodic/0074-student-class-library-experience.md` (Part 6: separate student class-library UI, cited questions, local-only tasks; server activation remains off)
 - `episodic/0073-approval-gated-class-library-assistant.md` (Part 6: approval-gated PDF class library, cited facts/Q&A, local-only tasks; real-course activation remains off)
