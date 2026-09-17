@@ -59,7 +59,7 @@ work is being made directly on `master` by explicit product-owner direction.
 | --- | --- | --- | --- | --- |
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, AL-049's caption instructor input/student display, AL-050's server-side caption shape validation, AL-051's honest session-end-on-unmount fix, and AL-052's high-contrast fix are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
-| 3. Student experience and AR | Prachi | merged as `20bd4be` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. AR is pack-driven for every recognized asset with reviewed regions; localhost also has a device-local slide-image preview for testing. | `node_modules/.bin/vitest.cmd run apps/extension/src/instructor/AuthoringPanel.test.tsx apps/extension/src/shared/packMedia.test.ts apps/extension/src/ar/PackArView.test.tsx apps/extension/src/student/StudentExperience.test.tsx` (34 passed); `npm.cmd run build` |
+| 3. Student experience and AR | Prachi | merged as `20bd4be` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. AR is pack-driven for every recognized asset with reviewed regions; localhost also has device-local slide-image preview scenes for cell and water-level uploads. The current handoff includes the source-grounded one-page guide at `output/pdf/accesslens-one-pager.pdf`. | `node_modules/.bin/vitest.cmd run apps/extension/src/ar/WaterLevelArView.test.tsx apps/extension/src/ar/CellArView.test.tsx apps/extension/src/student/StudentExperience.test.tsx` (26 passed); `npm.cmd run build`; `scripts/build_accesslens_one_pager.py` |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** 2026-09-16 (`integ/ui-api`, Jacob): one IVS Real-Time stage per session, publish/subscribe tokens beside the capabilities, `stream.started`/`stream.stopped` on the contract, stage deleted on close and by a DynamoDB-stream sweeper on TTL expiry; proven live by `scripts/probe-video.mjs`. `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
 | 6. Authoring pipeline and visualization | Jacob / Codex (AL-056/057/058) | `workstream/6-authoring` / `codex/course-library-assistant` / `codex/student-course-experience` / `codex/class-library-deletion-jobs` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. AL-056 adds an approval-gated PDF class-assistant slice; AL-057 adds its separate signed-in student client, cited answers, and local-only task list; AL-058 makes profile deletion archive-first with durable purge status. The stacked corrections make invite redemption atomic, reject writes to archived classes, and complete metadata purges on retry; the feature flag stays off by default and does not authorize real course data. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, `docs/work/tickets/al-056-approval-gated-course-library-and-cited-class-assistant.md`, `docs/work/tickets/al-057-student-class-library-experience.md`, `docs/work/tickets/al-058-durable-class-library-deletion-jobs.md`, RL-060, RL-068, RL-069, RL-070, RL-071 |
@@ -2346,3 +2346,67 @@ evidence.
 
 **Next agent needs to know:** hard-refresh both localhost tabs, start a fresh
 session with `cell-slide-01`, choose AR, and verify the rotatable cell model.
+
+### RL-116 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** created a one-page PDF guide at
+`output/pdf/accesslens-one-pager.pdf`, based on the supplied hackathon one-pager
+instructions and the repository's current source-of-truth documents. It explains
+the live flow, why the extension-first design is the best fit for the MVP, the
+privacy and unmatched-content boundaries, the local demo steps, and the limits
+that must not be overclaimed. The visual layout follows the winner examples in
+`docs/One Pager.pdf`: dark presentation canvas, orange rule, tall white vertical
+document panel, and stacked colored callout cards.
+
+**Threads touched:** no product or contract thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** use the generated PDF for the pitch/demo handoff;
+rerun `python scripts/build_accesslens_one_pager.py` after content edits and
+visually inspect the single rendered page before sharing it.
+
+### RL-117 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** added a dedicated water-level AR renderer for local uploads whose
+title or filename identifies the water-level lesson. It shows a rotatable,
+graduated-cylinder scene with blood plasma, fluid between cells, and fluid inside
+cells as synchronized hotspots. It includes immersive-AR detection, keyboard and
+touch rotation, reset, and equivalent semantic controls. Cell, pack-driven, and
+unmatched routes remain unchanged.
+
+**Threads touched:** no contract or privacy thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** upload `docs/waterlevel.png` in the instructor local
+preview, use a title containing `water level`, start a fresh session, and choose
+AR in Student mode to verify the graduated-cylinder scene.
+
+### RL-118 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** removed the six generic `auto-area` regions from local image packs.
+Local uploads now use the original single `whole-slide` placeholder, so Focus,
+Read, and Reading spacing no longer expose generated spatial-area copy. The
+water-level AR scene remains available through its dedicated title/filename route
+and owns its three fluid hotspots independently.
+
+**Threads touched:** no contract or privacy thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** reload both localhost tabs and upload the water-level
+image again; an old local pack in browser storage may still show six regions until
+the new upload replaces it.
+
+### RL-119 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** the reviewed five-slide cell deck now selects distinct spatial
+compositions in AR: whole cell, nucleus and nucleolus, mitochondria and energy,
+protein factory, and storage/recycling. The hotspot list now covers the slide
+regions for membrane, cytoplasm, nucleus, nucleolus, mitochondrion, ribosome,
+rough ER, Golgi, lysosome, and vacuole. Focus, Read, and Reading spacing were not
+changed.
+
+**Threads touched:** no contract or privacy thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** use the local reviewed deck preview and move through
+all five assets in AR; each asset title drives its distinct scene variant.

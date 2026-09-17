@@ -49,20 +49,13 @@ export async function createLocalImagePack(file: File, title: string): Promise<A
     // browser/image-tab letterbox. Generate the local pack with that exact
     // geometry or a clean image tab will be reported as unmatched.
     const fingerprint = fingerprintFrame(cropToAspect({ width: data.width, height: data.height, data: data.data }));
-    const columns = 3;
-    const rows = 2;
-    const regions = Array.from({ length: columns * rows }, (_, index) => {
-      const column = index % columns;
-      const row = Math.floor(index / columns);
-      const bounds = { x: column / columns, y: row / rows, width: 1 / columns, height: 1 / rows };
-      return {
-        regionId: `auto-area-${index + 1}`,
-        label: `Slide area ${index + 1}`,
-        bounds,
-        shortDescription: `Automatically generated spatial area ${index + 1} of ${columns * rows}.`,
-        plainLanguage: `Slide area ${index + 1} of ${columns * rows}.`,
-      };
-    });
+    const regions = [{
+      regionId: 'whole-slide',
+      label: 'Whole slide',
+      bounds: { x: 0, y: 0, width: 1, height: 1 },
+      shortDescription: 'Local slide preview. This description is only a placeholder for testing the spatial renderer.',
+      plainLanguage: 'This is a local slide preview.',
+    }];
     const pack: AccessPack = {
       schemaVersion: '1.0',
       packId,
@@ -75,7 +68,7 @@ export async function createLocalImagePack(file: File, title: string): Promise<A
       review: { status: 'local-preview', reviewedBy: 'local-user', reviewedAt: new Date().toISOString(), externalSubjectMatterReview: false, notes: 'Local device-only preview; not published.' },
       assets: [{
         assetId: 'local-slide-01', mediaUri, fingerprint, title: title.trim() || file.name,
-        readingOrder: regions.map(region => region.regionId),
+        readingOrder: ['whole-slide'],
         regions,
       }],
     };
