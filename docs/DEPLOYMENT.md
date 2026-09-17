@@ -138,17 +138,19 @@ Five people and their agents push here, so the workflow is built to be boring:
 - **Deploy needs checks to pass.** `workflow_dispatch` carries a `skip_checks`
   input for demo emergencies; it is not available on push.
 - **The extension is rebuilt *after* the stacks deploy**, against the endpoints
-  they just produced. Vite inlines `import.meta.env` at build time, so a build
-  made before the deploy cannot see the endpoint no matter what the environment
+  they just produced, including the authoring `ApiUrl` and `GoogleClientId`.
+  Vite inlines `import.meta.env` at build time, so a build made before the deploy
+  cannot see the endpoint or offer Google sign-in no matter what the environment
   says at run time. This is the step most likely to be got wrong by hand.
 - **The packed extension is uploaded as a workflow artifact as well as to S3**,
   so a broken CloudFront does not cost you the build.
 
 ### One-time setup: GitHub deploy role
 
-**Status on 2026-09-16: not done.** Every Deploy run so far (after PR #14 and
-PR #19) stopped at "Check the deploy role is configured" because
-`AWS_DEPLOY_ROLE_ARN` is unset. Only a repository admin can set it.
+**Status on 2026-09-16: complete.** `AccessLensGitHubDeploy` and its GitHub OIDC
+provider are deployed, `AWS_DEPLOY_ROLE_ARN` is configured as a repository
+variable, and deploy run `35169206631` completed successfully. The role remains
+scoped to this repository; no long-lived AWS credential is stored in GitHub.
 
 The workflow authenticates with GitHub OIDC rather than stored keys, because
 Workshop Studio credentials expire within hours — a secret pasted in at 9am is
@@ -200,11 +202,11 @@ gh run watch --repo anurupkumar18/Mind-Machine \
   "$(gh run list --repo anurupkumar18/Mind-Machine --workflow deploy.yml --limit 1 --json databaseId -q '.[0].databaseId')"
 ```
 
-**Done when:** the run is green, its summary lists `WebSocketUrl`,
-`OrbExplainUrl`, `CaptionsUrl`, `RecapUrl`, `TranslateSpeakUrl`,
-`CourseMediaUrl` and `DistributionUrl`, and the `accesslens-extension` artifact
-is attached. Every later push to `accesslens-extension-ar-pivot` deploys on its
-own.
+**Done when:** the run is green, its summary lists `WebSocketUrl`, `ApiUrl`,
+`GoogleClientId`, `OrbExplainUrl`, `CaptionsUrl`, `RecapUrl`,
+`TranslateSpeakUrl`, `CourseMediaUrl` and `DistributionUrl`, and the
+`accesslens-extension` artifact is attached. Every later push to
+`accesslens-extension-ar-pivot` deploys on its own.
 
 If it fails:
 
