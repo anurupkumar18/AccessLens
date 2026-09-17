@@ -45,22 +45,28 @@ export function FocusView({ pack, assetId, regionId, pointer }: Props): React.Re
         // as an aria-label they cannot step through or reread. The outline is
         // decorative; the caption is the outline's meaning.
         <figure className="slide-figure">
-          <img className="slide-image" src={imageUrl} alt={asset.title} />
-          <div
-            className="region-highlight"
-            aria-hidden="true"
-            style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${width * 100}%`, height: `${height * 100}%` }}
-          />
-          {pointerAt && (
-            <svg
-              className={`focus-pointer ${pointerAt.corner}`}
-              viewBox="0 0 24 24"
+          {/* Region bounds are fractions of the slide image, so the outline
+              and pointer are positioned inside a frame holding only the image:
+              measured against the whole figure they would also count the
+              caption's height, and the scrim would dim the caption. */}
+          <div className="slide-frame">
+            <img className="slide-image" src={imageUrl} alt={asset.title} />
+            <div
+              className="region-highlight"
               aria-hidden="true"
-              style={{ left: `${pointerAt.left * 100}%`, top: `${pointerAt.top * 100}%` }}
-            >
-              <path d={pointerAt.corner === 'start' ? 'M22 22 L2 12 L11 10 L14 2 Z' : 'M2 2 L22 12 L13 14 L10 22 Z'} />
-            </svg>
-          )}
+              style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${width * 100}%`, height: `${height * 100}%` }}
+            />
+            {pointerAt && (
+              <svg
+                className={`focus-pointer ${pointerAt.corner}`}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                style={{ left: `${pointerAt.left * 100}%`, top: `${pointerAt.top * 100}%` }}
+              >
+                <path d={pointerAt.corner === 'start' ? 'M22 22 L2 12 L11 10 L14 2 Z' : 'M2 2 L22 12 L13 14 L10 22 Z'} />
+              </svg>
+            )}
+          </div>
           <figcaption className="supporting-text">{region.shortDescription}</figcaption>
         </figure>
       ) : (

@@ -41,6 +41,9 @@ describe('FocusView', () => {
     expect(highlight.style.top).toBe(`${region.bounds.y * 100}%`);
     expect(highlight.style.width).toBe(`${region.bounds.width * 100}%`);
     expect(highlight.style.height).toBe(`${region.bounds.height * 100}%`);
+    // Bounds are fractions of the image, so the outline's positioned box holds the image and not the caption.
+    expect(highlight.parentElement).toBe(img.parentElement);
+    expect(highlight.parentElement!.querySelector('figcaption')).toBeNull();
 
     expect(container!.textContent).toContain(region.plainLanguage);
     expect(container!.querySelector('.cell-membrane')).toBeNull();

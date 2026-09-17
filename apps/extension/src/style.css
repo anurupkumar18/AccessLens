@@ -682,7 +682,10 @@ input[type='range'] { accent-color: var(--ink); }
 .cell-mitochondrion { position: absolute; right: 28px; bottom: 30px; width: 55px; height: 26px; border-radius: 50%; background: var(--cell-mito); transform: rotate(-24deg); }
 .cell-mitochondrion.active { outline: 4px solid var(--cell-active); outline-offset: 3px; }
 
-.slide-figure { position: relative; margin: 0; border: 1px solid var(--rule); overflow: hidden; background: var(--ink); }
+.slide-figure { margin: 0; border: 1px solid var(--rule); }
+/* The image's own box: the outline, pointer and scrim are sized and clipped to it, not to the caption below. */
+.slide-frame { position: relative; overflow: hidden; background: var(--ink); }
+.slide-figure figcaption { margin: 0; padding: .6rem .75rem; border-top: 1px solid var(--rule); background: var(--card); color: var(--ink); }
 .slide-image { display: block; width: 100%; height: auto; }
 /* Slides can be dark or light whatever the theme, so the outline is a fixed
    yellow band edged in ink on both sides: it reads on either. */

@@ -1924,3 +1924,19 @@ merged. `scripts/qa/live-bench.cjs` and `extension-load.cjs` still drive the
 removed "Indicate region" and "Apply correction" forms, so those steps fail
 until the bench is pointed at pointer following or Slides following instead.
 `ScreenAnalysisView` still has a `hear` branch that nothing selects.
+
+### RL-085 — 2026-09-16 — Part 3 — Claude (at Omar Rizwan's direction)
+
+**Landed:** the Focus outline lines up with its region again. Since RL-080 put the
+reviewed description in a `figcaption` inside `.slide-figure`, the outline's
+percentage bounds and its scrim were measured against the image plus the caption,
+so on the HNSW deck `step-1-text` sat about 25 px low, ran into the level bars,
+and the caption was dimmed under the scrim. `renderers/FocusView.tsx` now wraps
+the image, outline and pointer in `.slide-frame`; the caption sits outside it with
+its own background. Measured in a browser: outline top and height equal the
+region's fractions of the image to within 0.01 px.
+**Threads touched:** none.
+**Next agent needs to know:** the HNSW pack splits each step into a text region
+and a diagram region (`step-1-text` is the heading and sentence only;
+`level-bar-chart` is the bars), so the outline covering only the text is the
+pack's authoring, not a rendering fault.
