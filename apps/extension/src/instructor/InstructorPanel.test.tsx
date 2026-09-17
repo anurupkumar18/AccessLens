@@ -278,6 +278,30 @@ describe('InstructorPanel', () => {
     expect(status()).toMatch(/make the slide bigger/i);
   });
 
+  it('offers pointer following only where the mouse can be seen, and says how to get it otherwise', async () => {
+    const pointerToggle = () => container!.querySelector('#follow-pointer');
+
+    render(new FakeCaptureHost(), fakeSlides(['p', 'g1']).source);
+    await click('Follow Google Slides');
+    expect(pointerToggle()).toBeNull();
+    expect(container!.textContent).toContain('cannot see your mouse');
+    act(() => root!.unmount());
+
+    const tab = new FakeCaptureHost();
+    tab.stream.surface = 'browser';
+    render(tab);
+    await click('Start');
+    expect(pointerToggle()).toBeNull();
+    expect(container!.textContent).toContain('A tab share has no mouse pointer');
+    act(() => root!.unmount());
+
+    const windowShare = new FakeCaptureHost();
+    windowShare.stream.surface = 'window';
+    render(windowShare);
+    await click('Start');
+    expect(pointerToggle()).not.toBeNull();
+  });
+
   describe('live captions', () => {
     /** A client whose capabilities look relay-signed, so the AI features switch on. */
     class SignedClient extends InMemorySessionClient {

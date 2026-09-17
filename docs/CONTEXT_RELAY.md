@@ -1940,3 +1940,21 @@ region's fractions of the image to within 0.01 px.
 and a diagram region (`step-1-text` is the heading and sentence only;
 `level-bar-chart` is the bars), so the outline covering only the text is the
 pack's authoring, not a rendering fault.
+
+### RL-086 — 2026-09-16 — Part 3 — Claude (at Omar Rizwan's direction)
+
+**Landed:** Focus shows the whole slide, with no outline, until the instructor
+points at a region (`renderers/FocusView.tsx`). A slide change names no region,
+and Focus used to fall back to the pack's first region, which on the HNSW title
+slide was the small "Engineering explainer" label, and a region id that is not on
+the slide no longer falls back to another one. The instructor console now says
+why pointing does nothing instead of offering the pointer checkbox where it
+cannot work: Follow Google Slides reads only the tab URL and a tab share has no
+mouse pointer; only a window or entire-screen share can move students to a
+region.
+**Threads touched:** none.
+**Next agent needs to know:** pointer following has still never been measured on
+a real macOS window capture, only on rendered slides with a drawn arrow
+(RL-068). The published HNSW pack lists `title` in slide-01's reading order but
+gives it no region, so the big title can never be outlined until the pack is
+republished.

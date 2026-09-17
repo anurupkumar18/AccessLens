@@ -177,7 +177,16 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
         )}
       </div>
 
-      {state.sessionId && state.phase !== 'closed' && (
+      {state.sessionId && state.phase !== 'closed' && (state.surface === 'slides' || state.surface === 'browser' ? (
+        // Neither sees the mouse: Slides following reads only the tab's URL, and
+        // a tab capture never includes the pointer. Say so instead of offering a
+        // checkbox that cannot do anything.
+        <p className="caption-option muted" role="note">
+          {state.surface === 'slides'
+            ? 'Following Google Slides moves students between slides only: it never sees your screen, so it cannot see your mouse. To point students at parts of a slide, click Stop, then Share a window instead and pick the window showing your slides.'
+            : 'A tab share has no mouse pointer, so students follow slide changes only. To point students at parts of a slide, click Stop, then Start and pick a window or your entire screen.'}
+        </p>
+      ) : (
         <p className="caption-option">
           <input id="follow-pointer" type="checkbox" checked={state.followPointer} onChange={() => controller.setFollowPointer(!state.followPointer)} />
           <label htmlFor="follow-pointer">
@@ -185,7 +194,7 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
             <span className="muted"> (sharing a window or your entire screen; a tab share has no mouse pointer)</span>
           </label>
         </p>
-      )}
+      ))}
 
       {active && (
         <div className="stream" role="group" aria-label="Live video for students">

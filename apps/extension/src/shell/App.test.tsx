@@ -83,7 +83,8 @@ describe('App shell', () => {
     expect(fetchPublishedPack).toHaveBeenCalledWith(published.packId, published.version);
     expect(container.textContent).not.toContain('different reviewed lesson version');
     expect(container.textContent).toContain(`Now on ${published.assets[0].title}.`);
-    expect(container.textContent).toContain(published.assets[0].regions[0].regionId);
+    // A slide change names no region, so Focus shows the fetched pack's whole slide.
+    expect(container.textContent).toContain(`Focus view · ${published.assets[0].title}`);
   });
 
   it('tells the student when the session pack cannot be fetched', async () => {

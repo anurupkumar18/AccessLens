@@ -10,6 +10,8 @@ interface Props {
   pointer?: { x: number; y: number };
 }
 
+export const WHOLE_SLIDE_NOTE = 'When your instructor points at part of this slide, that part is outlined here.';
+
 /**
  * Focus mode shows the slide the instructor is on with the followed region
  * outlined where the pack says it is. Everything comes from the pack:
@@ -19,11 +21,32 @@ interface Props {
  */
 export function FocusView({ pack, assetId, regionId, pointer }: Props): React.ReactElement {
   const asset = pack.assets.find((candidate) => candidate.assetId === assetId) ?? pack.assets[0];
-  const region = asset?.regions.find((candidate) => candidate.regionId === regionId) ?? asset?.regions[0];
-
-  if (!asset || !region) return <p role="status">Waiting for a reviewed focus region.</p>;
+  if (!asset) return <p role="status">Waiting for a reviewed slide.</p>;
 
   const imageUrl = slideImageUrl(pack, asset);
+  // Only a region the instructor pointed at is outlined. Moving to a slide
+  // names no part of it, so until then the whole slide is shown, not whichever
+  // region the pack happens to list first.
+  const region = asset.regions.find((candidate) => candidate.regionId === regionId);
+  if (!region) {
+    return (
+      <section className="mode-panel focus-view" aria-labelledby="focus-title">
+        <p className="eyebrow">Focus view · {asset.title}</p>
+        <h3 id="focus-title">Whole slide</h3>
+        {imageUrl ? (
+          <figure className="slide-figure">
+            <div className="slide-frame">
+              <img className="slide-image" src={imageUrl} alt={asset.title} />
+            </div>
+            <figcaption className="supporting-text">{WHOLE_SLIDE_NOTE}</figcaption>
+          </figure>
+        ) : (
+          <p className="supporting-text">{WHOLE_SLIDE_NOTE}</p>
+        )}
+      </section>
+    );
+  }
+
   const heading = region.label ?? region.regionId;
   const { x, y, width, height } = region.bounds;
   // The pointer marks the region from outside its outline, so it never covers

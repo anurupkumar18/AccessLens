@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AccessPackSchema } from '../shared/contracts';
 import { validPack } from '../shared/fixtures';
-import { FocusView } from './FocusView';
+import { FocusView, WHOLE_SLIDE_NOTE } from './FocusView';
 import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pack.json';
 
 let container: HTMLDivElement | null = null;
@@ -85,6 +85,31 @@ describe('FocusView', () => {
     act(() => root!.unmount());
     render(<FocusView pack={validPack} assetId="cell-slide-03" regionId="mitochondrion" />);
     expect(container!.querySelector('h3')!.textContent).toBe('mitochondrion');
+  });
+
+  it('shows the whole slide with no outline until the instructor points at a region', () => {
+    const pack = AccessPackSchema.parse(reviewedBioPack);
+    const asset = pack.assets[1];
+    render(<FocusView pack={pack} assetId={asset.assetId} />);
+    expect(container!.querySelector<HTMLImageElement>('img.slide-image')!.src).toMatch(/cell-slide-02.*\.png$/);
+    expect(container!.querySelector('.region-highlight')).toBeNull();
+    expect(container!.querySelector('h3')!.textContent).toBe('Whole slide');
+    expect(container!.querySelector('figcaption')!.textContent).toBe(WHOLE_SLIDE_NOTE);
+    // Not the first region the pack lists: nothing is claimed until the instructor points.
+    expect(container!.textContent).not.toContain(asset.regions[0].shortDescription);
+  });
+
+  it('never outlines a different region when the named one is not on this slide', () => {
+    const pack = AccessPackSchema.parse(reviewedBioPack);
+    render(<FocusView pack={pack} assetId={pack.assets[1].assetId} regionId="not-on-this-slide" />);
+    expect(container!.querySelector('.region-highlight')).toBeNull();
+    expect(container!.querySelector('h3')!.textContent).toBe('Whole slide');
+  });
+
+  it('says the same in text when the pack ships no slide image and no region is followed', () => {
+    render(<FocusView pack={validPack} assetId="cell-slide-03" />);
+    expect(container!.querySelector('img')).toBeNull();
+    expect(container!.textContent).toContain(WHOLE_SLIDE_NOTE);
   });
 
   it('falls back to text only when the pack ships no slide image', () => {
