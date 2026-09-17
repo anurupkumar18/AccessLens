@@ -2094,16 +2094,8 @@ existing `cloudfront:CreateInvalidation` permission.
 authoring configuration after a deployment before telling an instructor to
 reload. The workflow artifact alone is not proof that CloudFront is current.
 
-### RL-096 — 2026-09-16 — deployment configuration — Codex
+### RL-096 — 2026-09-16 — deployment — Kunj Rathod
 
-**Landed:** the CloudFront invalidation workflow also needs the read-only
-`cloudfront:ListDistributions` action to resolve the distribution from its
-public domain before it can call `CreateInvalidation`. The deploy role already
-had the write action but the first automated run failed at that lookup after
-successfully publishing the ZIP and pack. The role remains scoped to this
-repository and is not granted broader identity or content access.
-**Threads touched:** T-47 remains OPEN until this role-policy update is
-deployed and a master Deploy run completes.
-**Next agent needs to know:** deploy `AccessLensGitHubDeploy` once from fresh
-human-provided workshop credentials, then rerun the master workflow and verify
-the public ZIP rather than trusting the workflow artifact alone.
+**Landed:** The master Deploy run after #31 deployed every stack and then failed publishing: the new cache invalidation looked the distribution up with `cloudfront:ListDistributions`, which `AccessLensGitHubDeploy` does not allow. `AccessLensDistribution` now outputs `DistributionId` and the workflow invalidates by that id, so no role change is needed.
+**Threads touched:** none.
+**Next agent needs to know:** the deploy role allows `cloudfront:CreateInvalidation` only; anything that needs to find AWS resources in CI should read stack outputs rather than list the account.

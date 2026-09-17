@@ -75,6 +75,13 @@ export class DistributionStack extends Stack {
       value: `https://${distribution.distributionDomainName}`,
       description: 'Set as VITE_ACCESSLENS_ASSET_BASE_URL; also the install page',
     });
+    // The deploy workflow invalidates this distribution after publishing. Its
+    // role may create invalidations but not list distributions, so the id is
+    // an output rather than something to look up.
+    new CfnOutput(this, 'DistributionId', {
+      value: distribution.distributionId,
+      description: 'CloudFront distribution the deploy workflow invalidates',
+    });
     new CfnOutput(this, 'ExtensionDownloadUrl', {
       value: `https://${distribution.distributionDomainName}/accesslens-extension.zip`,
       description: 'Packed extension for load-unpacked installation',
