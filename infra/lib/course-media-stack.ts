@@ -103,11 +103,11 @@ export class CourseMediaStack extends Stack {
     repository.grantPullPush(build);
     source.grantRead(build);
 
-    const buildStarter = new LambdaFunction(this, 'StartImageBuild', {
-      runtime: Runtime.NODEJS_22_X,
-      handler: 'index.handler',
-      timeout: Duration.minutes(1),
-      code: Code.fromInline(`
+    // One inline module, two functions: onEvent starts the build and
+    // isComplete polls it. They must be separate Lambdas with separate
+    // handlers -- pointing both at `index.handler` makes every poll start
+    // another build, which is how the first deploy failed.
+    const buildHandlers = Code.fromInline(`
 const { CodeBuildClient, StartBuildCommand, BatchGetBuildsCommand } = require('@aws-sdk/client-codebuild');
 const codebuild = new CodeBuildClient({});
 exports.handler = async (event) => {
@@ -127,13 +127,25 @@ exports.isComplete = async (event) => {
   if (status === 'SUCCEEDED') return { IsComplete: true };
   if (status === 'IN_PROGRESS') return { IsComplete: false };
   throw new Error('Worker image build ' + status + ': ' + (build && build.logs && build.logs.deepLink));
-};`),
+};`);
+    const buildStarter = new LambdaFunction(this, 'StartImageBuild', {
+      runtime: Runtime.NODEJS_22_X,
+      handler: 'index.handler',
+      timeout: Duration.minutes(1),
+      code: buildHandlers,
     });
-    buildStarter.addToRolePolicy(new PolicyStatement({ actions: ['codebuild:StartBuild', 'codebuild:BatchGetBuilds'], resources: [build.projectArn] }));
+    const buildChecker = new LambdaFunction(this, 'CheckImageBuild', {
+      runtime: Runtime.NODEJS_22_X,
+      handler: 'index.isComplete',
+      timeout: Duration.minutes(1),
+      code: buildHandlers,
+    });
+    buildStarter.addToRolePolicy(new PolicyStatement({ actions: ['codebuild:StartBuild'], resources: [build.projectArn] }));
+    buildChecker.addToRolePolicy(new PolicyStatement({ actions: ['codebuild:BatchGetBuilds'], resources: [build.projectArn] }));
 
     const provider = new Provider(this, 'ImageBuildProvider', {
       onEventHandler: buildStarter,
-      isCompleteHandler: buildStarter,
+      isCompleteHandler: buildChecker,
       queryInterval: Duration.seconds(30),
       totalTimeout: Duration.minutes(45),
     });
