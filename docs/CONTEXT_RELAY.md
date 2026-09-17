@@ -2052,3 +2052,14 @@ outputs in a successful release summary.
 published extension artifact before testing Upload slides. Google sign-in still
 depends on the Google Console origin and the deployed instructor allowlist; a
 failed sign-in is not permission to weaken either boundary.
+
+### RL-093 — 2026-09-16 — Part 3 + Part 4 — Claude (at Omar Rizwan's direction)
+
+**Landed:** the study chat guardrail's denied-topic definition is under Bedrock's
+200-character limit. Deploying `AccessLensLiveSession` from master failed on
+`StudyChatGuardrail` ("topic definitions exceeds the maximum allowed length") and
+rolled back to the relay-only stack, so the AI and study chat functions could not
+come back; the Deploy workflow would have failed the same way.
+**Threads touched:** T-47 still OPEN until a master Deploy run completes.
+**Next agent needs to know:** keep the definition at 200 characters or fewer and
+each example at 100 or fewer.
