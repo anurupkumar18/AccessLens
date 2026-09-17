@@ -2410,3 +2410,22 @@ open for physical Chrome capture evidence.
 
 **Next agent needs to know:** use the local reviewed deck preview and move through
 all five assets in AR; each asset title drives its distinct scene variant.
+
+### RL-120 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** updated `cellScene.test.ts` from the stale three-hotspot expectation
+to the ten-hotspot map added for all reviewed cell-deck regions. Added the two
+AWS SDK dependencies missing from the root workspace manifest so the root
+TypeScript check can resolve the AI gateway imports.
+
+**Validation:** the focused cell-scene test passes; pack, memory, relay, and
+work-board checks pass; root and service typechecks resolve their dependencies.
+The full Windows test run still has unrelated environment-sensitive failures
+(`python3`, child-package Vitest config, Linux temp paths, generated line endings,
+and agent fixture paths).
+
+**Threads touched:** T-34 / AL-001 remains open for physical browser capture
+evidence.
+
+**Next agent needs to know:** start localhost and manually verify the five cell
+AR scene variants.

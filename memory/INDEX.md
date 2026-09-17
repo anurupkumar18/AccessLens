@@ -85,6 +85,7 @@ longer one single "latest" file. Each part's newest record:
 - `episodic/0086-water-level-ar-scene.md` (Part 3: dedicated graduated-cylinder AR scene for water-level uploads)
 - `episodic/0087-remove-generic-local-regions.md` (Part 3: restore single whole-slide local pack shape while preserving dedicated AR)
 - `episodic/0088-cell-deck-slide-ar-variants.md` (Part 3: distinct AR compositions for all five reviewed cell slides)
+- `episodic/0089-cell-hotspot-check-fix.md` (Part 3: align the hotspot semantics test and root AWS SDK dependencies with the current branch)
 - `episodic/0078-side-panel-capture-lifetime.md` (Part 2: side-panel capture must start from the persistent full-tab view)
 - `episodic/0077-published-pack-cors-local-dev.md` (cross-cutting: every published pack beyond the two bundled demo packs failed to load locally, self-inflicted by an earlier same-session `.env.local` change; root-caused to bypassing the vite `/packs` proxy, not a CloudFront bug; fixed and verified with a real 23-slide instructor deck; deployed extension unaffected)
 - `episodic/0076-local-dev-e2e-debugging.md` (cross-cutting: found and fixed a dead untracked dev server and a stale/missing `.env.local`/`vite.config.ts` local config against deployed AI/chat/course-media endpoints; verified relay, Ask-this-class, guardrail, Transcribe, and live multi-slide sync end to end on real Chrome; added `deck-preview.html` for local multi-slide rehearsal; opened T-52)
