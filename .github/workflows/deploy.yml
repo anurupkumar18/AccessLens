@@ -110,6 +110,8 @@ jobs:
             const find = (k) => Object.values(o).map(s => s[k]).find(Boolean) ?? "";
             const lines = [
               `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
+              `VITE_ACCESSLENS_API_URL=${find("ApiUrl")}`,
+              `VITE_GOOGLE_CLIENT_ID=${find("GoogleClientId")}`,
               `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
               `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl")}`,
               `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,

@@ -2036,3 +2036,19 @@ T-47 still OPEN until a master Deploy run completes.
 **Next agent needs to know:** deploy from master (push, or run the workflow). A push
 to the integration line no longer deploys. Whisper is deployed and destroyed only
 with the flag, as `services/ai-gateway/README.md` now shows.
+### RL-092 — 2026-09-16 — deployment configuration — Codex
+
+**Landed:** the post-deploy extension build now inlines `ApiUrl` and
+`GoogleClientId` from `AccessLensAuthoring`, alongside the existing relay and
+service endpoints. Before this correction, the downloadable extension had no
+authoring API or Google sign-in configuration even though the stack exposed both
+outputs, so the Upload slides panel correctly failed closed. The local Vite
+preview was separately configured from its ignored `.env.local`; no credential,
+student data, upload policy, or course-assistant activation changed here.
+`docs/DEPLOYMENT.md` now records the completed OIDC setup and requires these two
+outputs in a successful release summary.
+**Threads touched:** none.
+**Next agent needs to know:** deploy the workflow revision and install its newly
+published extension artifact before testing Upload slides. Google sign-in still
+depends on the Google Console origin and the deployed instructor allowlist; a
+failed sign-in is not permission to weaken either boundary.
