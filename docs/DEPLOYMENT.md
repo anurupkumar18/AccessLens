@@ -128,7 +128,7 @@ up until it is on the critical path.
 ## Continuous deployment
 
 `.github/workflows/deploy.yml` runs the full check suite and then deploys every
-push to the integration branch, plus `workflow_dispatch` for manual runs.
+push to `master`, plus `workflow_dispatch` for manual runs.
 
 Five people and their agents push here, so the workflow is built to be boring:
 
@@ -142,6 +142,11 @@ Five people and their agents push here, so the workflow is built to be boring:
   Vite inlines `import.meta.env` at build time, so a build made before the deploy
   cannot see the endpoint or offer Google sign-in no matter what the environment
   says at run time. This is the step most likely to be got wrong by hand.
+- **Authoring stays a separate deployment.** `AccessLensAuthoring` owns the
+  Google OAuth client and hosted web assets, so `infra/scripts/deploy.sh`
+  deploys it. The generic workflow reads its existing public `ApiUrl`,
+  `GoogleClientId`, and asset-base outputs before deploying the other stacks,
+  then carries them into the downloadable extension build.
 - **The packed extension is uploaded as a workflow artifact as well as to S3**,
   so a broken CloudFront does not cost you the build.
 
@@ -196,7 +201,7 @@ ROLE_ARN=$(node -e 'console.log(require("/tmp/deploy-role.json").AccessLensGitHu
 gh variable set AWS_DEPLOY_ROLE_ARN --repo anurupkumar18/Mind-Machine --body "$ROLE_ARN"
 
 # 5. Deploy the latest integration commit and watch it.
-gh workflow run deploy.yml --repo anurupkumar18/Mind-Machine --ref accesslens-extension-ar-pivot
+gh workflow run deploy.yml --repo anurupkumar18/Mind-Machine --ref master
 sleep 5
 gh run watch --repo anurupkumar18/Mind-Machine \
   "$(gh run list --repo anurupkumar18/Mind-Machine --workflow deploy.yml --limit 1 --json databaseId -q '.[0].databaseId')"
@@ -205,8 +210,8 @@ gh run watch --repo anurupkumar18/Mind-Machine \
 **Done when:** the run is green, its summary lists `WebSocketUrl`, `ApiUrl`,
 `GoogleClientId`, `OrbExplainUrl`, `CaptionsUrl`, `RecapUrl`,
 `TranslateSpeakUrl`, `CourseMediaUrl` and `DistributionUrl`, and the
-`accesslens-extension` artifact is attached. Every later push to
-`accesslens-extension-ar-pivot` deploys on its own.
+`accesslens-extension` artifact is attached. Every later push to `master`
+deploys on its own.
 
 If it fails:
 
@@ -217,6 +222,7 @@ If it fails:
 | `AccessDenied` creating the OIDC provider or role | The workshop role cannot create IAM identity providers. Deploy by hand instead: `cd infra && npx cdk deploy --all --require-approval never` after step 1, then `npm run build` with the stack outputs in `.env.local`. |
 | Workflow: `Not authorized to perform sts:AssumeRoleWithWebIdentity` | The trust policy's `repo:` does not match. Redeploy step 3 with the exact `owner/repo`. |
 | Workflow waits at "deploy" | The `aws` environment has required reviewers; approve the run in the Actions tab. |
+| `CannotFindAsset .../dist-web` | The generic CDK deploy must not stage `AccessLensAuthoring`; use the master workflow revision, which creates synth placeholders and deploys the other named stacks. |
 | Workflow: `SSM parameter /cdk-bootstrap/hnb659fds/version not found` | The account was reset; bootstrap again (`npx cdk bootstrap aws://<account>/us-east-1`). |
 
 The trust policy is scoped to the repository but open on ref, because every
