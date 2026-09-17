@@ -7,7 +7,8 @@ type Asset = AccessPack['assets'][number];
 type Region = Asset['regions'][number];
 
 interface Props {
-  packId: string;
+  /** Optional for the renderer's model-only/test fallback; student production passes it for the slide texture. */
+  packId?: string;
   asset?: Asset;
   regionId?: string;
   hotspotId?: string;
@@ -57,7 +58,7 @@ export function PackArView({ packId, asset, regionId, hotspotId, reducedMotion }
   const [arAvailability, setArAvailability] = useState<'checking' | 'supported' | 'unavailable'>('checking');
   const [localRegion, setLocalRegion] = useState(regionId);
   const items = useMemo(() => asset ? itemsFor(asset) : [], [asset]);
-  const slideUrl = asset ? slideImageUrl({ packId }, asset) : null;
+  const slideUrl = asset && packId ? slideImageUrl({ packId }, asset) : null;
   const syncedItem = items.find(item => item.id === regionId || item.hotspotId === hotspotId);
   const activeId = localRegion && items.some(item => item.id === localRegion)
     ? localRegion
