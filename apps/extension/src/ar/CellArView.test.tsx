@@ -29,7 +29,7 @@ describe('CellArView', () => {
     expect(container.textContent).toContain('Mitochondrion');
     expect(container.textContent).toContain('releases usable energy');
     expect(container.textContent).toContain('WebGL is unavailable');
-    expect(container.querySelectorAll('.semantic-hotspots button')).toHaveLength(3);
+    expect(container.querySelectorAll('.semantic-hotspots button')).toHaveLength(10);
     expect(container.querySelector('button[aria-pressed="true"]')?.textContent).toBe('Mitochondrion');
   });
 
@@ -44,5 +44,17 @@ describe('CellArView', () => {
     await act(async () => nucleus?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(container.querySelector('button[aria-pressed="true"]')?.textContent).toBe('Nucleus');
     expect(container.textContent).toContain('stores genetic instructions');
+  });
+
+  it('uses a distinct spatial composition for the protein-shipping slide', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => root?.render(
+      <CellArView assetId="cell-slide-04" regionId="ribosome" hotspotId="ribosome-hotspot" reducedMotion />,
+    ));
+
+    expect(container.textContent).toContain('Explore the protein factory');
+    expect(container.querySelector('button[aria-pressed="true"]')?.textContent).toBe('Ribosome');
   });
 });

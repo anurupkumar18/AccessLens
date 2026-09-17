@@ -8,7 +8,7 @@ describe('cell scene semantics', () => {
   });
 
   it('gives every hotspot a label and equivalent description', () => {
-    expect(CELL_HOTSPOTS).toHaveLength(3);
+    expect(CELL_HOTSPOTS).toHaveLength(10);
     for (const hotspot of CELL_HOTSPOTS) {
       expect(hotspot.label.length).toBeGreaterThan(0);
       expect(hotspot.shortDescription.length).toBeGreaterThan(0);
