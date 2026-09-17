@@ -99,6 +99,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
   // they just uploaded is why they are here.
   const [publishedPacks, setPublishedPacks] = useState<PublishedPackSummary[]>([]);
   const [instructorPack, setInstructorPack] = useState<AccessPack | null>(null);
+  const [localPack, setLocalPack] = useState<AccessPack | null>(null);
   const [instructorPackError, setInstructorPackError] = useState<string | null>(null);
   const picked = useRef(false);
   function pickPack(id: string): void { picked.current = true; setChoiceId(id); }
@@ -121,7 +122,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
     return () => { stale = true; };
   }, [publishedChoice, fetchPack]);
   const loadedPublished = publishedChoice && instructorPack && instructorPack.packId === publishedChoice.packId && instructorPack.version === publishedChoice.version ? instructorPack : null;
-  const activePack = pack ?? (publishedChoice ? loadedPublished : choice.pack);
+  const activePack = pack ?? localPack ?? (publishedChoice ? loadedPublished : choice.pack);
   const activeIsDraft = pack || publishedChoice ? false : choice.status === 'draft';
   // Students never pick a pack: the session's events name the pack the
   // instructor is teaching, and the student view follows that. A bundled
@@ -134,7 +135,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
   const requestedPack = useRef<string | null>(null);
   const bundledPack = event ? packChoices.find(c => c.pack.packId === event.packId && c.pack.version === event.packVersion)?.pack : undefined;
   const publishedPack = event && fetchedPack && fetchedPack.packId === event.packId && fetchedPack.version === event.packVersion ? fetchedPack : undefined;
-  const studentPack = pack ?? bundledPack ?? publishedPack ?? choice.pack;
+  const studentPack = pack ?? localPack ?? bundledPack ?? publishedPack ?? choice.pack;
 
   useEffect(() => client.subscribe(setEvent), [client]);
   useEffect(() => {
@@ -206,7 +207,7 @@ export function App({ client = defaultClient, pack, host = defaultHost, cameraHo
               )}
               {activePack && <InstructorPanel key={`${activePack.packId}@${activePack.version}`} client={client} pack={activePack} host={host} scheduler={scheduler} analyzer={analyzer} slides={slides} />}
               <CameraControl host={cameraHost} />
-              <AuthoringPanel client={authoringClient} onPublishedPacks={receivePublishedPacks} />
+              <AuthoringPanel client={authoringClient} onPublishedPacks={receivePublishedPacks} onLocalPack={setLocalPack} />
             </div>
             <div id="view-panel-materials" role="tabpanel" aria-labelledby="view-tab-materials" hidden={instructorView !== 'materials'}>
               <InstructorMaterials />

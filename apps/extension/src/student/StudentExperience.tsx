@@ -19,9 +19,9 @@ import { createIvsSubscriber, type StreamSubscriber } from '../sources/stream';
 // the session's video stage only once the instructor announces a stream.
 const defaultSubscriber = createIvsSubscriber();
 
-const CellArView = React.lazy(async () => {
-  const module = await import('../ar/CellArView');
-  return { default: module.CellArView };
+const PackArView = React.lazy(async () => {
+  const module = await import('../ar/PackArView');
+  return { default: module.PackArView };
 });
 
 interface Props {
@@ -45,10 +45,10 @@ const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'ar', label: 'AR' },
 ];
 
-/** AR is offered only when the pack actually carries a scene to render. */
+/** Every reviewed asset with regions can render the same meaning spatially. */
 function modesFor(pack: AccessPack): typeof allModes {
-  const hasArScene = pack.assets.some((asset) => asset.arScene !== undefined);
-  return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
+  const hasSpatialContent = pack.assets.some((asset) => asset.regions.length > 0);
+  return hasSpatialContent ? allModes : allModes.filter((mode) => mode.id !== 'ar');
 }
 
 export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient, chat = defaultChatClient, subscriber = defaultSubscriber }: Props): React.ReactElement {
@@ -269,7 +269,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
-            <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            <PackArView asset={currentAsset} regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
           </Suspense>
         ) : null}
       </div>

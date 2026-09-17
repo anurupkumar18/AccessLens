@@ -104,22 +104,22 @@ describe('StudentExperience', () => {
     expect(container?.textContent).toContain('Instructor stopped sharing. Showing the last reviewed moment.');
   });
 
-  it('offers the AR tab only when the pack carries an AR scene', () => {
+  it('offers the AR tab for a reviewed slide with regions', () => {
     renderExperience(validEvent, validPack);
     const tabs = Array.from(container!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
-    expect(tabs).toEqual(['Focus', 'Read', 'Reading spacing']);
-    expect(container!.querySelector('#mode-tab-ar')).toBeNull();
+    expect(tabs).toEqual(['Focus', 'Read', 'Reading spacing', 'AR']);
+    expect(container!.querySelector('#mode-tab-ar')).not.toBeNull();
   });
 
-  it('shows Focus when a saved AR preference meets a pack without an AR scene', () => {
+  it('keeps a saved AR preference when the slide has no authored 3D model', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
     act(() => root!.render(
       <StudentExperience client={new InMemorySessionClient()} event={validEvent} pack={validPack} preferences={{ ...defaultPreferences, mode: 'ar' }} onPreferencesChange={() => {}} />,
     ));
-    expect(container.textContent).toContain('Focus view');
-    expect(container.textContent).not.toContain('Synchronized AR');
+    expect(container!.querySelector('#mode-tab-ar')?.getAttribute('aria-selected')).toBe('true');
+    expect(container.textContent).toContain('Loading the AR scene');
   });
 
   it('offers a local reading-spacing mode with an explicit toggle', async () => {

@@ -8,6 +8,7 @@ import { LibraryPanel } from './LibraryPanel';
 import {
   extensionIdentity, googleClientId, readSession, renderGoogleButton, signInWithExtension, writeSession, type GoogleSession,
 } from '../shared/googleSignIn';
+import { createLocalImagePack } from '../shared/localPack';
 
 interface Props {
   /** Injected in tests; otherwise built from VITE_ACCESSLENS_API_URL and the Google session. */
@@ -24,6 +25,8 @@ interface Props {
   studentViewUrl?: (packUrl: string) => string;
   /** The instructor's published packs, on sign-in and after each publish; the shell offers them for presenting. */
   onPublishedPacks?: (packs: PublishedPackSummary[]) => void;
+  /** Localhost-only image preview; never used by the authenticated authoring path. */
+  onLocalPack?: (pack: AccessPack) => void;
 }
 
 /** What the instructor has typed for a region, keyed `assetId/regionId`. */
@@ -58,6 +61,7 @@ const STAGE_TEXT: Record<string, string> = {
 export function AuthoringPanel({
   client: injected, apiUrl = authoringApiUrl, clientId = googleClientId, signIn, pollMs = 5000,
   studentViewUrl = url => `?pack=${encodeURIComponent(url)}`, onPublishedPacks,
+  onLocalPack,
 }: Props): React.ReactElement {
   const [session, setSession] = useState<GoogleSession | null>(() => readSession());
   const [signInError, setSignInError] = useState<string | null>(null);
@@ -66,9 +70,12 @@ export function AuthoringPanel({
   const [profileId, setProfileId] = useState('');
   const [account, setAccount] = useState<{ instructor: Instructor; profiles: CourseProfile[] } | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [localReady, setLocalReady] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const googleButton = useRef<HTMLDivElement>(null);
   const useExtensionFlow = signIn !== undefined || extensionIdentity() !== null;
+  const localPreview = import.meta.env.DEV && onLocalPack !== undefined && !injected && !apiUrl && !clientId;
   const client = injected ?? (apiUrl && session ? createAuthoringClient(apiUrl, session.idToken) : null);
 
   function signOut(): void {
@@ -207,6 +214,37 @@ export function AuthoringPanel({
   function reset(): void {
     setPhase({ kind: 'idle' }); setFile(null); setTitle('');
     if (fileInput.current) fileInput.current.value = '';
+  }
+
+  async function submitLocalPreview(event: React.FormEvent): Promise<void> {
+    event.preventDefault();
+    if (!file || !onLocalPack) return;
+    setLocalError(null);
+    try {
+      const pack = await createLocalImagePack(file, title);
+      onLocalPack(pack);
+      setLocalReady(true);
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  if (localPreview) {
+    return <section className="authoring" aria-labelledby="authoring-heading">
+      <h2 id="authoring-heading">Local slide preview</h2>
+      <p className="supporting-text">No Google sign-in is needed on localhost. Upload one PNG or JPEG slide to test local matching and the spatial AR renderer. The image and preview pack stay in this browser.</p>
+      <form onSubmit={event => { void submitLocalPreview(event); }} aria-label="Local slide preview upload">
+        <label htmlFor="local-slide-title">Slide title
+          <input id="local-slide-title" type="text" value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. My lesson slide" maxLength={200} />
+        </label>
+        <label htmlFor="local-slide-file">Slide image (PNG or JPEG)
+          <input id="local-slide-file" type="file" accept="image/png,image/jpeg" required onChange={event => { setFile(event.target.files?.[0] ?? null); setLocalReady(false); }} />
+        </label>
+        <button type="submit" disabled={!file}>Load local slide</button>
+      </form>
+      {localReady && <p role="status">Local slide loaded. Start sharing this image or open Student mode and choose AR.</p>}
+      {localError && <p role="alert">{localError}</p>}
+    </section>;
   }
 
   if (!injected && (!apiUrl || !clientId)) {
