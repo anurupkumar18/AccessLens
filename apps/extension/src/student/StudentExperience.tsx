@@ -76,7 +76,10 @@ interface Props {
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
-  { id: 'dyslexic', label: 'Reading spacing' },
+  // HIDDEN FOR DEMO 2026-09-17: Reading spacing (dyslexic mode). Restore this
+  // line to bring the tab back; DyslexicTextView and its render path (below,
+  // `activeMode === 'dyslexic'`) are untouched.
+  // { id: 'dyslexic', label: 'Reading spacing' },
   { id: 'ar', label: 'AR' },
 ];
 
@@ -277,7 +280,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       )}
 
       <p id="mode-help" className="supporting-text">
-        Screen readers read every description here. Focus announces the slide and region the instructor is on; Read and Reading spacing hold the whole lesson.
+        Screen readers read every description here. Focus announces the slide and region the instructor is on; Read holds the whole lesson.
       </p>
       <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson" aria-describedby="mode-help">
         {modes.map((mode, index) => (

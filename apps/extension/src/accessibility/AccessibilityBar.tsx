@@ -50,22 +50,29 @@ export function AccessibilityBar({
 
   return (
     <aside className="a11y-bar" aria-label="Accessibility supports">
-      {showCaptions && (
+      {/* HIDDEN FOR DEMO 2026-09-17: raw machine-transcription "Live captions" panel.
+          "Instructor's words" (LiveCaptionsView, mounted above the mode tabs) is kept
+          as the only live-captions surface for this demo. Re-enable by restoring this
+          block; showCaptions/captionsActive/CaptionsPanel are unchanged below. */}
+      {false && showCaptions && (
         <details className="a11y-disclosure" open={captionsActive}>
           <summary>Live captions</summary>
           <CaptionsPanel event={event} listening={captionsActive} reducedMotion={reducedMotion} />
         </details>
       )}
 
-      <details className="a11y-disclosure">
-        <summary>What did I miss?</summary>
-        <CatchUpPanel
-          events={catchUpEvents}
-          pack={pack}
-          sinceSequence={lastSeenSequence}
-          reducedMotion={reducedMotion}
-        />
-      </details>
+      {/* HIDDEN FOR DEMO 2026-09-17: "What did I miss?" recap. Restore by removing the `false &&`. */}
+      {false && (
+        <details className="a11y-disclosure">
+          <summary>What did I miss?</summary>
+          <CatchUpPanel
+            events={catchUpEvents}
+            pack={pack}
+            sinceSequence={lastSeenSequence}
+            reducedMotion={reducedMotion}
+          />
+        </details>
+      )}
 
       <details className="a11y-disclosure">
         <summary>Read this in your language</summary>

@@ -107,7 +107,8 @@ describe('StudentExperience', () => {
   it('offers the AR tab for a reviewed slide with regions', () => {
     renderExperience(validEvent, validPack);
     const tabs = Array.from(container!.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
-    expect(tabs).toEqual(['Focus', 'Read', 'Reading spacing', 'AR']);
+    // Reading spacing hidden for the 2026-09-17 demo (see allModes in StudentExperience.tsx); restore 'Reading spacing' here when it comes back.
+    expect(tabs).toEqual(['Focus', 'Read', 'AR']);
     expect(container!.querySelector('#mode-tab-ar')).not.toBeNull();
   });
 
@@ -122,7 +123,8 @@ describe('StudentExperience', () => {
     expect(container.textContent).toContain('Loading the AR scene');
   });
 
-  it('offers a local reading-spacing mode with an explicit toggle', async () => {
+  // SKIPPED FOR DEMO 2026-09-17: Reading spacing tab hidden (allModes in StudentExperience.tsx). Restore both together.
+  it.skip('offers a local reading-spacing mode with an explicit toggle', async () => {
     const harness = renderExperience();
     const tab = Array.from(container!.querySelectorAll('[role="tab"]')).find((item) => item.textContent === 'Reading spacing') as HTMLButtonElement;
     await act(async () => tab.click());

@@ -19,3 +19,4 @@ node_modules
 cdk.out/
 .cdk-outputs.json
 dist-web/
+dist-deploy-preview/
