@@ -35,31 +35,67 @@ export interface LiveRelaySessionClient extends SessionClient {
  * own docstring) -- this is where that job happens. A malformed event is
  * dropped, not forwarded or thrown; a malformed capability rejects the
  * `create`/`join` promise, since the caller is already awaiting it.
+ *
+ * Given a factory rather than an instance, a closed client is replaced by a
+ * fresh one on the next `create` or `join`, with every subscriber moved over.
+ * The shell holds one client for the page, and ending a session closes it
+ * (switching packs ends the open session), so without this the next Start
+ * failed until the page was reloaded.
  */
-export function wrapLiveRelayClient(underlying: UnvalidatedSessionClient): LiveRelaySessionClient {
+export function wrapLiveRelayClient(source: UnvalidatedSessionClient | (() => UnvalidatedSessionClient)): LiveRelaySessionClient {
+  const reopen = typeof source === 'function' ? source : undefined;
+  let underlying = typeof source === 'function' ? source() : source;
+  let closed = false;
   const invalidEventListeners = new Set<() => void>();
+  /** Each subscriber, with its unsubscribe from the current underlying client. */
+  const eventListeners = new Map<(raw: unknown) => void, () => void>();
+  const connectionListeners = new Map<(connected: boolean) => void, () => void>();
+  const noop = () => {};
+
+  function reopenIfClosed(): void {
+    if (!closed || !reopen) return;
+    underlying = reopen();
+    closed = false;
+    for (const listener of eventListeners.keys()) eventListeners.set(listener, underlying.subscribe(listener));
+    for (const listener of connectionListeners.keys()) connectionListeners.set(listener, underlying.onConnectionChange?.(listener) ?? noop);
+  }
+
   return {
     async create(sessionId: string): Promise<RoleCapability> {
+      reopenIfClosed();
       return RoleCapabilitySchema.parse(await underlying.create(sessionId));
     },
     async join(sessionId: string): Promise<RoleCapability> {
+      reopenIfClosed();
       return RoleCapabilitySchema.parse(await underlying.join(sessionId));
     },
     send(event: LiveEvent): void {
       underlying.send(event);
     },
     subscribe(listener: (event: LiveEvent) => void): () => void {
-      return underlying.subscribe(raw => {
+      const forward = (raw: unknown) => {
         const parsed = LiveEventSchema.safeParse(raw);
         if (parsed.success) listener(parsed.data);
         else invalidEventListeners.forEach(notify => notify());
-      });
+      };
+      eventListeners.set(forward, closed ? noop : underlying.subscribe(forward));
+      return () => {
+        eventListeners.get(forward)?.();
+        eventListeners.delete(forward);
+      };
     },
     close(): void {
       underlying.close();
+      closed = true;
     },
     onConnectionChange: underlying.onConnectionChange
-      ? (listener: (connected: boolean) => void) => underlying.onConnectionChange!(listener)
+      ? (listener: (connected: boolean) => void) => {
+          connectionListeners.set(listener, closed ? noop : underlying.onConnectionChange?.(listener) ?? noop);
+          return () => {
+            connectionListeners.get(listener)?.();
+            connectionListeners.delete(listener);
+          };
+        }
       : undefined,
     onInvalidEvent(listener: () => void): () => void {
       invalidEventListeners.add(listener);

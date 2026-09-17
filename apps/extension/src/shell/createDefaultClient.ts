@@ -19,6 +19,7 @@ export function createDefaultClient(
   wsUrl: string | undefined,
   broadcastAvailable: boolean = hasBroadcastChannel(),
 ): SessionClient {
-  if (wsUrl) return wrapLiveRelayClient(new WebSocketSessionClient({ url: wsUrl }));
+  // A factory, so a session ended on this page does not leave the page unable to open another.
+  if (wsUrl) return wrapLiveRelayClient(() => new WebSocketSessionClient({ url: wsUrl }));
   return broadcastAvailable ? new BroadcastSessionClient() : new InMemorySessionClient();
 }

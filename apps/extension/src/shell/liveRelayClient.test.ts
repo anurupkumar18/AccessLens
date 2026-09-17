@@ -110,6 +110,24 @@ describe('wrapLiveRelayClient', () => {
     expect(underlying.close).toHaveBeenCalled();
   });
 
+  it('opens a fresh client for the next session after one was closed, keeping its subscribers', async () => {
+    const first = fakeUnderlying();
+    const second = fakeUnderlying();
+    const made = [first, second];
+    const client = wrapLiveRelayClient(() => made.shift()!);
+    const received: string[] = [];
+    client.subscribe(event => received.push(event.type));
+
+    await client.create('session-one');
+    client.close();
+    await client.create('session-two');
+
+    expect(first.close).toHaveBeenCalled();
+    expect(second.create).toHaveBeenCalledWith('session-two');
+    second.emit(validEvent);
+    expect(received).toEqual([validEvent.type]);
+  });
+
   it('passes through real connection status when the underlying client supports it', () => {
     const underlying = fakeUnderlying() as FakeUnderlying & { onConnectionChange(listener: (connected: boolean) => void): () => void };
     let notify: ((connected: boolean) => void) | undefined;

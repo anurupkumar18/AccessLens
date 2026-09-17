@@ -1958,3 +1958,25 @@ a real macOS window capture, only on rendered slides with a drawn arrow
 (RL-068). The published HNSW pack lists `title` in slide-01's reading order but
 gives it no region, so the big title can never be outlined until the pack is
 republished.
+
+### RL-087 — 2026-09-16 — Part 4 — Claude (at Omar Rizwan's direction)
+
+**Landed:** `npm run relay:local` (`scripts/local-relay.ts`) runs the same `Relay`
+on `ws://localhost:8788` with the in-memory store and no video stage, reading
+published packs from the asset distribution like the deployed relay. Point a
+build at it with `VITE_ACCESSLENS_WS_URL=ws://localhost:8788` (for `npx vite`, a
+gitignored `.env.development.local` does this). Also: ending a session no
+longer leaves the page unable to open another. `wrapLiveRelayClient` takes a
+factory and replaces a closed client on the next `create`/`join`; before, switching
+packs with a session open made every later Start fail with "Could not open a
+session" until reload. Checked against the local relay: create, close, create
+again works; a student joining an HNSW session sees slide-06 with `step-1-text`
+outlined at the pack's bounds.
+**Threads touched:** T-49 recurs: the deployed `AccessLensLiveSession` returns no
+`streamToken` and forwards no events for `introduction-to-hnsw` (a bundled
+`bio-cell-demo` session works), so it was again deployed from a tree without
+the pack resolver. Not redeployed here.
+**Next agent needs to know:** capabilities from the local relay are signed with a
+per-run secret, so the deployed AI gateway (study chat, Ask, Whisper captions)
+refuses them unless `CAPABILITY_SECRET` is the deployed relay's. Live video
+needs IVS and is unavailable locally.
