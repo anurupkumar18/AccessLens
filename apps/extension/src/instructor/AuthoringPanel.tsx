@@ -72,11 +72,17 @@ export function AuthoringPanel({
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [localError, setLocalError] = useState<string | null>(null);
   const [localReady, setLocalReady] = useState(false);
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+  const localImageUrlRef = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const googleButton = useRef<HTMLDivElement>(null);
   const useExtensionFlow = signIn !== undefined || extensionIdentity() !== null;
   const localPreview = import.meta.env.DEV && onLocalPack !== undefined && !injected && !apiUrl && !clientId;
   const client = injected ?? (apiUrl && session ? createAuthoringClient(apiUrl, session.idToken) : null);
+
+  useEffect(() => () => {
+    if (localImageUrlRef.current) URL.revokeObjectURL(localImageUrlRef.current);
+  }, []);
 
   function signOut(): void {
     writeSession(null); setSession(null); setAccount(null); setPhase({ kind: 'idle' });
@@ -238,10 +244,19 @@ export function AuthoringPanel({
           <input id="local-slide-title" type="text" value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. My lesson slide" maxLength={200} />
         </label>
         <label htmlFor="local-slide-file">Slide image (PNG or JPEG)
-          <input id="local-slide-file" type="file" accept="image/png,image/jpeg" required onChange={event => { setFile(event.target.files?.[0] ?? null); setLocalReady(false); }} />
+          <input id="local-slide-file" type="file" accept="image/png,image/jpeg" required onChange={event => {
+            const nextFile = event.target.files?.[0] ?? null;
+            if (localImageUrlRef.current) URL.revokeObjectURL(localImageUrlRef.current);
+            const nextUrl = nextFile ? URL.createObjectURL(nextFile) : null;
+            localImageUrlRef.current = nextUrl;
+            setLocalImageUrl(nextUrl);
+            setFile(nextFile);
+            setLocalReady(false);
+          }} />
         </label>
         <button type="submit" disabled={!file}>Load local slide</button>
       </form>
+      {localImageUrl && <figure className="slide-figure"><div className="slide-frame"><img className="slide-image" src={localImageUrl} alt={title || file?.name || 'Selected local slide'} /></div><figcaption className="supporting-text">Keep this tab or window visible when you click Start so the local matcher can recognize the slide.</figcaption></figure>}
       {localReady && <p role="status">Local slide loaded. Start sharing this image or open Student mode and choose AR.</p>}
       {localError && <p role="alert">{localError}</p>}
     </section>;
