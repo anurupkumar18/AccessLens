@@ -149,6 +149,10 @@ Five people and their agents push here, so the workflow is built to be boring:
   then carries them into the downloadable extension build.
 - **The packed extension is uploaded as a workflow artifact as well as to S3**,
   so a broken CloudFront does not cost you the build.
+- **Published mutable paths are invalidated after upload.** The extension ZIP,
+  install page, and demo pack have stable public URLs; the workflow invalidates
+  those CloudFront paths so a fresh deployment cannot leave installers on an
+  older cached extension.
 
 ### One-time setup: GitHub deploy role
 
