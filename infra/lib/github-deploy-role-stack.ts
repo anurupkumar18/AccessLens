@@ -37,6 +37,11 @@ export class GitHubDeployRoleStack extends Stack {
   constructor(scope: Construct, id: string, props: GitHubDeployRoleStackProps) {
     super(scope, id, props);
 
+    const [owner, repository, extra] = props.repository.split('/');
+    if (!owner || !repository || extra) {
+      throw new Error(`GitHub repository must be owner/repo, received ${props.repository}`);
+    }
+
     // An account may only ever hold one provider for a given issuer, and a
     // second stack trying to create it fails with EntityAlreadyExists.
     const provider = props.existingProviderArn
@@ -55,7 +60,17 @@ export class GitHubDeployRoleStack extends Stack {
       description: 'Assumed by GitHub Actions to deploy AccessLens stacks',
       assumedBy: new OpenIdConnectPrincipal(provider, {
         StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
-        StringLike: { 'token.actions.githubusercontent.com:sub': `repo:${props.repository}:*` },
+        // GitHub supports both its original repository subject and the newer
+        // customized template that includes immutable owner/repository IDs.
+        // Keep the visible owner/repository names fixed in both forms; the
+        // wildcards cover only GitHub-issued numeric IDs and the permitted
+        // ref/environment suffix.
+        StringLike: {
+          'token.actions.githubusercontent.com:sub': [
+            `repo:${props.repository}:*`,
+            `repo:${owner}@*/${repository}@*:*`,
+          ],
+        },
       }),
     });
 
