@@ -1,8 +1,17 @@
 # AccessLens deployment
 
-**Status: not deployable yet.** Parts 2, 3, and 4 have not contributed their
-artifacts. Run `python3 scripts/deploy_preflight.py --aws` for the current
-answer rather than trusting this sentence.
+**Status: deployed.** All five parts have landed and the stacks are live. Run
+`python3 scripts/deploy_preflight.py --aws` for the current answer rather than
+trusting this sentence.
+
+| What | Where |
+| --- | --- |
+| Install page and extension download | https://d3a2yoxehy0vb7.cloudfront.net |
+| Reviewed pack assets | `https://d3a2yoxehy0vb7.cloudfront.net/packs/bio-cell-demo/` |
+| Orb explanation endpoint | `AccessLensOrbExplain` Function URL (stack output) |
+| Live session relay | `AccessLensLiveSession` (stack output) |
+
+These die with the event account. Do not print them on anything permanent.
 
 This document exists so that the deploy is not designed for the first time at
 hour 46. It records what the account can actually do, in what order things must
@@ -115,3 +124,96 @@ are the event's own infrastructure.
 
 Each is small. Each is also exactly the kind of step that is nobody's job right
 up until it is on the critical path.
+
+## Continuous deployment
+
+`.github/workflows/deploy.yml` runs the full check suite and then deploys every
+push to the integration branch, plus `workflow_dispatch` for manual runs.
+
+Five people and their agents push here, so the workflow is built to be boring:
+
+- **`concurrency` group per ref.** Two agents pushing a minute apart would
+  otherwise race each other into CloudFormation, and the loser fails with an
+  unhelpful conflict.
+- **Deploy needs checks to pass.** `workflow_dispatch` carries a `skip_checks`
+  input for demo emergencies; it is not available on push.
+- **The extension is rebuilt *after* the stacks deploy**, against the endpoints
+  they just produced. Vite inlines `import.meta.env` at build time, so a build
+  made before the deploy cannot see the endpoint no matter what the environment
+  says at run time. This is the step most likely to be got wrong by hand.
+- **The packed extension is uploaded as a workflow artifact as well as to S3**,
+  so a broken CloudFront does not cost you the build.
+
+### One-time setup: GitHub deploy role
+
+**Status on 2026-09-16: not done.** Every Deploy run so far (after PR #14 and
+PR #19) stopped at "Check the deploy role is configured" because
+`AWS_DEPLOY_ROLE_ARN` is unset. Only a repository admin can set it.
+
+The workflow authenticates with GitHub OIDC rather than stored keys, because
+Workshop Studio credentials expire within hours — a secret pasted in at 9am is
+dead by lunchtime, and the failure lands on whoever pushes next rather than
+whoever pasted it. After this setup nobody needs AWS keys to deploy again.
+
+Written so an agent can run it top to bottom. The human supplies fresh
+Workshop Studio credentials in the shell (never in a file in the repo, a
+GitHub secret, or a chat message) and a `gh` login with admin on the repo.
+
+```sh
+# 0. Preconditions. Fresh Workshop Studio credentials exported in this shell:
+#    AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN,
+#    AWS_DEFAULT_REGION=us-east-1.
+aws sts get-caller-identity            # expect account 087328706621 (or the current event account)
+gh api repos/anurupkumar18/Mind-Machine -q .permissions.admin   # must print true
+
+# 1. Build every Lambda bundle. CDK validates all asset paths at synth time,
+#    even when deploying a single stack, and services/*/dist is not committed.
+for dir in services/*/; do npm ci --prefix "$dir" && npm run build --prefix "$dir"; done
+
+# 2. Reuse the account's GitHub OIDC provider if one exists; an account may
+#    hold only one per issuer, and creating a second fails EntityAlreadyExists.
+OIDC_ARN=$(aws iam list-open-id-connect-providers \
+  --query "OpenIDConnectProviderList[?contains(Arn, 'token.actions.githubusercontent.com')].Arn | [0]" \
+  --output text)
+[ "$OIDC_ARN" = "None" ] && OIDC_ARN=""
+
+# 3. Deploy the role (from infra/, where cdk.json lives).
+cd infra && npm ci
+npx cdk deploy AccessLensGitHubDeploy --require-approval never \
+  -c withDeployRole=true -c repository=anurupkumar18/Mind-Machine \
+  ${OIDC_ARN:+-c oidcProviderArn=$OIDC_ARN} \
+  --outputs-file /tmp/deploy-role.json
+cd ..
+
+# 4. Store the role ARN as a repository VARIABLE (not a secret).
+ROLE_ARN=$(node -e 'console.log(require("/tmp/deploy-role.json").AccessLensGitHubDeploy.GitHubDeployRoleArn)')
+gh variable set AWS_DEPLOY_ROLE_ARN --repo anurupkumar18/Mind-Machine --body "$ROLE_ARN"
+
+# 5. Deploy the latest integration commit and watch it.
+gh workflow run deploy.yml --repo anurupkumar18/Mind-Machine --ref accesslens-extension-ar-pivot
+sleep 5
+gh run watch --repo anurupkumar18/Mind-Machine \
+  "$(gh run list --repo anurupkumar18/Mind-Machine --workflow deploy.yml --limit 1 --json databaseId -q '.[0].databaseId')"
+```
+
+**Done when:** the run is green, its summary lists `WebSocketUrl`,
+`OrbExplainUrl`, `CaptionsUrl`, `RecapUrl`, `TranslateSpeakUrl`,
+`MediaAccessUrl` and `DistributionUrl`, and the `accesslens-extension` artifact
+is attached. Every later push to `accesslens-extension-ar-pivot` deploys on its
+own.
+
+If it fails:
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `ExpiredToken` / `InvalidClientTokenId` in steps 0–3 | Workshop Studio credentials expired. Export fresh ones and rerun. |
+| `EntityAlreadyExists` for the OIDC provider | Step 2 found nothing but a provider exists; pass its ARN with `-c oidcProviderArn=...`. |
+| `AccessDenied` creating the OIDC provider or role | The workshop role cannot create IAM identity providers. Deploy by hand instead: `cd infra && npx cdk deploy --all --require-approval never` after step 1, then `npm run build` with the stack outputs in `.env.local`. |
+| Workflow: `Not authorized to perform sts:AssumeRoleWithWebIdentity` | The trust policy's `repo:` does not match. Redeploy step 3 with the exact `owner/repo`. |
+| Workflow waits at "deploy" | The `aws` environment has required reviewers; approve the run in the Actions tab. |
+| Workflow: `SSM parameter /cdk-bootstrap/hnb659fds/version not found` | The account was reset; bootstrap again (`npx cdk bootstrap aws://<account>/us-east-1`). |
+
+The trust policy is scoped to the repository but open on ref, because every
+agent works on its own branch and pinning to `main` would mean nothing deploys
+until the final merge — exactly when nobody wants to discover the deploy is
+broken. **Narrow the ref condition before this outlives the event.**

@@ -36,7 +36,15 @@ const VIEW_BEARING = new Set([
 
 export interface RelayConfig {
   store: SessionStoreApi;
+  /** The reviewed pack the relay ships with; sessions teaching it need no lookup. */
   pack: PackIndex;
+  /**
+   * Any other pack, by id and version, from the published distribution. A
+   * session is pinned to the pack its first accepted event names, so every
+   * later event is checked against that pack and a client on a different
+   * version is refused (T-19). Without a resolver only the shipped pack works.
+   */
+  resolvePack?: (packId: string, version: number) => Promise<PackIndex | undefined>;
   secret: string;
   /** Deliver one event to one connection. Returns false if the peer is gone. */
   post: (connectionId: string, payload: unknown) => Promise<boolean>;
@@ -48,7 +56,22 @@ export type RelayOutcome =
   | { status: 'error'; reason: string };
 
 export class Relay {
+  private readonly packs = new Map<string, PackIndex>();
+
   constructor(private readonly config: RelayConfig) {}
+
+  private async packFor(packId: unknown, version: unknown): Promise<PackIndex | undefined> {
+    // A malformed reference is checked against the shipped pack so the
+    // ordinary rules (missing fields, mismatched ids) report it.
+    if (typeof packId !== 'string' || typeof version !== 'number') return this.config.pack;
+    if (packId === this.config.pack.packId && version === this.config.pack.version) return this.config.pack;
+    const key = `${packId}@${version}`;
+    const cached = this.packs.get(key);
+    if (cached) return cached;
+    const resolved = await this.config.resolvePack?.(packId, version);
+    if (resolved) this.packs.set(key, resolved);
+    return resolved;
+  }
 
   /**
    * Create a session and take the instructor capability for it.
@@ -66,12 +89,9 @@ export class Relay {
     now: Date = new Date(),
   ): Promise<RelayOutcome> {
     try {
-      await this.config.store.createSession(
-        sessionId,
-        this.config.pack.packId,
-        this.config.pack.version,
-        now,
-      );
+      // The pack is pinned by the first accepted event, not chosen here:
+      // `create` carries no pack on the frozen contract.
+      await this.config.store.createSession(sessionId, '', 0, now);
     } catch (error) {
       if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') {
         log.error('session-create-failed', { sessionId, error: String(error) });
@@ -178,7 +198,13 @@ export class Relay {
     }
 
     const session = await this.config.store.getSession(sessionId, now);
-    const rules = checkEvent(event, this.config.pack, {
+    const pinned = session && session.packId ? { packId: session.packId, version: session.packVersion } : undefined;
+    const pack = await this.packFor(pinned?.packId ?? event.packId, pinned?.version ?? event.packVersion);
+    if (!pack) {
+      logEvent('warn', 'event-rejected', event, { rules: 'pack-not-found', count: 1 });
+      return { status: 'rejected', rules: ['pack-not-found'] };
+    }
+    const rules = checkEvent(event, pack, {
       lastSequence: session?.lastSequence ?? 0,
       role: connection.role,
       sessionOpen: session !== undefined && session.status === 'open',
@@ -200,6 +226,8 @@ export class Relay {
       logEvent('warn', 'event-rejected', event, { rules: 'sequence-not-monotonic', count: 1 });
       return { status: 'rejected', rules: ['sequence-not-monotonic'] };
     }
+
+    if (session && !pinned) await this.config.store.pinSessionPack(sessionId, pack.packId, pack.version);
 
     const connections = await this.config.store.connectionsForSession(sessionId, now);
     let delivered = 0;

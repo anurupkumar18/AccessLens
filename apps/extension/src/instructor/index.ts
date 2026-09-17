@@ -5,3 +5,4 @@ export type {
   CaptureController, ControllerOptions, ControllerSnapshot, CapturePhase, CurrentState, Correction, Clock, IdGenerator,
 } from './captureController';
 export { InstructorPanel } from './InstructorPanel';
+export { CameraControl } from './CameraControl';

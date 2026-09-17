@@ -6,6 +6,8 @@ interface Props {
   pack: AccessPack;
   assetId?: string;
   regionId?: string;
+  /** Reviewed semantic focus point, normalized to the asset. */
+  pointer?: { x: number; y: number };
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * from the reviewed descriptions. A pack that ships no image gets the text
  * alone; nothing here knows what any particular lesson is about.
  */
-export function FocusView({ pack, assetId, regionId }: Props): React.ReactElement {
+export function FocusView({ pack, assetId, regionId, pointer }: Props): React.ReactElement {
   const asset = pack.assets.find((candidate) => candidate.assetId === assetId) ?? pack.assets[0];
   const region = asset?.regions.find((candidate) => candidate.regionId === regionId) ?? asset?.regions[0];
 
@@ -24,6 +26,13 @@ export function FocusView({ pack, assetId, regionId }: Props): React.ReactElemen
   const imageUrl = slideImageUrl(pack, asset);
   const heading = region.label ?? region.regionId;
   const { x, y, width, height } = region.bounds;
+  // The pointer marks the region from outside its outline, so it never covers
+  // the words or diagram it points at: at the top-left corner when there is
+  // room, otherwise at the bottom-right.
+  const pointerAt = !pointer ? null
+    : x >= 0.05 && y >= 0.08 ? { corner: 'start', left: x, top: y }
+    : x + width <= 0.95 && y + height <= 0.92 ? { corner: 'end', left: x + width, top: y + height }
+    : null;
 
   return (
     <section className="mode-panel focus-view" aria-labelledby="focus-title">
@@ -37,6 +46,16 @@ export function FocusView({ pack, assetId, regionId }: Props): React.ReactElemen
             aria-hidden="true"
             style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${width * 100}%`, height: `${height * 100}%` }}
           />
+          {pointerAt && (
+            <svg
+              className={`focus-pointer ${pointerAt.corner}`}
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              style={{ left: `${pointerAt.left * 100}%`, top: `${pointerAt.top * 100}%` }}
+            >
+              <path d={pointerAt.corner === 'start' ? 'M22 22 L2 12 L11 10 L14 2 Z' : 'M2 2 L22 12 L13 14 L10 22 Z'} />
+            </svg>
+          )}
         </figure>
       )}
       <p>{region.plainLanguage}</p>

@@ -17,6 +17,8 @@ export interface PipelineExtensionProps {
   catalog: s3.Bucket;
   jobs: dynamodb.Table;
   publicBaseUrl: string;
+  /** The course-library retrieval Lambda (spec section 9.4); the workflow calls it before each Sonnet stage. */
+  retrieve?: lambda.IFunction;
 }
 
 /**
@@ -75,6 +77,7 @@ export class PipelineExtensionPoints extends Construct {
       analyst: analyst.functionArn,
       packAuthor: packAuthor.functionArn,
       audio: audio.functionArn,
+      ...(props.retrieve ? { retrieve: props.retrieve.functionArn } : {}),
     });
 
     const logGroup = new logs.LogGroup(this, 'AuthoringLogs', {
@@ -93,6 +96,7 @@ export class PipelineExtensionPoints extends Construct {
     // getItem service integrations), so the machine's role needs the table.
     props.jobs.grantReadWriteData(this.stateMachine);
     for (const fn of [ingest, analyst, packAuthor, audio]) fn.grantInvoke(this.stateMachine);
+    props.retrieve?.grantInvoke(this.stateMachine);
   }
 
   /** A Sonnet-calling stage: Bedrock on the two allowed models and nothing else beyond its bucket. */

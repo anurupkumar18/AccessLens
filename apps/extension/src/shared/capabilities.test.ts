@@ -19,6 +19,10 @@ describe('RoleCapabilitySchema', () => {
     expect(RoleCapabilitySchema.safeParse({...validCapability, role: 'admin'}).success).toBe(false);
   });
 
+  it('accepts the stream token the relay attaches', () => {
+    expect(RoleCapabilitySchema.safeParse({...validCapability, streamToken: 'opaque-stream-token'}).success).toBe(true);
+  });
+
   it('rejects a capability missing its signed token', () => {
     const {token, ...withoutToken} = validCapability;
     expect(RoleCapabilitySchema.safeParse(withoutToken).success).toBe(false);

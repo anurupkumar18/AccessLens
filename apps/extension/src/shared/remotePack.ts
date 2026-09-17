@@ -23,7 +23,11 @@ export function remotePackUrl(search: string): URL | null {
   }
   // Only https: a pack fetched over plain http could be swapped in transit,
   // and a file: or chrome-extension: URL is not a published pack.
-  return url.protocol === 'https:' ? url : null;
+  // A same-machine dev server (`npx vite` with its /packs and /media proxy)
+  // is the one plain-http origin allowed, so a published pack can be viewed
+  // locally without CORS headers on the distribution.
+  const local = url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+  return url.protocol === 'https:' || local ? url : null;
 }
 
 export async function loadRemotePack(url: URL, fetchImpl: typeof fetch = fetch): Promise<AccessPack> {
@@ -34,4 +38,26 @@ export async function loadRemotePack(url: URL, fetchImpl: typeof fetch = fetch):
   // (`media/<packId>/<version>/slide-01.png`), not to the pack file.
   registerRemotePackBase(pack.packId, new URL('/', url));
   return pack;
+}
+
+/**
+ * Where a session's pack lives once the authoring pipeline has published it:
+ * `packs/<packId>/<version>.json` under the asset distribution. The live
+ * session's events name the pack by id and version, so a student who joins
+ * with a code can fetch exactly the pack the instructor is teaching, with no
+ * bundled copy and no URL to paste. The base is the deployed distribution
+ * (`VITE_ACCESSLENS_ASSET_BASE_URL`); a local host with no configured base
+ * falls back to its own origin, where the dev server proxies `/packs`.
+ */
+export function publishedPackUrl(packId: string, version: number, base: string = publishedPackBase()): URL {
+  return new URL(`packs/${encodeURIComponent(packId)}/${version}.json`, base.endsWith('/') ? base : `${base}/`);
+}
+
+function publishedPackBase(): string {
+  const configured = (import.meta.env.VITE_ACCESSLENS_ASSET_BASE_URL as string | undefined)?.trim();
+  return configured || window.location.origin;
+}
+
+export function fetchPublishedPack(packId: string, version: number): Promise<AccessPack> {
+  return loadRemotePack(publishedPackUrl(packId, version));
 }

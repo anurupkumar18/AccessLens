@@ -1,6 +1,7 @@
 import type { AccessPack } from './contracts';
 
 type Asset = AccessPack['assets'][number];
+type Region = Asset['regions'][number];
 
 /**
  * Slide images bundled with the extension, keyed by pack id then by the
@@ -11,7 +12,6 @@ type Asset = AccessPack['assets'][number];
  */
 const bundledSlides: Record<string, Record<string, string>> = {
   'bio-cell-demo': byBasename(import.meta.glob('../../../../packages/access-packs/bio-cell-demo/slides/*.png', { eager: true, query: '?url', import: 'default' })),
-  'hnsw-explainer': byBasename(import.meta.glob('../../../../packs/hnsw/slides/*.png', { eager: true, query: '?url', import: 'default' })),
 };
 
 function byBasename(globbed: Record<string, unknown>): Record<string, string> {
@@ -48,4 +48,17 @@ export function slideImageUrl(pack: Pick<AccessPack, 'packId'>, asset: Pick<Asse
   const remote = remoteBases.get(pack.packId);
   if (remote) return new URL(asset.mediaUri, remote).toString();
   return bundledSlides[pack.packId]?.[basename(asset.mediaUri)] ?? null;
+}
+
+/**
+ * URL for a region's reviewed audio description. Only packs published by the
+ * authoring pipeline carry `audioUri` (Polly MP3s written next to the pack),
+ * so it resolves against the distribution root the pack was loaded from;
+ * a bundled pack ships no audio and gets null, which the audio renderer
+ * treats as "synthesize the reviewed text instead".
+ */
+export function regionAudioUrl(pack: Pick<AccessPack, 'packId'>, region: Pick<Region, 'audioUri'>): string | null {
+  if (!region.audioUri) return null;
+  const remote = remoteBases.get(pack.packId);
+  return remote ? new URL(region.audioUri, remote).toString() : null;
 }

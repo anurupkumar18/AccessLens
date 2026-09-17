@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import type { AccessPack, SessionClient } from '../shared/contracts';
 import type { CaptureHost, Scheduler } from '../sources/screen';
 import type { ScreenAnalyzer } from '../sources/screen/screenAnalyzer';
-import { createCaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import { defaultAiClient, type AiClient } from '../shared/aiClient';
+import type { MicrophoneHost } from '../sources/audio/microphone';
+import { createCaptureController, type CaptureController, type Clock, type ControllerSnapshot, type IdGenerator } from './captureController';
+import { LiveCaptions, type CaptionDeps } from './SpeechCaptions';
+import { createLiveCaptions, type LiveCaptionsState, type Transcriber } from './liveCaptions';
 
 interface Props {
   client: SessionClient;
@@ -12,19 +16,34 @@ interface Props {
   clock?: Clock;
   ids?: IdGenerator;
   analyzer?: ScreenAnalyzer;
+  /** AI gateway client; defaults to the one configured by VITE_ACCESSLENS_AI_URL. */
+  ai?: AiClient | null;
+  captionDeps?: CaptionDeps;
+  microphone?: MicrophoneHost;
+  transcribe?: Transcriber;
 }
 
 type Tone = 'idle' | 'live' | 'ok' | 'warn';
 
 interface Banner { glyph: string; label: string; tone: Tone; sentence: string }
 
+const SURFACE_NAMES = { browser: 'a tab', window: 'a window', monitor: 'your screen' } as const;
+
 /** One banner per state: glyph and label carry the meaning, colour only reinforces it. */
 function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
+  // Windows and whole screens carry toolbars and other windows around the
+  // slide, so when nothing matches there, say what usually fixes it.
+  const unmatchedHint = state.surface === 'window' || state.surface === 'monitor'
+    ? ' Make the slide bigger and keep other windows off it, or share the tab or a full-screen slideshow.'
+    : '';
   const where = state.current.kind === 'matched'
     ? ` Current slide: ${state.current.title}. Region: ${state.current.regionId ?? 'none'}.`
     : state.current.kind === 'unmatched'
-      ? ' Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below.'
-      : ' Looking for a reviewed slide.';
+      ? ` Unmatched: the shared screen is not a reviewed slide. Students see nothing new until you pick the slide below.${unmatchedHint}`
+      : state.surface === 'window' || state.surface === 'monitor'
+        ? ' Looking for a reviewed slide anywhere in what you shared.'
+        : ' Looking for a reviewed slide.';
+  const sharing = state.surface ? `Sharing ${SURFACE_NAMES[state.surface]}.` : 'Sharing.';
   switch (state.phase) {
     case 'idle':
       return {
@@ -38,7 +57,7 @@ function banner(state: ControllerSnapshot, pack: AccessPack): Banner {
         glyph: state.current.kind === 'unmatched' ? '⚠' : state.current.kind === 'matched' ? '●' : '◉',
         label: state.current.kind === 'unmatched' ? 'Sharing · Unmatched' : state.current.kind === 'matched' ? 'Sharing · Synced' : 'Sharing',
         tone: state.current.kind === 'unmatched' ? 'warn' : state.current.kind === 'matched' ? 'ok' : 'live',
-        sentence: `Sharing.${where}`,
+        sentence: `${sharing}${where}`,
       };
     case 'paused':
       return { glyph: '❙❙', label: 'Paused', tone: 'warn', sentence: `Paused. Students see the last shared moment.${where}` };
@@ -58,17 +77,28 @@ function stepIndex(state: ControllerSnapshot): number {
  * the panel holds identifiers and strings only. Start is the only path that
  * reaches CaptureHost.requestStream() (charter A1).
  */
-export function InstructorPanel({ client, pack, host, scheduler, clock, ids, analyzer }: Props): React.ReactElement {
+export function InstructorPanel({ client, pack, host, scheduler, clock, ids, analyzer, ai = defaultAiClient, captionDeps, microphone, transcribe }: Props): React.ReactElement {
   const [controller] = useState(() => createCaptureController({ client, pack, host, scheduler, clock, ids, analyzer }));
   const [state, setState] = useState<ControllerSnapshot>(() => controller.getState());
   const [correctAsset, setCorrectAsset] = useState(pack.assets[0].assetId);
   const [correctRegion, setCorrectRegion] = useState('');
   const [indicateRegion, setIndicateRegion] = useState('');
+  const [captionText, setCaptionText] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = controller.subscribe(setState);
-    return () => { unsubscribe(); controller.dispose(); };
+    return () => {
+      unsubscribe();
+      // Unmounting (switching role or pack away from this panel) must not
+      // silently drop an open session: a student would keep showing the last
+      // live moment with no signal that the instructor left. End it properly
+      // so students see an explicit, honest "session ended" rather than a
+      // connection that quietly stops updating.
+      const current = controller.getState();
+      if (current.phase !== 'closed' && current.sessionId !== null) controller.endSession();
+      controller.dispose();
+    };
   }, [controller]);
 
   const active = state.phase === 'sharing' || state.phase === 'paused';
@@ -98,19 +128,29 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
     guarded(() => controller.indicateRegion(indicateRegion));
   }
 
+  function submitCaption(event: React.FormEvent): void {
+    event.preventDefault();
+    if (!captionText.trim()) { setFormError('Type a caption first.'); return; }
+    guarded(() => { controller.sendCaption(captionText); setCaptionText(''); });
+  }
+
   const steps = [
-    'Click Start and pick the window or tab showing your slides.',
+    'Click Start and pick the tab, window, or screen showing your slides.',
     'Read the join code to students. They enter it in their AccessLens.',
     'Present. Reviewed slides are recognised on this device and synced; fix a wrong match below.',
   ];
 
   return (
-    <section aria-labelledby="instructor-heading">
+    <section className="instructor" aria-labelledby="instructor-heading">
+      <div className="section-rule">
+        <p className="eyebrow"><span aria-hidden="true">/ </span>Instructor console</p>
+        <span className="rule-mark" aria-hidden="true" />
+      </div>
       <h2 id="instructor-heading">Instructor</h2>
-      <p className="muted">Pack: {pack.title} · v{pack.version}</p>
+      <p className="muted">Pack: <mark>{pack.title}</mark> · v{pack.version}</p>
       {analyzer ? <p className="supporting-text" role="status">AI screen analysis is enabled. Shared frames are sent transiently to the configured AWS analyzer; they are not stored.</p> : <p className="supporting-text" role="note">AI screen analysis is not configured. The offline reviewed-pack demo matcher is being used.</p>}
       <div className="panel-grid">
-      <div>
+      <div className="console">
       <div className="status" data-tone={b.tone}>
         <span className="glyph" aria-hidden="true">{b.glyph}</span>
         <span className="label">{b.label}</span>
@@ -134,8 +174,22 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
         )}
       </div>
 
+      {state.sessionId && state.phase !== 'closed' && (
+        <p className="caption-option">
+          <input id="follow-pointer" type="checkbox" checked={state.followPointer} onChange={() => controller.setFollowPointer(!state.followPointer)} />
+          <label htmlFor="follow-pointer">
+            Move students to the part of the slide under my mouse
+            <span className="muted"> (sharing a window or your entire screen; a tab share has no mouse pointer)</span>
+          </label>
+        </p>
+      )}
+
+      <LiveCaptions controller={controller} state={state} pack={pack} ai={ai} deps={captionDeps} />
+
+      {active && <LiveCaptionsControl controller={controller} microphone={microphone} transcribe={transcribe} />}
+
       </div>
-      <div>
+      <div className="guide">
       <h3>How this works</h3>
       <ol className="steps" aria-label="Session steps">
         {steps.map((text, i) => {
@@ -195,9 +249,94 @@ export function InstructorPanel({ client, pack, host, scheduler, clock, ids, ana
         </div>
       )}
 
+      {active && currentAsset && (
+        <form onSubmit={submitCaption}>
+          <h3>Add a live caption</h3>
+          <p>
+            <label htmlFor="caption-text">Caption for {currentAsset.title} (280 characters max)</label>
+            <input
+              id="caption-text"
+              type="text"
+              maxLength={280}
+              value={captionText}
+              onChange={e => setCaptionText(e.target.value)}
+              placeholder="Short instructor-authored line, not a transcript"
+            />
+          </p>
+          <button type="submit">Send caption</button>
+        </form>
+      )}
+
       {formError && <p role="alert">{formError}</p>}
       </div>
       </div>
     </section>
+  );
+}
+
+const CAPTION_LANGUAGES: [string, string][] = [
+  ['en-US', 'English (US)'],
+  ['en-GB', 'English (UK)'],
+  ['es-US', 'Spanish (US)'],
+  ['fr-FR', 'French'],
+  ['de-DE', 'German'],
+  ['pt-BR', 'Portuguese (Brazil)'],
+  ['hi-IN', 'Hindi'],
+  ['zh-CN', 'Chinese (Mandarin)'],
+  ['ja-JP', 'Japanese'],
+  ['ko-KR', 'Korean'],
+];
+
+/**
+ * Live captions for the open session. Mounted only while sharing or paused,
+ * so unmounting (Stop, End Session) is what turns the microphone off.
+ */
+function LiveCaptionsControl({ controller, microphone, transcribe }: {
+  controller: CaptureController;
+  microphone?: MicrophoneHost;
+  transcribe?: Transcriber;
+}): React.ReactElement {
+  const [lang, setLang] = useState('en-US');
+  const langRef = React.useRef(lang);
+  langRef.current = lang;
+  const [captions] = useState(() => createLiveCaptions({
+    publish: caption => controller.appendCaption(caption),
+    sessionId: () => controller.getState().sessionId,
+    lang: () => langRef.current,
+    microphone,
+    transcribe,
+  }));
+  const [state, setState] = useState<LiveCaptionsState>(() => captions.getState());
+
+  useEffect(() => {
+    const unsubscribe = captions.subscribe(setState);
+    return () => { unsubscribe(); captions.stop(); };
+  }, [captions]);
+
+  const on = state.phase === 'listening' || state.phase === 'starting';
+  const status = state.phase === 'listening'
+    ? '● Captioning: students see what you say.'
+    : state.phase === 'starting' ? '◔ Waiting for microphone permission.' : '○ Live captions are off.';
+
+  return (
+    <div className="live-captions" aria-labelledby="live-captions-heading">
+      <h3 id="live-captions-heading">Live captions</h3>
+      <p>
+        <label htmlFor="live-captions-lang">Language you are speaking</label>
+        <select id="live-captions-lang" value={lang} onChange={e => setLang(e.target.value)}>
+          {CAPTION_LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+        </select>
+      </p>
+      <p role="status" aria-live="polite">{status}</p>
+      {on
+        ? <button type="button" className="stop" onClick={() => captions.stop()}>Stop live captions</button>
+        : <button type="button" className="primary" onClick={() => { void captions.start(); }}>Start live captions</button>}
+      {state.backlog >= 3 && <p className="a11y-notice">Captions are {state.backlog} sentences behind. Pausing briefly lets them catch up.</p>}
+      {state.message && <p role={state.phase === 'error' ? 'alert' : undefined} className="a11y-notice">{state.message}</p>}
+      {state.lastCaption && (
+        <p className="supporting-text">Last caption sent: <q>{state.lastCaption}</q></p>
+      )}
+      <p className="supporting-text">Your microphone audio goes to AWS Transcribe only to make captions; it is not recorded or stored. Captions are automatic and can be wrong.</p>
+    </div>
   );
 }

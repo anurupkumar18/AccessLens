@@ -363,3 +363,112 @@ pack (hundreds of slides with audio) could approach the API Lambda's
 timeout. The decks this product targets are tens of slides; if that
 changes, the answer is a publish job the route starts and the client
 polls, still with the route as the single gate.
+
+## D11 — an upload screen in the instructor panel, one shared token, no professor accounts yet — DECIDED (user, 2026-09-16: "we need to add somewhere to upload slides")
+
+**What exists.** The authoring API takes a deck through `POST /v1/uploads`,
+a presigned `PUT`, `POST /v1/jobs`, review and publish, guarded by the one
+bearer token the stack issues at deploy. There are no per-instructor
+accounts; whoever holds the token is the instructor.
+
+**What changed.** `AuthoringPanel` (`apps/extension/src/instructor/`) in
+the instructor role: paste the token once (kept in this browser's
+localStorage, sent only to the API), pick a PDF/PPTX, name the lesson, watch
+the stages, untick any description to leave it out, publish, open the
+result in the student view. `authoringClient.ts` is the browser client. The
+decks bucket gained a CORS rule for the presigned `PUT`, and the manifest
+gained host permissions for the API and S3 hosts.
+
+**Not done, on purpose.** Professor accounts. Cognito or a token-issuing
+admin route are each a day of work and the demo does not need them; the
+charter forbids server-side *student* profiles (A4), not instructor
+accounts, so the door stays open. The shared token is the hackathon shape.
+*Superseded the same day by D12: the shared token is gone.*
+
+## D12 — instructors sign in with Google; the shared bearer token is removed — DECIDED (user, 2026-09-16: "we shouldn't have authoring token. Can we make people sign in with google accounts")
+
+**What changed.** The API takes a Google ID token on every route:
+`Authorization: Bearer <id token>`. API Gateway's JWT authorizer verifies
+it against `https://accounts.google.com` with two accepted audiences, this
+deployment's OAuth web client id (`GOOGLE_CLIENT_ID`, deployed as CDK
+context) and the Google Cloud SDK's public client id, so scripts can use
+`gcloud auth print-identity-token`. Verification alone admits nobody: each
+Lambda then checks the claims against `ACCESSLENS_INSTRUCTORS`, a
+comma-separated list of instructor emails and `@domains` deployed as the
+`INSTRUCTOR_ALLOWLIST` environment variable (`services/api/identity.ts`).
+Unverified email or not on the list is 403 `not_an_instructor`; an empty
+list admits nobody. Jobs record the creator's Google subject (`ownerSub`)
+and the job routes answer 404 for anyone else's job. Health keeps the JWT
+check but not the allowlist. The bearer authorizer, the SSM parameter and
+its custom resource, `BearerToken` and `TokenParameterName` outputs are
+deleted, not kept behind a flag.
+
+**Clients.** The instructor panel signs in with Google: inside the
+extension through `chrome.identity.launchWebAuthFlow` (ID token only, no
+access token, nonce and state checked), on a plain web page through
+Google Identity Services' button. The token stays in this browser's
+localStorage until it expires; a 401 from the API drops it and shows the
+button again. `VITE_GOOGLE_CLIENT_ID` configures the build; without it the
+upload panel says so and offers nothing.
+
+**Why this shape.** No user database and no server-side profile of anyone
+(charter A4 forbids student profiles; this stores one subject id per
+job, for instructors only). Google verifies who; the deployment decides
+which of them may author. Swapping the allowlist for a course roster later
+is a change inside `identity.ts`, nothing else moves.
+
+**Operator setup.** One OAuth 2.0 client id (type Web application) in Google
+Cloud console, authorized JavaScript origins `http://localhost:5173` and the
+CloudFront viewer URL; for the installed extension add
+`https://<extension-id>.chromiumapp.org/` as an authorized redirect URI.
+`make deploy` refuses to run without `GOOGLE_CLIENT_ID` and
+`ACCESSLENS_INSTRUCTORS` (environment or `.env.local`).
+
+**Spec deviation, recorded.** `docs/prompts/viz-system-build.md` describes
+the deploy-time bearer token in SSM; this decision replaces that paragraph
+by user instruction. The prompt file is not edited.
+*Amended the same day by D13: the allowlist is gone; any verified Google
+account is an instructor.*
+
+## D13 — two roles; professors self-register and own a course library for retrieval — DECIDED (user, 2026-09-16: "We should have 2 roles, professor and student. Students don't need to sign in, but we need professor accounts to have a dataset of class resources (for RAG). Anybody can create a professor account for the moment")
+
+**Roles.** Students never sign in and never call the authoring API; they
+read published packs, media and artifacts from CloudFront as before, and
+nothing about them is stored anywhere (charter A4, hard rule 3). Professors
+sign in with Google (D12). There is no approval step and no allowlist for
+now: any verified Google account that calls `GET /v1/me` gets an instructor
+record (`instructors` table keyed by Google subject: email, name,
+createdAt, lastSeenAt). That record is the user base. Gating who may become
+a professor is a later decision; the place to add it is `ensureInstructor`
+in `services/api/instructors.ts`, nothing else moves.
+
+**Class resources for retrieval.** This is spec section 9, the course
+library, wired for real: a professor creates course profiles (`POST
+/v1/profiles`, owned by their subject id), adds textbooks, notes, slides,
+problem sets or a syllabus (`POST /v1/uploads` then `POST
+/v1/profiles/{id}/documents`), and the indexer Lambda extracts page text
+with Poppler (PPTX and DOCX go through LibreOffice first, in the same
+container as ingest), chunks page by page, embeds with Titan v2 from
+Lambda only (hard rule 12), writes the profile's S3 Vectors index plus the
+verbatim chunk manifest, and verifies with a page-one query before the
+document is `ready`. A deck job that names a profile now retrieves before
+Sonnet writes: eight excerpts for the deck analyst from three windows of
+the deck text, four per slide for the pack author from that slide's text
+(spec 9.4); references survive only the verbatim check that already
+existed. A job without a profile runs exactly as before. Every profile,
+document and search route answers 404 for another professor's profile.
+
+**Deviations from the spec's shape, recorded.** Indexing is one Lambda
+invocation running the four stages in sequence (the document record
+reports each stage), not a Step Functions execution per document: the
+stages already existed as one function and a workflow would add only
+visibility. The S3 Vectors bucket is a native CloudFormation resource
+(`AWS::S3Vectors::VectorBucket` exists now), so no custom resource; indexes
+are created per profile at runtime and `make destroy` deletes any that
+remain before the stack delete. The documents table is keyed by `docId`
+with a `profileId-index`, matching the store the library lane wrote.
+
+**What students get.** Read mode already lists an asset's `references`
+as "From your course materials"; nothing else on the student side changes.
+The search route is instructor-only; a student question-answering client
+would go through the AI gateway, which is not part of this decision.

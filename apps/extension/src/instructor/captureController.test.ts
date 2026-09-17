@@ -1,9 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { AccessPackSchema, InMemorySessionClient, LiveEventSchema, type LiveEvent } from '../shared/contracts';
+import { describe, it, expect, vi } from 'vitest';
+import { AccessPackSchema, CAPTION_MAX_LENGTH, InMemorySessionClient, LiveEventSchema, type LiveEvent } from '../shared/contracts';
+import type { CaptureStream } from '../sources/screen/captureHost';
 import { createCaptureController } from './index';
 import {
-  FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, testPack,
+  FakeCaptureHost, FakeClock, FakeScheduler, fixedIds, loadDemoFrame, loadSlideFrame, screenWith, slideInWindow, testPack, withPointer,
 } from '../sources/screen/fixtures';
+import type { DisplaySurface, Frame } from '../sources/screen';
+import reviewedPackJson from '../../../../packages/access-packs/bio-cell-demo/pack.json';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { PNG } from 'pngjs';
+
+function loadPng(repoPath: string): Frame {
+  const image = PNG.sync.read(readFileSync(join(__dirname, '../../../..', repoPath)));
+  return { width: image.width, height: image.height, data: new Uint8ClampedArray(image.data) };
+}
 
 const pack = AccessPackSchema.parse(testPack);
 const arPack = AccessPackSchema.parse({
@@ -56,7 +67,7 @@ describe('capture controller: start and permission flow (A1, A3)', () => {
     expect(controller.getState()).toMatchObject({ phase: 'sharing', sessionId: 'sess-1' });
   });
 
-  it('opens the browser chooser before awaiting session creation so window and screen capture retain user activation', async () => {
+  it('opens the browser chooser before awaiting session creation so window and display capture retain user activation', async () => {
     const host = new FakeCaptureHost();
     const client = new InMemorySessionClient();
     const order: string[] = [];
@@ -65,8 +76,41 @@ describe('capture controller: start and permission flow (A1, A3)', () => {
     client.create = async (sessionId: string) => { order.push('create'); return originalCreate(sessionId); };
     host.requestStream = async () => { order.push('requestStream'); return originalRequest(); };
     const controller = createCaptureController({ client, pack, host, scheduler: new FakeScheduler(), ids: fixedIds('sess-gesture') });
+
     await controller.start();
+
     expect(order).toEqual(['requestStream', 'create']);
+  });
+
+  it('does not create a temporary session until the instructor grants capture', async () => {
+    const host = new FakeCaptureHost();
+    const client = new InMemorySessionClient();
+    let allowCapture: ((stream: CaptureStream) => void) | undefined;
+    const create = client.create.bind(client);
+    const createSpy = vi.fn(create);
+    client.create = createSpy;
+    host.requestStream = () => new Promise<CaptureStream>((resolve) => { allowCapture = resolve; });
+    const controller = createCaptureController({ client, pack, host, scheduler: new FakeScheduler(), ids: fixedIds('sess-consent') });
+
+    const starting = controller.start();
+    await Promise.resolve();
+    expect(createSpy).not.toHaveBeenCalled();
+
+    allowCapture!(host.stream);
+    await starting;
+    expect(createSpy).toHaveBeenCalledWith('sess-consent');
+  });
+
+  it('stops an already-granted stream when session creation fails', async () => {
+    const host = new FakeCaptureHost();
+    const client = new InMemorySessionClient();
+    client.create = async () => { throw new Error('relay unavailable'); };
+    const controller = createCaptureController({ client, pack, host, scheduler: new FakeScheduler(), ids: fixedIds('sess-failed-create') });
+
+    await controller.start();
+
+    expect(host.stream.calls).toContain('stop');
+    expect(controller.getState()).toMatchObject({ phase: 'idle', message: 'Could not open a session. Check the connection and try Start again.' });
   });
 
   it('a denied chooser emits nothing, returns to idle with an explanation, and still called requestStream once', async () => {
@@ -286,6 +330,45 @@ describe('capture controller: manual correction and region indication (A5)', () 
   });
 });
 
+describe('capture controller: live captions (T-16)', () => {
+  it('sendCaption emits caption.appended scoped to the current asset', async () => {
+    const { controller, stream, scheduler, events } = await sharing();
+    stream.enqueue(demo('slide-02'));
+    scheduler.tick(1);
+    controller.sendCaption('  The mitochondrion releases usable energy.  ');
+    expect(events.at(-1)).toMatchObject({
+      type: 'caption.appended', assetId: 'slide-02',
+      caption: { text: 'The mitochondrion releases usable energy.', isFinal: true },
+    });
+  });
+
+  it('rejects an empty or whitespace-only caption without emitting', async () => {
+    const { controller, events } = await sharing();
+    expect(() => controller.sendCaption('   ')).toThrow();
+    expect(types(events)).toEqual(['session.started']);
+  });
+
+  it('rejects a caption over 280 characters without emitting', async () => {
+    const { controller, stream, scheduler, events } = await sharing();
+    stream.enqueue(demo('slide-02'));
+    scheduler.tick(1);
+    const before = types(events);
+    expect(() => controller.sendCaption('x'.repeat(281))).toThrow();
+    expect(types(events)).toEqual(before);
+  });
+
+  it('rejects a caption with no current matched asset', async () => {
+    const { controller } = await sharing();
+    expect(() => controller.sendCaption('hello')).toThrow();
+  });
+
+  it('rejects a caption while not sharing', async () => {
+    const { controller } = await sharing();
+    controller.stop();
+    expect(() => controller.sendCaption('hello')).toThrow();
+  });
+});
+
 describe('capture controller: contract and privacy invariants (A2)', () => {
   it('every emitted event passes LiveEventSchema and the state snapshot never carries frame data', async () => {
     const { controller, stream, scheduler, events } = await sharing();
@@ -320,5 +403,149 @@ describe('capture controller: contract and privacy invariants (A2)', () => {
     controller.correct({ assetId: 'slide-02' });
     expect(events[0].sentAt).toBe('2026-09-15T15:00:00.000Z');
     expect(events[1].sentAt).toBe('2026-09-15T15:00:01.500Z');
+  });
+});
+
+describe('capture controller: window and whole-screen shares', () => {
+  // The reviewed pack's second slide shown in a viewer window: toolbar and
+  // margins push the whole-frame fingerprint past the threshold, which is the
+  // failure instructors hit when they picked "Window" or "Entire screen".
+  const reviewedPack = AccessPackSchema.parse(reviewedPackJson);
+  const windowed = () => slideInWindow(loadPng('packages/access-packs/bio-cell-demo/slides/cell-slide-02.png'), 900, 900);
+
+  function setupReviewed(surface: DisplaySurface | undefined) {
+    const host = new FakeCaptureHost();
+    host.stream.surface = surface;
+    const client = new InMemorySessionClient();
+    const scheduler = new FakeScheduler();
+    const events: LiveEvent[] = [];
+    client.subscribe(e => events.push(e));
+    const controller = createCaptureController({ client, pack: reviewedPack, host, scheduler, clock: new FakeClock(), ids: fixedIds('sess-w') });
+    return { controller, scheduler, events, stream: host.stream };
+  }
+
+  it('finds the slide inside a shared window and reports the surface', async () => {
+    const { controller, scheduler, events, stream } = setupReviewed('window');
+    await controller.start();
+    expect(controller.getState().surface).toBe('window');
+    stream.enqueue(windowed(), windowed());
+    scheduler.tick(2);
+    expect(events.filter(e => e.type === 'asset.changed')).toMatchObject([{ assetId: 'cell-slide-02' }]);
+  });
+
+  it('searches a whole-screen share the same way', async () => {
+    const { controller, scheduler, events, stream } = setupReviewed('monitor');
+    await controller.start();
+    const screen = () => screenWith(loadSlideFrame('unknown-01'), windowed(), 40, 80);
+    stream.enqueue(screen(), screen());
+    scheduler.tick(2);
+    expect(events.filter(e => e.type === 'asset.changed')).toMatchObject([{ assetId: 'cell-slide-02' }]);
+  });
+
+  describe('following the mouse pointer', () => {
+    // slideInWindow(…, 900, 900) puts the 860x484 slide at (20, 235) in the window.
+    const at = (x: number, y: number) => withPointer(windowed(), Math.round(20 + x * 860), Math.round(235 + y * 484));
+    const regionEvents = (events: LiveEvent[]) => events.filter(e => e.type === 'region.changed').map(e => (e as { regionId: string }).regionId);
+
+    it('moves students to the reviewed region under the pointer once it stays for two samples, and sends only the region', async () => {
+      const { controller, scheduler, events, stream } = setupReviewed('window');
+      await controller.start();
+      expect(controller.getState().followPointer).toBe(true);
+      stream.enqueue(windowed(), windowed(), at(0.43, 0.53));
+      scheduler.tick(3);
+      expect(regionEvents(events)).toEqual([]);
+      stream.enqueue(at(0.43, 0.53));
+      scheduler.tick(1);
+      expect(regionEvents(events)).toEqual(['nucleolus']);
+      // The reviewed region's centre is sent, never where the mouse was.
+      const nucleolus = reviewedPack.assets[1].regions.find(r => r.regionId === 'nucleolus')!.bounds;
+      expect(events.at(-1)).toMatchObject({ pointer: { x: nucleolus.x + nucleolus.width / 2, y: nucleolus.y + nucleolus.height / 2 } });
+
+      stream.enqueue(at(0.27, 0.3), at(0.27, 0.3));
+      scheduler.tick(2);
+      expect(regionEvents(events)).toEqual(['nucleolus', 'nucleus']);
+    });
+
+    it('does not move anyone when the instructor turns it off, or on a tab share', async () => {
+      const off = setupReviewed('window');
+      await off.controller.start();
+      off.controller.setFollowPointer(false);
+      off.stream.enqueue(windowed(), windowed(), at(0.43, 0.53), at(0.43, 0.53));
+      off.scheduler.tick(4);
+      expect(regionEvents(off.events)).toEqual([]);
+
+      const tab = setupReviewed('browser');
+      await tab.controller.start();
+      const slideOnly = () => loadPng('packages/access-packs/bio-cell-demo/slides/cell-slide-02.png');
+      tab.stream.enqueue(slideOnly(), slideOnly(), withPointer(slideOnly(), 400, 300), withPointer(slideOnly(), 400, 300));
+      tab.scheduler.tick(4);
+      expect(regionEvents(tab.events)).toEqual([]);
+    });
+  });
+
+  it('keeps a shared tab on the whole-frame path, so a tab showing a window screenshot is still unmatched', async () => {
+    const { controller, scheduler, events, stream } = setupReviewed('browser');
+    await controller.start();
+    stream.enqueue(windowed(), windowed(), windowed());
+    scheduler.tick(3);
+    expect(types(events)).toEqual(['session.started', 'source.unmatched']);
+  });
+});
+
+describe('capture controller: live captions', () => {
+  it('sends caption text naming the matched slide, and without an asset when nothing is matched', async () => {
+    const { controller, stream, scheduler, events } = await sharing();
+    expect(controller.caption('Before any slide matches.', true)).toBe(true);
+    expect(events.at(-1)).toMatchObject({ type: 'caption.appended', caption: { text: 'Before any slide matches.', isFinal: true } });
+    expect(events.at(-1)).not.toHaveProperty('assetId');
+
+    stream.enqueue(demo('slide-03'));
+    scheduler.tick(1);
+    controller.caption('the mitochondrion  releases energy', false);
+    expect(events.at(-1)).toMatchObject({ type: 'caption.appended', assetId: 'slide-03', caption: { text: 'the mitochondrion releases energy', isFinal: false } });
+    for (const event of events) expect(LiveEventSchema.safeParse(event).success).toBe(true);
+  });
+
+  it('keeps the most recent words of an over-long caption, within the contract limit', async () => {
+    const { controller, events } = await sharing();
+    controller.caption(`${'early words '.repeat(200)}the end`, true);
+    const text = (events.at(-1) as { caption: { text: string } }).caption.text;
+    expect(text.length).toBeLessThanOrEqual(CAPTION_MAX_LENGTH);
+    expect(text.endsWith('the end')).toBe(true);
+    expect(text.startsWith('early') || text.startsWith('words')).toBe(true);
+  });
+
+  it('sends nothing without an open session, and hands out the instructor capability once one opens', async () => {
+    const { controller, events } = setup();
+    expect(controller.caption('hello', true)).toBe(false);
+    expect(controller.getCapability()).toBeNull();
+    expect(events).toEqual([]);
+    await controller.start();
+    expect(controller.getCapability()).toMatchObject({ role: 'instructor', sessionId: 'sess-1' });
+    controller.endSession();
+    expect(controller.getCapability()).toBeNull();
+    expect(controller.caption('after the end', true)).toBe(false);
+
+  });
+
+  it('publishes contract-valid captions on the same sequence as every other event', async () => {
+    const { controller, events } = await sharing();
+    controller.appendCaption({ text: '  The nucleus holds DNA.  ', isFinal: true, lang: 'en-US' });
+    controller.pause();
+    controller.appendCaption({ text: 'Still captioning while paused.', isFinal: true });
+    expect(types(events)).toEqual(['session.started', 'caption.appended', 'capture.paused', 'caption.appended']);
+    expect(events.map(e => e.sequence)).toEqual([1, 2, 3, 4]);
+    expect(events[1]).toMatchObject({ caption: { text: 'The nucleus holds DNA.', isFinal: true, lang: 'en-US' } });
+    for (const event of events) expect(LiveEventSchema.safeParse(event).success).toBe(true);
+  });
+
+  it('refuses captions with no active capture, and drops empty or invalid fields', async () => {
+    const { controller, events } = setup();
+    expect(() => controller.appendCaption({ text: 'Too early.', isFinal: true })).toThrow(/Cannot caption/);
+    await controller.start();
+    controller.appendCaption({ text: '   ', isFinal: true });
+    controller.appendCaption({ text: 'x'.repeat(2500), isFinal: true, lang: 'e' });
+    expect(types(events)).toEqual(['session.started', 'caption.appended']);
+    expect(LiveEventSchema.safeParse(events[1]).success).toBe(true);
   });
 });

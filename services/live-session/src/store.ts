@@ -105,6 +105,18 @@ export class SessionStore implements SessionStoreApi {
     return isLive(record, nowSeconds(now)) ? record : undefined;
   }
 
+  async pinSessionPack(sessionId: string, packId: string, packVersion: number): Promise<void> {
+    await this.doc.send(
+      new UpdateCommand({
+        TableName: this.config.sessionsTable,
+        Key: { sessionId },
+        UpdateExpression: 'SET packId = :packId, packVersion = :packVersion',
+        ConditionExpression: 'attribute_exists(sessionId)',
+        ExpressionAttributeValues: { ':packId': packId, ':packVersion': packVersion },
+      }),
+    );
+  }
+
   /**
    * Claim `sequence` for this session, atomically.
    *

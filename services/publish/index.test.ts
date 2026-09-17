@@ -131,6 +131,7 @@ describe('publishPack', () => {
       deck,
       assets: [stagedAsset('slide-01'), stagedAsset('slide-02', { readingOrder: ['title', 'graph'], regions: [stagedAsset('slide-02').regions[0]] })],
       publicBaseUrl: 'https://cdn.example.test',
+      synthesizeAudio: async () => new Uint8Array([7]),
     }, store);
 
     expect(result.version).toBe(2);
@@ -143,12 +144,71 @@ describe('publishPack', () => {
     expect(pack.assets[0].mediaUri).toBe('media/pack-1/2/slide-01.png');
     expect(pack.assets[0].regions[0].audioUri).toBe('media/pack-1/2/slide-01.graph.mp3');
     expect(pack.assets[0].fingerprint).toBe(deck.slides[0].fingerprint);
-    expect(store.writes.map(write => write.key)).toEqual(['packs/pack-1/2.json']);
+    // The edited region's clip is spoken fresh and written; the stale staged clip is not copied.
+    expect(store.writes.map(write => write.key)).toEqual(['media/pack-1/2/slide-01.graph.mp3', 'packs/pack-1/2.json']);
     expect(store.writes.map(write => write.key)).not.toContain('packs/pack-1/1.json');
     expect(store.copies).toEqual(expect.arrayContaining([
       { source: 'staging/job-1/media/slide-01.png', destination: 'media/pack-1/2/slide-01.png' },
-      { source: 'staging/job-1/media/slide-01.graph.mp3', destination: 'media/pack-1/2/slide-01.graph.mp3' },
+      { source: 'staging/job-1/media/slide-02.graph.mp3', destination: 'media/pack-1/2/slide-02.graph.mp3' },
     ]));
+    expect(store.copies.map(copy => copy.source)).not.toContain('staging/job-1/media/slide-01.graph.mp3');
+  });
+
+  it('re-speaks a region whose short description was edited, and never copies its stale clip', async () => {
+    const store = new FakeStore();
+    store.objects.set('staging/job-1/media/slide-01.png', new Uint8Array([1]));
+    store.objects.set('staging/job-1/media/slide-02.png', new Uint8Array([1]));
+    store.objects.set('staging/job-1/media/slide-01.graph.mp3', new Uint8Array([2]));
+    store.objects.set('staging/job-1/media/slide-02.graph.mp3', new Uint8Array([2]));
+    const spoken: string[] = [];
+    const result = await publishPack({
+      job: job({ decisions: [{ assetId: 'slide-01', regionEdits: [{ regionId: 'graph', shortDescription: 'A directed graph.' }] }] }),
+      deck,
+      assets: [stagedAsset('slide-01'), stagedAsset('slide-02')],
+      publicBaseUrl: 'https://cdn.test',
+      synthesizeAudio: async text => { spoken.push(text); return new Uint8Array([9, 9]); },
+    }, store);
+    expect(spoken).toEqual(['A directed graph.']);
+    const edited = result.pack.assets[0].regions.find(r => r.regionId === 'graph')!;
+    expect(edited.shortDescription).toBe('A directed graph.');
+    expect(edited.audioUri).toBe('media/pack-1/1/slide-01.graph.mp3');
+    expect(store.objects.get('media/pack-1/1/slide-01.graph.mp3')).toEqual(new Uint8Array([9, 9]));
+    expect(store.copies.map(c => c.source)).not.toContain('staging/job-1/media/slide-01.graph.mp3');
+    // The untouched slide's clip is copied as before.
+    expect(store.copies.map(c => c.source)).toContain('staging/job-1/media/slide-02.graph.mp3');
+  });
+
+  it('drops the clip of an edited region when no synthesizer is available, rather than shipping stale speech', async () => {
+    const store = new FakeStore();
+    store.objects.set('staging/job-1/media/slide-01.png', new Uint8Array([1]));
+    store.objects.set('staging/job-1/media/slide-02.png', new Uint8Array([1]));
+    store.objects.set('staging/job-1/media/slide-01.graph.mp3', new Uint8Array([2]));
+    store.objects.set('staging/job-1/media/slide-02.graph.mp3', new Uint8Array([2]));
+    const result = await publishPack({
+      job: job({ decisions: [{ assetId: 'slide-01', regionEdits: [{ regionId: 'graph', shortDescription: 'A directed graph.', plainLanguage: 'Arrows between dots.' }] }] }),
+      deck,
+      assets: [stagedAsset('slide-01'), stagedAsset('slide-02')],
+      publicBaseUrl: 'https://cdn.test',
+    }, store);
+    const edited = result.pack.assets[0].regions.find(r => r.regionId === 'graph')!;
+    expect(edited.audioUri).toBeUndefined();
+    expect(edited.plainLanguage).toBe('Arrows between dots.');
+    expect(store.copies.map(c => c.source)).not.toContain('staging/job-1/media/slide-01.graph.mp3');
+  });
+
+  it('keeps the staged clip when an edit only touches the plain-language text', async () => {
+    const store = new FakeStore();
+    store.objects.set('staging/job-1/media/slide-01.png', new Uint8Array([1]));
+    store.objects.set('staging/job-1/media/slide-02.png', new Uint8Array([1]));
+    store.objects.set('staging/job-1/media/slide-01.graph.mp3', new Uint8Array([2]));
+    store.objects.set('staging/job-1/media/slide-02.graph.mp3', new Uint8Array([2]));
+    const result = await publishPack({
+      job: job({ decisions: [{ assetId: 'slide-01', regionEdits: [{ regionId: 'graph', plainLanguage: 'Dots joined by lines.' }] }] }),
+      deck, assets: [stagedAsset('slide-01'), stagedAsset('slide-02')], publicBaseUrl: 'https://cdn.test',
+      synthesizeAudio: async () => { throw new Error('must not be called'); },
+    }, store);
+    expect(result.pack.assets[0].regions.find(r => r.regionId === 'graph')!.audioUri).toBe('media/pack-1/1/slide-01.graph.mp3');
+    expect(store.copies.map(c => c.source)).toContain('staging/job-1/media/slide-01.graph.mp3');
   });
 
   it('copies a staged approved artifact without touching an earlier pack version', async () => {

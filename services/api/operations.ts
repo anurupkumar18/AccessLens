@@ -3,14 +3,12 @@ import { GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCom
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
-import { getJobDraft as getJobDraftRoute, publishJob as publishJobRoute_, reviewJob as reviewJobRoute_ } from '../publish/routes';
 import {
   CreateJobRequestSchema,
   CreateUploadRequestSchema,
   HealthResponseSchema,
   JobStatusResponseSchema,
   PackVersionsResponseSchema,
-  ReviewRequestSchema,
   ROUTES,
 } from '../shared/api';
 import { JobRecordSchema } from '../shared/jobs';
@@ -18,6 +16,7 @@ import { AccessPackSchema, ArtifactManifestSchema } from '../../apps/extension/s
 import { ApiHttpError, parseJsonBody, parseRequest, pathParameter, respond } from './http';
 import { assetBaseUrl, artifactsBucket, decksBucket, ddb, jobsTable, packsBucket, region, s3, version } from './config';
 import type { ApiEvent, ApiResult, OperationHandler } from './types';
+import type { InstructorHandler } from './identity';
 
 const route = (operationId: string) => {
   const found = ROUTES.find(candidate => candidate.operationId === operationId);
@@ -29,9 +28,6 @@ const healthRoute = route('getHealth');
 const uploadRoute = route('createUpload');
 const createJobRoute = route('createJob');
 const getJobRoute = route('getJob');
-const draftRoute = route('getJobDraft');
-const reviewRoute = route('reviewJob');
-const publishRoute = route('publishJob');
 const versionsRoute = route('listPackVersions');
 const packRoute = route('getPack');
 const artifactRoute = route('getArtifactManifest');
@@ -64,7 +60,7 @@ export const createUpload: OperationHandler = async event => {
   return respond(uploadRoute, { uploadId, url, expiresAt });
 };
 
-export const createJob: OperationHandler = async event => {
+export const createJob: InstructorHandler = async (event, caller) => {
   const input = parseRequest(CreateJobRequestSchema, parseJsonBody(event));
   if (!jobsTable) throw new ApiHttpError(500, 'configuration_error', 'The jobs table is not configured.');
 
@@ -79,6 +75,7 @@ export const createJob: OperationHandler = async event => {
     ...(input.profileId === undefined ? {} : { profileId: input.profileId }),
     status: 'queued',
     uploadId: input.uploadId,
+    ownerSub: caller.sub,
     createdAt: now,
     updatedAt: now,
     expiresAt,
@@ -105,7 +102,9 @@ export const createJob: OperationHandler = async event => {
         packId: input.packId,
         title: input.title,
         ...(input.description === undefined ? {} : { description: input.description }),
-        ...(input.profileId === undefined ? {} : { profileId: input.profileId }),
+        // Always present: the workflow's retrieval Choice reads it (null
+        // means no course profile, so no retrieval).
+        profileId: input.profileId ?? null,
         visualHints: input.visualHints ?? [],
         uploadId: input.uploadId,
         sourceKey,
@@ -143,51 +142,15 @@ async function resolveUploadKey(uploadId: string, filename: string): Promise<str
   return s3ObjectKey(uploadId, filename);
 }
 
-export const getJobDraft: OperationHandler = async event => {
-  if (!jobsTable || !packsBucket) throw new ApiHttpError(500, 'configuration_error', 'The authoring storage is not configured.');
-  const jobId = pathParameter(event, 'jobId');
-  const result = await getJobDraftRoute({ jobId }, {
-    dynamodb: ddb,
-    s3: createPublishStore(packsBucket),
-    jobsTableName: jobsTable,
-    packsBucket,
-    publicBaseUrl: assetBaseUrl,
-  });
-  return respond(draftRoute, result);
-};
-
-export const reviewJobRoute: OperationHandler = async event => {
-  if (!jobsTable) throw new ApiHttpError(500, 'configuration_error', 'The jobs table is not configured.');
-  const jobId = pathParameter(event, 'jobId');
-  const request = parseRequest(ReviewRequestSchema, parseJsonBody(event));
-  const result = await reviewJobRoute_({ jobId, decisions: request.decisions }, {
-    dynamodb: ddb,
-    s3: createPublishStore(packsBucket),
-    jobsTableName: jobsTable,
-  });
-  return respond(reviewRoute, result);
-};
-
-export const publishJobRoute: OperationHandler = async event => {
-  if (!jobsTable || !packsBucket) throw new ApiHttpError(500, 'configuration_error', 'The authoring storage is not configured.');
-  const jobId = pathParameter(event, 'jobId');
-  const result = await publishJobRoute_({ jobId }, {
-    dynamodb: ddb,
-    s3: createPublishStore(packsBucket),
-    jobsTableName: jobsTable,
-    packsBucket,
-    publicBaseUrl: assetBaseUrl,
-  });
-  return respond(publishRoute, result, 201);
-};
-
-export const getJob: OperationHandler = async event => {
+export const getJob: InstructorHandler = async (event, caller) => {
   if (!jobsTable) throw new ApiHttpError(500, 'configuration_error', 'The jobs table is not configured.');
   const jobId = pathParameter(event, 'jobId');
   const result = await ddb.send(new GetCommand({ TableName: jobsTable, Key: { jobId } }));
   if (!result.Item) throw new ApiHttpError(404, 'job_not_found', `No job exists for ${jobId}.`);
   const job = JobRecordSchema.safeParse(result.Item);
   if (!job.success) throw new Error(`Stored job ${jobId} does not match JobRecordSchema`);
+  // Another instructor's job is indistinguishable from a missing one.
+  if (job.data.ownerSub !== caller.sub) throw new ApiHttpError(404, 'job_not_found', `No job exists for ${jobId}.`);
   return respond(getJobRoute, {
     jobId: job.data.jobId,
     status: job.data.status,
@@ -257,35 +220,6 @@ export const getArtifactManifest: OperationHandler = async event => {
   const manifest = ArtifactManifestSchema.safeParse(value);
   if (!manifest.success) throw new Error(`Stored artifact ${key} does not match ArtifactManifestSchema`);
   return respond(artifactRoute, manifest.data);
-};
-
-function createPublishStore(bucket: string) {
-  return {
-    async list(prefix: string) {
-      const result = await s3.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
-      return ((result as { Contents?: Array<{ Key?: string }> }).Contents ?? []).flatMap(item => item.Key ? [item.Key] : []);
-    },
-    async read(key: string) {
-      const result = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key })) as { Body?: unknown };
-      if (!result.Body) throw new Error(`S3 object ${key} had no body`);
-      if (result.Body && typeof result.Body === 'object' && 'transformToByteArray' in result.Body) {
-        return (result.Body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
-      }
-      if (result.Body instanceof Uint8Array) return result.Body;
-      throw new Error(`S3 object ${key} had no readable body`);
-    },
-    async write(key: string, body: Uint8Array | string, contentType?: string) {
-      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ...(contentType ? { ContentType: contentType } : {}) }));
-    },
-    async copy(source: string, destination: string, contentType?: string) {
-      const { CopyObjectCommand } = await import('@aws-sdk/client-s3');
-      await s3.send(new CopyObjectCommand({ Bucket: bucket, Key: destination, CopySource: `${bucket}/${source}`, ...(contentType ? { ContentType: contentType, MetadataDirective: 'REPLACE' as const } : {}) }));
-    },
-  };
-}
-
-export const notImplemented = (milestone: string): OperationHandler => async () => {
-  throw new ApiHttpError(501, 'not_implemented', `${milestone} fills in this operation.`);
 };
 
 function parsePositiveInteger(value: string, name: string): number {

@@ -1,62 +1,209 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LiveEvent",
-  "description": "Per-type field matrix mirroring apps/extension/src/shared/contracts.ts LiveEventSchema. Only asset.changed and region.changed may name an asset/region; every other type -- including source.unmatched -- is base-only, so an unmatched source can never be reported alongside an invented assetId.",
+  "description": "Per-type field matrix mirroring apps/extension/src/shared/contracts.ts LiveEventSchema. Only asset.changed and region.changed may name a region, and only they and caption.appended (which carries the caption text) may name an asset; every other type -- including source.unmatched -- is base-only, so an unmatched source can never be reported alongside an invented assetId. caption.appended carries a bounded caption object, either instructor-authored or a streaming line of the instructor's own speech, scoped to the current assetId when there is one (T-16); it is a semantic aid, never raw audio or an unbounded transcript.",
   "type": "object",
-  "required": ["schemaVersion", "type", "sessionId", "packId", "packVersion", "sequence", "sentAt"],
+  "required": [
+    "schemaVersion",
+    "type",
+    "sessionId",
+    "packId",
+    "packVersion",
+    "sequence",
+    "sentAt"
+  ],
   "properties": {
-    "schemaVersion": { "const": "1.0" },
-    "type": {
-      "enum": ["session.started", "asset.changed", "region.changed", "caption.appended", "capture.paused", "capture.resumed", "capture.stopped", "source.unmatched", "session.ended"]
+    "schemaVersion": {
+      "const": "1.0"
     },
-    "sessionId": { "type": "string", "minLength": 1 },
-    "packId": { "type": "string", "minLength": 1 },
-    "packVersion": { "type": "integer", "minimum": 1 },
-    "sequence": { "type": "integer", "minimum": 0 },
-    "sentAt": { "type": "string", "format": "date-time" },
-    "assetId": { "type": "string", "minLength": 1 },
-    "regionId": { "type": "string", "minLength": 1 },
+    "type": {
+      "enum": [
+        "session.started",
+        "asset.changed",
+        "region.changed",
+        "caption.appended",
+        "capture.paused",
+        "capture.resumed",
+        "capture.stopped",
+        "source.unmatched",
+        "session.ended"
+      ]
+    },
+    "sessionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "packId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "packVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sentAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "assetId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "regionId": {
+      "type": "string",
+      "minLength": 1
+    },
     "pointer": {
       "type": "object",
-      "required": ["x", "y"],
+      "required": [
+        "x",
+        "y"
+      ],
       "additionalProperties": false,
       "properties": {
-        "x": { "type": "number", "minimum": 0, "maximum": 1 },
-        "y": { "type": "number", "minimum": 0, "maximum": 1 }
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     },
     "arState": {
       "type": "object",
-      "required": ["hotspotId", "action"],
+      "required": [
+        "hotspotId",
+        "action"
+      ],
       "additionalProperties": false,
       "properties": {
-        "hotspotId": { "type": "string", "minLength": 1 },
-        "action": { "enum": ["focus", "highlight", "clear"] }
+        "hotspotId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "enum": [
+            "focus",
+            "highlight",
+            "clear"
+          ]
+        }
+      }
+    },
+    "caption": {
+      "type": "object",
+      "description": "Instructor-authored or streamed caption text, with the language spoken when known. Text only, at most 2000 characters (enforced by Zod, the Python reference, and the relay).",
+      "required": [
+        "text",
+        "isFinal"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "isFinal": {
+          "type": "boolean"
+        },
+        "lang": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 16
+        }
       }
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "type": { "const": "asset.changed" } } },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "asset.changed"
+          }
+        }
+      },
       "then": {
-        "required": ["assetId"],
-        "properties": { "regionId": false, "pointer": false, "arState": false }
-      }
-    },
-    {
-      "if": { "properties": { "type": { "const": "region.changed" } } },
-      "then": {
-        "required": ["assetId", "regionId"]
+        "required": [
+          "assetId"
+        ],
+        "properties": {
+          "regionId": false,
+          "pointer": false,
+          "arState": false,
+          "caption": false
+        }
       }
     },
     {
       "if": {
         "properties": {
-          "type": { "enum": ["session.started", "caption.appended", "capture.paused", "capture.resumed", "capture.stopped", "source.unmatched", "session.ended"] }
+          "type": {
+            "const": "region.changed"
+          }
         }
       },
       "then": {
-        "properties": { "assetId": false, "regionId": false, "pointer": false, "arState": false }
+        "required": [
+          "assetId",
+          "regionId"
+        ],
+        "properties": {
+          "caption": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "session.started",
+              "capture.paused",
+              "capture.resumed",
+              "capture.stopped",
+              "source.unmatched",
+              "session.ended"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "assetId": false,
+          "regionId": false,
+          "pointer": false,
+          "arState": false,
+          "caption": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "caption.appended"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "caption"
+        ],
+        "properties": {
+          "regionId": false,
+          "pointer": false,
+          "arState": false
+        }
       }
     }
   ],

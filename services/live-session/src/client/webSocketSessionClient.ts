@@ -18,9 +18,14 @@
  *     flushed on open. Dropping them instead would make the first slide change
  *     after a reconnect vanish.
  *   - **Reconnecting.** The client reconnects with backoff and presents its
- *     stored capability, so the relay can restore its role and catch it up with
- *     latest state. Subscribers see the catch-up event arrive like any other;
- *     that is what makes reconnect invisible to Part 3.
+ *     stored capability, so the relay can restore its role, and a student joins
+ *     again to be caught up with latest state. Subscribers see the catch-up
+ *     event arrive like any other; that is what makes reconnect invisible to
+ *     Part 3. It keeps retrying for `retryForMs`, and a browser `online` event
+ *     starts a fresh round.
+ *   - **Closing.** `close` waits briefly for the relay to acknowledge events
+ *     still in flight, so a final `session.ended` is not refused by the close
+ *     that follows it.
  */
 
 export type Role = 'instructor' | 'student';
@@ -57,14 +62,23 @@ export interface WebSocketSessionClientOptions {
   url: string;
   /** Injected for tests; defaults to the platform `WebSocket`. */
   socketFactory?: (url: string) => SocketLike;
-  /** Reconnect backoff, in milliseconds. Exhausting the list stops retrying. */
+  /** Reconnect backoff, in milliseconds. The last delay repeats while retrying. */
   backoffMs?: number[];
+  /** How long to keep retrying a lost connection before giving up. */
+  retryForMs?: number;
+  /** How long `close` waits for in-flight events to be acknowledged. */
+  closeGraceMs?: number;
   setTimeoutFn?: (fn: () => void, ms: number) => unknown;
+  now?: () => number;
+  /** Source of the browser's `online` event; defaults to the global scope when it has one. */
+  networkEvents?: Pick<EventTarget, 'addEventListener' | 'removeEventListener'>;
   /** How long to wait for the relay to answer create/join. */
   requestTimeoutMs?: number;
 }
 
 const DEFAULT_BACKOFF = [250, 500, 1000, 2000, 5000];
+const DEFAULT_RETRY_FOR_MS = 2 * 60 * 1000;
+const DEFAULT_CLOSE_GRACE_MS = 2000;
 
 export class WebSocketSessionClient implements SessionClient {
   private socket?: SocketLike;
@@ -76,8 +90,28 @@ export class WebSocketSessionClient implements SessionClient {
   private sessionId?: string;
   private closed = false;
   private attempt = 0;
+  /** When the current run of failed connections began; unset while connected. */
+  private failingSince?: number;
+  /** Set when an open connection drops, so the next open knows it is a reconnect. */
+  private dropped = false;
+  /** Events sent on the socket that the relay has not yet accepted or rejected. */
+  private inFlight = 0;
+  private finishClose?: () => void;
+  private readonly networkEvents?: Pick<EventTarget, 'addEventListener' | 'removeEventListener'>;
+  private readonly onOnline = () => {
+    if (this.closed || this.socket || !this.sessionId) return;
+    this.attempt = 0;
+    this.failingSince = undefined;
+    this.connect();
+  };
 
-  constructor(private readonly options: WebSocketSessionClientOptions) {}
+  constructor(private readonly options: WebSocketSessionClientOptions) {
+    const scope = globalThis as Partial<Pick<EventTarget, 'addEventListener' | 'removeEventListener'>>;
+    this.networkEvents =
+      options.networkEvents ??
+      (typeof scope.addEventListener === 'function' ? (scope as EventTarget) : undefined);
+    this.networkEvents?.addEventListener('online', this.onOnline);
+  }
 
   /**
    * Real socket connectivity, not a proxy for it. `SessionClient`'s frozen
@@ -119,20 +153,41 @@ export class WebSocketSessionClient implements SessionClient {
   close(): void {
     if (this.closed) return;
     this.closed = true;
-    if (this.sessionId && this.socket?.readyState === 1) {
-      // Best effort: tell the relay, so students stop immediately rather than
-      // waiting for a TTL. A failure here is not worth surfacing -- the session
-      // expires regardless.
-      try {
-        this.socket.send(JSON.stringify({ kind: 'close', sessionId: this.sessionId }));
-      } catch {
-        /* the socket is going away anyway */
-      }
-    }
+    this.networkEvents?.removeEventListener('online', this.onOnline);
     this.listeners.clear();
+    const socket = this.socket;
+    if (socket?.readyState === 1) this.flush();
     this.outbox.length = 0;
-    this.socket?.close();
-    this.socket = undefined;
+
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      this.finishClose = undefined;
+      if (this.sessionId && socket?.readyState === 1) {
+        // Best effort: tell the relay, so students stop immediately rather than
+        // waiting for a TTL. A failure here is not worth surfacing -- the session
+        // expires regardless.
+        try {
+          socket.send(JSON.stringify({ kind: 'close', sessionId: this.sessionId }));
+        } catch {
+          /* the socket is going away anyway */
+        }
+      }
+      socket?.close();
+      if (this.socket === socket) this.socket = undefined;
+    };
+
+    if (socket?.readyState !== 1 || this.inFlight === 0) {
+      finish();
+      return;
+    }
+    // The relay handles each message on its own, so a close sent in the same
+    // instant as the last event can land first and get that event refused --
+    // and the last event is usually `session.ended`, the one students most need.
+    this.finishClose = finish;
+    const schedule = this.options.setTimeoutFn ?? ((fn, ms) => setTimeout(fn, ms));
+    schedule(finish, this.options.closeGraceMs ?? DEFAULT_CLOSE_GRACE_MS);
   }
 
   private handshake(sessionId: string, message: Record<string, unknown>): Promise<RoleCapability> {
@@ -178,9 +233,22 @@ export class WebSocketSessionClient implements SessionClient {
     this.socket = socket;
 
     socket.onopen = () => {
+      const reconnected = this.dropped;
+      this.dropped = false;
       this.attempt = 0;
+      this.failingSince = undefined;
       this.notifyConnection(true);
       onOpen?.();
+      if (reconnected && this.capability?.role === 'student' && this.sessionId && !this.pending) {
+        // The relay's resume posts its catch-up during `$connect`, before API
+        // Gateway can deliver to the connection, so it never arrives. Joining
+        // again is the frozen protocol's way to ask for the latest view.
+        try {
+          socket.send(JSON.stringify({ kind: 'join', sessionId: this.sessionId, role: 'student' }));
+        } catch {
+          /* onclose follows and retries */
+        }
+      }
       this.flush();
     };
 
@@ -195,7 +263,9 @@ export class WebSocketSessionClient implements SessionClient {
     };
 
     socket.onclose = () => {
-      this.socket = undefined;
+      if (this.socket === socket) this.socket = undefined;
+      this.dropped = true;
+      this.inFlight = 0;
       this.notifyConnection(false);
       if (!this.closed) this.scheduleReconnect();
     };
@@ -221,8 +291,17 @@ export class WebSocketSessionClient implements SessionClient {
         this.listeners.forEach(listener => listener(event));
         return;
       }
+      case 'accepted':
+      case 'rejected': {
+        this.acknowledge();
+        return;
+      }
       case 'error': {
-        this.pending?.reject(new Error(String(payload.reason ?? 'relay-error')));
+        if (!this.pending) {
+          this.acknowledge();
+          return;
+        }
+        this.pending.reject(new Error(String(payload.reason ?? 'relay-error')));
         this.pending = undefined;
         return;
       }
@@ -231,10 +310,20 @@ export class WebSocketSessionClient implements SessionClient {
     }
   }
 
+  private acknowledge(): void {
+    this.inFlight = Math.max(0, this.inFlight - 1);
+    if (this.inFlight === 0) this.finishClose?.();
+  }
+
   private scheduleReconnect(): void {
+    const now = this.options.now?.() ?? Date.now();
+    this.failingSince ??= now;
+    if (now - this.failingSince > (this.options.retryForMs ?? DEFAULT_RETRY_FOR_MS)) return;
+    // An expired capability cannot resume, so retrying would only be refused.
+    if (this.capability && Date.parse(this.capability.expiresAt) <= now) return;
     const backoff = this.options.backoffMs ?? DEFAULT_BACKOFF;
     const delay = backoff[Math.min(this.attempt, backoff.length - 1)];
-    if (delay === undefined || this.attempt >= backoff.length) return;
+    if (delay === undefined) return;
     this.attempt += 1;
     const schedule = this.options.setTimeoutFn ?? ((fn, ms) => setTimeout(fn, ms));
     schedule(() => this.connect(), delay);
@@ -252,6 +341,7 @@ export class WebSocketSessionClient implements SessionClient {
       } catch {
         return; // leave it queued for the next open
       }
+      this.inFlight += 1;
       this.outbox.shift();
     }
   }

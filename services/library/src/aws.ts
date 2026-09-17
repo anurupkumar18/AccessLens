@@ -99,6 +99,15 @@ export class DynamoProfileStore extends DynamoRecordStore<ProfileRecord> {
     return { profileId: typeof value === 'string' ? value : value.profileId };
   }
   indexCondition(_profileId: string): Record<string, unknown> { return {}; }
+  async listByOwner(ownerSub: string): Promise<ProfileRecord[]> {
+    const response = await this.client.send(new QueryCommand({
+      TableName: this.table,
+      IndexName: 'ownerSub-index',
+      KeyConditionExpression: 'ownerSub = :ownerSub',
+      ExpressionAttributeValues: { ':ownerSub': ownerSub },
+    }));
+    return ((response.Items ?? []) as ProfileRecord[]).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
 }
 
 export class DynamoDocumentStore extends DynamoRecordStore<DocumentRecord> {

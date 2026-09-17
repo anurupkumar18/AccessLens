@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { AccessPackSchema } from '../shared/contracts';
 import { validPack } from '../shared/fixtures';
 import { FocusView } from './FocusView';
-import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
+import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pack.json';
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
@@ -27,13 +27,13 @@ afterEach(() => {
 
 describe('FocusView', () => {
   it('shows the slide image and highlights the followed region where the pack says it is', () => {
-    const pack = AccessPackSchema.parse(hnswDraftPack);
+    const pack = AccessPackSchema.parse(reviewedBioPack);
     const asset = pack.assets[1];
     const region = asset.regions[0];
     render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} />);
 
     const img = container!.querySelector<HTMLImageElement>('img.slide-image')!;
-    expect(img.src).toMatch(/slide-02.*\.png$/);
+    expect(img.src).toMatch(/cell-slide-02.*\.png$/);
     expect(img.alt).toBe(asset.title);
 
     const highlight = container!.querySelector<HTMLElement>('.region-highlight')!;
@@ -44,6 +44,22 @@ describe('FocusView', () => {
 
     expect(container!.textContent).toContain(region.plainLanguage);
     expect(container!.querySelector('.cell-membrane')).toBeNull();
+  });
+
+  it('marks the region with a pointer outside its outline, only when the reviewed event includes one', () => {
+    const pack = AccessPackSchema.parse(reviewedBioPack);
+    const asset = pack.assets[1];
+    const region = asset.regions[0];
+    render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} pointer={{ x: 0.42, y: 0.31 }} />);
+    // At the region's top-left corner, so it never covers what it points at.
+    const pointer = container!.querySelector<SVGElement>('.focus-pointer')!;
+    expect(pointer.classList.contains('start')).toBe(true);
+    expect(pointer.style.left).toBe(`${region.bounds.x * 100}%`);
+    expect(pointer.style.top).toBe(`${region.bounds.y * 100}%`);
+
+    act(() => root!.unmount());
+    render(<FocusView pack={pack} assetId={asset.assetId} regionId={region.regionId} />);
+    expect(container!.querySelector('.focus-pointer')).toBeNull();
   });
 
   it('uses the region label as the heading when the pack provides one, else the id', () => {

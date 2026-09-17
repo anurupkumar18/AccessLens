@@ -1,8 +1,8 @@
-import type { AccessPack, LiveEvent, SessionClient } from '../shared/contracts';
+import { CAPTION_MAX_LENGTH, type AccessPack, type LiveEvent, type RoleCapability, type SessionClient } from '../shared/contracts';
 import {
-  assertPackFingerprints, createSampler, hammingDistance, matchFingerprint, timeoutScheduler,
+  assertPackFingerprints, createPointerTracker, createSampler, createSlideLocator, hammingDistance, matchFingerprint, timeoutScheduler, wholeFrameFingerprint,
   DEFAULT_MATCH_OPTIONS, DEFAULT_SAMPLE_INTERVAL_MS,
-  type CaptureHost, type CaptureStream, type MatchOptions, type Sampler, type Scheduler,
+  type CaptureHost, type CaptureStream, type DisplaySurface, type Frame, type MatchOptions, type PointerPosition, type Sampler, type Scheduler,
 } from '../sources/screen';
 import type { ScreenAnalyzer } from '../sources/screen/screenAnalyzer';
 
@@ -37,6 +37,10 @@ export interface ControllerSnapshot {
   message: string | null;
   current: CurrentState;
   sequence: number;
+  /** Tab, window, or whole screen while sharing; null when not sharing or unreported. */
+  surface: DisplaySurface | null;
+  /** Whether students follow the reviewed region under the instructor's mouse pointer (window and screen shares). */
+  followPointer: boolean;
 }
 
 export interface Correction { assetId: string; regionId?: string }
@@ -54,6 +58,28 @@ export interface CaptureController {
   indicateRegion(regionId: string): void;
   /** Finds the first reviewed AR hotspot for the current slide and focuses it. */
   findAr(): void;
+  /**
+   * Turns pointer following on or off. On a window or whole-screen share the
+   * mouse pointer is found in the shared frames on this device, and students
+   * move to the reviewed region under it; only that region's id is sent.
+   */
+  setFollowPointer(on: boolean): void;
+  /** Sends a bounded, instructor-authored caption line scoped to the current asset. */
+  sendCaption(text: string): void;
+  /**
+   * Sends a live caption of the instructor's speech (text only) while a
+   * session is open, naming the matched slide when there is one. Longer text
+   * keeps its most recent words. Returns false when no session is open.
+   */
+  caption(text: string, isFinal: boolean): boolean;
+  /** The relay-signed instructor capability for the open session, for the AI gateway. Null before a session opens. */
+  getCapability(): RoleCapability | null;
+  /**
+   * Publishes a live caption on the open session, on the same sequence as
+   * every other event. A caption is what was said, never a claim about what
+   * is on screen, so it names no asset.
+   */
+  appendCaption(caption: { text: string; isFinal: boolean; lang?: string }): void;
   /** Halts sampling without emitting anything; for unmount. */
   dispose(): void;
 }
@@ -70,6 +96,17 @@ export interface ControllerOptions {
   analyzer?: ScreenAnalyzer;
 }
 
+/** Smallest reviewed region whose bounds contain a point on the slide. */
+function regionAt<R extends { regionId: string; bounds: { x: number; y: number; width: number; height: number } }>(regions: readonly R[], point: PointerPosition): R | null {
+  let best: R | null = null;
+  for (const region of regions) {
+    const { x, y, width, height } = region.bounds;
+    if (point.x < x || point.x > x + width || point.y < y || point.y > y + height) continue;
+    if (!best || width * height < best.bounds.width * best.bounds.height) best = region;
+  }
+  return best;
+}
+
 /** Consecutive unmatched samples before source.unmatched fires. */
 export const UNMATCHED_DEBOUNCE = 3;
 
@@ -77,8 +114,9 @@ export const SHARING_REQUIRED_MESSAGE =
   'Sharing is required for live sync. Click Start and choose a tab, window, or screen.';
 
 type Emittable = { type: 'session.started' | 'capture.paused' | 'capture.resumed' | 'capture.stopped' | 'source.unmatched' | 'session.ended' }
+  | { type: 'caption.appended'; assetId?: string; caption: { text: string; isFinal: boolean; lang?: string } }
   | { type: 'asset.changed'; assetId: string }
-  | { type: 'region.changed'; assetId: string; regionId: string; arState?: { hotspotId: string; action: 'focus' | 'highlight' | 'clear' } }
+  | { type: 'region.changed'; assetId: string; regionId: string; pointer?: { x: number; y: number }; arState?: { hotspotId: string; action: 'focus' | 'highlight' | 'clear' } }
   | { type: 'screen.analyzed'; analysis: import('../shared/contracts').ScreenAnalysisResult };
 
 export function createCaptureController(options: ControllerOptions): CaptureController {
@@ -90,10 +128,12 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   const matchOptions = options.match ?? DEFAULT_MATCH_OPTIONS;
   const analyzer = options.analyzer;
   assertPackFingerprints(pack);
+  const locator = createSlideLocator(pack, matchOptions);
 
   const listeners = new Set<(state: ControllerSnapshot) => void>();
   let phase: CapturePhase = 'idle';
   let sessionId: string | null = null;
+  let capability: RoleCapability | null = null;
   let message: string | null = null;
   let current: CurrentState = { kind: 'fresh' };
   let sequence = 0;
@@ -106,9 +146,15 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
   let lastFingerprint: string | null = null;
   /** Sticky manual correction: automatic emission resumes only once the screen moves away from this. */
   let correctionAnchor: string | null = null;
+  let followPointer = true;
+  const pointer = createPointerTracker();
+  /** Where the pointer was in the latest sample, if it moved; a position, never a frame. */
+  let pointerSample: PointerPosition | null = null;
+  /** Region the pointer entered on the previous sample, awaiting a second sample before students move. */
+  let pointerCandidate: string | null = null;
 
   function snapshot(): ControllerSnapshot {
-    return { phase, sessionId, message, current: { ...current }, sequence };
+    return { phase, sessionId, message, current: { ...current }, sequence, surface: stream?.surface ?? null, followPointer };
   }
   function notify(): void {
     const state = snapshot();
@@ -136,11 +182,56 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     return asset;
   }
 
+  /**
+   * Pointer support is semantic, not a stream of cursor positions. Derive one
+   * bounded focus point from reviewed pack geometry so the relay never learns
+   * where somebody moved a real mouse on the shared source.
+   */
+  function reviewedRegionCenter(region: { regionId: string; bounds: { x: number; y: number; width: number; height: number } }): { x: number; y: number } {
+    const pointer = {
+      x: region.bounds.x + (region.bounds.width / 2),
+      y: region.bounds.y + (region.bounds.height / 2),
+    };
+    if (pointer.x < 0 || pointer.x > 1 || pointer.y < 0 || pointer.y > 1) {
+      throw new Error(`Reviewed region ${region.regionId} cannot produce a normalized focus pointer`);
+    }
+    return pointer;
+  }
+
   function resetRecognition(): void {
     current = { kind: 'fresh' };
     unmatchedStreak = 0;
     lastFingerprint = null;
     correctionAnchor = null;
+    resetPointer();
+  }
+
+  function resetPointer(): void {
+    pointer.reset();
+    pointerSample = null;
+    pointerCandidate = null;
+  }
+
+  /**
+   * Moves students to the reviewed region under the instructor's pointer. The
+   * pointer has to be in the same region on two consecutive samples, so a
+   * pointer crossing a region on its way somewhere else does not move anyone.
+   */
+  function followPointerTo(position: PointerPosition | null): void {
+    if (!followPointer || !position || current.kind !== 'matched') return;
+    const region = regionAt(findAsset(current.assetId).regions, position);
+    if (!region || region.regionId === current.regionId) {
+      pointerCandidate = null;
+      return;
+    }
+    if (pointerCandidate !== region.regionId) {
+      pointerCandidate = region.regionId;
+      return;
+    }
+    pointerCandidate = null;
+    current = { ...current, regionId: region.regionId };
+    emit({ type: 'region.changed', assetId: current.assetId, regionId: region.regionId, pointer: reviewedRegionCenter(region) });
+    notify();
   }
 
   /** Halts sampling synchronously and releases the stream. Emits nothing. */
@@ -170,13 +261,19 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
     const decision = matchFingerprint(fingerprint, pack, matchOptions);
     if (decision.kind === 'matched') {
       unmatchedStreak = 0;
-      if (current.kind === 'matched' && current.assetId === decision.assetId) return;
+      if (current.kind === 'matched' && current.assetId === decision.assetId) {
+        followPointerTo(pointerSample);
+        return;
+      }
+      // The tracker keeps its background: it restarts by itself when the slide moves or its content changes.
+      pointerCandidate = null;
       current = { kind: 'matched', assetId: decision.assetId, title: findAsset(decision.assetId).title, regionId: null };
       emit({ type: 'asset.changed', assetId: decision.assetId });
       notify();
       return;
     }
     unmatchedStreak += 1;
+    pointerCandidate = null;
     if (unmatchedStreak >= UNMATCHED_DEBOUNCE && current.kind !== 'unmatched') {
       current = { kind: 'unmatched' };
       emit({ type: 'source.unmatched' });
@@ -213,23 +310,23 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       // what makes window and entire-screen sharing reliable; tab sharing was
       // the only path that appeared to work when create() ran first.
       try {
-        // Invoke the chooser before the first awaited operation so the browser
-        // keeps the Start button's transient user activation for tab/window/
-        // screen capture.
+        // Start the browser picker before awaiting network/session work. Browser
+        // display capture requires this direct causal link to the Start click;
+        // otherwise Chrome can reject window or display capture after the
+        // transient user activation expires.
         const streamPromise = host.requestStream();
+        const granted = await streamPromise;
         if (openedHere) {
           try {
-            await client.create(id);
+            capability = await client.create(id);
           } catch {
-            const granted = await streamPromise.catch(() => null);
-            granted?.stop();
+            granted.stop();
             phase = 'idle';
             message = 'Could not open a session. Check the connection and try Start again.';
             notify();
             return;
           }
         }
-        const granted = await streamPromise;
         sessionId = id;
         stream = granted;
         unsubscribeEnded = granted.onEnded(() => endSharing());
@@ -237,10 +334,19 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
         message = null;
         resetRecognition();
         emit({ type: 'session.started' });
-        sampler = createSampler(granted, scheduler, onSample, intervalMs);
+        // A tab is the slide itself; a window or screen has other things around it to search past.
+        const searchable = granted.surface === 'window' || granted.surface === 'monitor';
+        // A tab capture never includes the mouse pointer, so only window and screen shares track it.
+        const locateAndTrack = (frame: Frame): string => {
+          const fingerprint = locator.fingerprint(frame);
+          const slide = locator.lastRect();
+          pointerSample = followPointer && slide ? pointer.observe(frame, slide) : null;
+          return fingerprint;
+        };
+        sampler = createSampler(granted, scheduler, onSample, intervalMs, searchable ? locateAndTrack : wholeFrameFingerprint);
         sampler.start();
       } catch {
-        if (openedHere) sessionId = null;
+        if (openedHere) { sessionId = null; capability = null; }
         phase = 'idle';
         message = SHARING_REQUIRED_MESSAGE;
       }
@@ -274,6 +380,7 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       if (sessionId !== null) emit({ type: 'session.ended' });
       client.close();
       sessionId = null;
+      capability = null;
       phase = 'closed';
       message = 'Session ended.';
       notify();
@@ -298,15 +405,22 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       notify();
     },
 
+    setFollowPointer(on) {
+      followPointer = on;
+      if (!on) resetPointer();
+      notify();
+    },
+
     indicateRegion(regionId) {
       if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot indicate a region while ${phase}`);
       if (current.kind !== 'matched') throw new Error('No current asset to indicate a region on');
       const asset = findAsset(current.assetId);
-      if (!asset.regions.some(r => r.regionId === regionId)) {
+      const region = asset.regions.find(candidate => candidate.regionId === regionId);
+      if (!region) {
         throw new Error(`Region ${regionId} is not on asset ${current.assetId}`);
       }
       current = { ...current, regionId };
-      emit({ type: 'region.changed', assetId: current.assetId, regionId });
+      emit({ type: 'region.changed', assetId: current.assetId, regionId, pointer: reviewedRegionCenter(region) });
       notify();
     },
 
@@ -325,6 +439,39 @@ export function createCaptureController(options: ControllerOptions): CaptureCont
       });
       message = `AR ready: ${hotspot.label}. Students can open the AR mode.`;
       notify();
+    },
+
+    sendCaption(text) {
+      if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot send a caption while ${phase}`);
+      if (current.kind !== 'matched') throw new Error('No current asset to caption');
+      const trimmed = text.trim();
+      if (!trimmed) throw new Error('Caption cannot be empty');
+      if (trimmed.length > 280) throw new Error('Caption must be 280 characters or fewer');
+      emit({ type: 'caption.appended', assetId: current.assetId, caption: { text: trimmed, isFinal: true } });
+      notify();
+    },
+
+    caption(text, isFinal) {
+      if (sessionId === null || phase === 'closed') return false;
+      const trimmed = text.trim().replace(/\s+/g, ' ');
+      if (!trimmed) return false;
+      const bounded = trimmed.length > CAPTION_MAX_LENGTH ? trimmed.slice(trimmed.length - CAPTION_MAX_LENGTH).replace(/^\S*\s/, '') : trimmed;
+      emit({
+        type: 'caption.appended',
+        ...(current.kind === 'matched' ? { assetId: current.assetId } : {}),
+        caption: { text: bounded, isFinal },
+      });
+      return true;
+    },
+
+    getCapability: () => capability,
+
+    appendCaption({ text, isFinal, lang }) {
+      if (phase !== 'sharing' && phase !== 'paused') throw new Error(`Cannot caption while ${phase}`);
+      const trimmed = text.trim().slice(0, CAPTION_MAX_LENGTH).trimEnd();
+      if (!trimmed) return;
+      const caption = lang && lang.length >= 2 && lang.length <= 16 ? { text: trimmed, isFinal, lang } : { text: trimmed, isFinal };
+      emit({ type: 'caption.appended', caption });
     },
 
     dispose() {

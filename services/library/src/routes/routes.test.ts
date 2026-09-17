@@ -65,4 +65,23 @@ describe('profile/document routes', () => {
     expect(d.vectors.deleteIndex).toHaveBeenCalledWith('profile-1');
     expect(d.s3.deletePrefix).toHaveBeenCalledWith('library/profile-1/');
   });
+
+  it('scopes every profile route to the owning instructor: another owner sees not-found (D13)', async () => {
+    const d = deps();
+    const created = await createProfile({ ownerSub: 'g-prof', name: 'Algorithms', subject: 'CS', level: 'undergrad' }, d);
+    expect(created.profile.ownerSub).toBe('g-prof');
+    await expect(getProfile({ profileId: 'generated-id', ownerSub: 'g-prof' }, d)).resolves.toEqual(created);
+    for (const call of [
+      () => getProfile({ profileId: 'generated-id', ownerSub: 'g-other' }, d),
+      () => deleteProfile({ profileId: 'generated-id', ownerSub: 'g-other' }, d),
+      () => registerDocument({ profileId: 'generated-id', ownerSub: 'g-other', uploadId: 'upload-1', kind: 'notes', title: 'Notes' }, d),
+      () => searchProfile({ profileId: 'generated-id', ownerSub: 'g-other', query: 'x' }, d),
+      () => getDocument({ profileId: 'generated-id', docId: 'any', ownerSub: 'g-other' }, d),
+      () => deleteDocument({ profileId: 'generated-id', docId: 'any', ownerSub: 'g-other' }, d),
+    ]) {
+      await expect(call()).rejects.toMatchObject({ code: 'not-found' });
+    }
+    expect(d.startIndexing).not.toHaveBeenCalled();
+    expect(d.vectors.deleteIndex).not.toHaveBeenCalled();
+  });
 });

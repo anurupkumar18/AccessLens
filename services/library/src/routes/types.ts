@@ -9,6 +9,8 @@ export interface RecordStore<T> {
   delete(key: string): boolean | void | Promise<boolean | void>;
   values?(): Iterable<T> | AsyncIterable<T> | Promise<Iterable<T> | AsyncIterable<T>>;
   list?(profileId?: string): Iterable<T> | AsyncIterable<T> | Promise<Iterable<T> | AsyncIterable<T>>;
+  /** Profiles by owning instructor (D13). */
+  listByOwner?(ownerSub: string): Promise<T[]>;
 }
 
 export type RecordCollection<T> = Map<string, T> | RecordStore<T>;
@@ -58,15 +60,18 @@ export interface LibraryRouteDeps {
   retrieve(profileId: string, query: string, k: number, filter?: { kind?: DocumentRecord['kind']; docId?: string }): Promise<Excerpt[]>;
 }
 
+/** `ownerSub` is the caller's Google subject (D13). A profile owned by anyone else reads as not found. */
 export interface CreateProfileInput {
+  ownerSub?: string;
   name: string;
   subject: string;
   level: string;
 }
-export interface ProfilePath { profileId: string }
-export interface DocumentPath { profileId: string; docId: string }
+export interface ProfilePath { profileId: string; ownerSub?: string }
+export interface DocumentPath { profileId: string; docId: string; ownerSub?: string }
 export interface RegisterDocumentInput {
   profileId: string;
+  ownerSub?: string;
   uploadId: string;
   kind: DocumentRecord['kind'];
   title: string;
@@ -74,6 +79,7 @@ export interface RegisterDocumentInput {
 }
 export interface SearchProfileInput {
   profileId: string;
+  ownerSub?: string;
   query: string;
   k?: number;
   kind?: DocumentRecord['kind'];

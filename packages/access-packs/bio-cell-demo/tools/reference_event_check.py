@@ -31,10 +31,15 @@ ALLOWED_EVENT_TYPES = (
 
 REQUIRED_FIELDS = ("schemaVersion", "type", "sessionId", "packId", "packVersion", "sequence", "sentAt")
 
-# Mirrors the field matrix in packages/contracts/live-event.schema.json. The one
-# addition is `caption`: `caption.appended` is base-only in the shared contract,
-# so a caption event cannot currently carry a caption. That is tracked as a
-# contract gap rather than worked around -- see docs/PART5_CONTRACT_CONFORMANCE.md.
+# Mirrors the field matrix in packages/contracts/live-event.schema.json. This
+# flat allowlist does not enforce which type may carry which field -- that
+# per-type matrix lives in the JSON Schema/Zod contract and is checked there;
+# this list only decides whether a field name is known at all (T-16, closed:
+# `caption.appended` carries `caption: {text, isFinal, lang?}`, `assetId` when there
+# is a current match, text at most CAPTION_MAX_LENGTH characters, nothing
+# else -- checked below because a caption is the one free-text field on the
+# contract, so it is where audio or a student's words would try to ride along
+# (charter A2, A4)).
 KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "assetId",
     "regionId",
@@ -43,6 +48,8 @@ KNOWN_FIELDS = set(REQUIRED_FIELDS) | {
     "caption",
     "analysis",
 }
+
+CAPTION_MAX_LENGTH = 2000
 
 INSTRUCTOR_ONLY_TYPES = (
     "session.started",
@@ -115,6 +122,32 @@ def check_event(event: dict, pack: dict, last_sequence: int = 0) -> list[str]:
             broken.append("hotspot-not-in-pack")
         elif region_id is not None and hotspot["regionId"] != region_id:
             broken.append("hotspot-region-mismatch")
+
+    # T-16's caption payload has no pack-membership fact to check against, but
+    # its shape is not covered by the generic REQUIRED_FIELDS/KNOWN_FIELDS
+    # checks above (those only ask whether the field name is known, not what
+    # it contains) -- and this relay-side layer is the only one a hostile or
+    # non-conforming client cannot bypass. Charter A2/A9: never forward an
+    # unbounded or malformed value to every student in the session.
+    caption = event.get("caption")
+    if event.get("type") != "caption.appended":
+        if caption is not None:
+            broken.append("caption-on-wrong-event-type")
+    elif caption is not None:
+        if not isinstance(caption, dict):
+            broken.append("caption-not-an-object")
+        else:
+            text = caption.get("text")
+            if not isinstance(text, str) or len(text) < 1:
+                broken.append("caption-text-missing")
+            elif len(text) > CAPTION_MAX_LENGTH:
+                broken.append("caption-text-too-long")
+            if not isinstance(caption.get("isFinal"), bool):
+                broken.append("caption-isfinal-not-boolean")
+            lang = caption.get("lang")
+            lang_invalid = "lang" in caption and not (isinstance(lang, str) and 2 <= len(lang) <= 16)
+            if lang_invalid or set(caption) - {"text", "isFinal", "lang"}:
+                broken.append("caption-invalid")
 
     if event.get("type") == "source.unmatched":
         for field in ("assetId", "regionId"):

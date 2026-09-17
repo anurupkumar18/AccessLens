@@ -1,7 +1,7 @@
 ---
 id: AL-010
 title: Local reading settings
-status: READY
+status: IN_REVIEW
 priority: P1
 depends_on: []
 task_ids: [A1,A9,A10,A11,A13]

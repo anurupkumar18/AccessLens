@@ -8,10 +8,11 @@ interface Props {
 }
 
 /**
- * A student-controlled reading presentation. It does not diagnose dyslexia or
- * send a preference to the instructor; it simply applies spacing, line length,
- * weight, and a dyslexic-friendly font stack to the same reviewed text used by
- * Read mode.
+ * A student-controlled reading presentation (AGENTS.md: accessibility
+ * preferences stay student-local and are named by what they do, never by a
+ * diagnosis). It does not send a preference to the instructor; it simply
+ * applies spacing, line length, weight, and a dyslexia-friendly font stack to
+ * the same reviewed text used by Read mode.
  */
 export function DyslexicTextView({ pack, assetId, regionId }: Props): React.ReactElement {
   const [enabled, setEnabled] = useState(true);
@@ -21,7 +22,7 @@ export function DyslexicTextView({ pack, assetId, regionId }: Props): React.Reac
 
   return (
     <section className={`mode-panel dyslexic-view${enabled ? ' dyslexic-view--enabled' : ''}`} aria-labelledby="dyslexic-title">
-      <p className="eyebrow">Dyslexic-friendly text</p>
+      <p className="eyebrow">Reading spacing</p>
       <h3 id="dyslexic-title">{asset.title}</h3>
       <button
         type="button"
@@ -29,7 +30,7 @@ export function DyslexicTextView({ pack, assetId, regionId }: Props): React.Reac
         aria-pressed={enabled}
         onClick={() => setEnabled((current) => !current)}
       >
-        {enabled ? 'Turn off dyslexic text' : 'Turn on dyslexic text'}
+        {enabled ? 'Turn off reading spacing' : 'Turn on reading spacing'}
       </button>
       <div className="dyslexic-reading" aria-live="polite">
         {active ? (

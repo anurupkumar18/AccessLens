@@ -1,4 +1,4 @@
-.PHONY: check memory-check pack-check relay-check work-board-check work-board agent-context extension-check live-session-check freeze-check deploy-preflight
+.PHONY: check memory-check pack-check relay-check work-board-check work-board agent-context extension-check live-session-check ai-gateway-check freeze-check deploy-preflight
 
 memory-check:
 	python3 scripts/memory_check.py
@@ -32,13 +32,18 @@ extension-check:
 live-session-check:
 	cd services/live-session && npm run check
 
+# The AI routes (Bedrock answers, Polly speech, Transcribe caption URLs) are
+# their own package too, for the same reason as the relay.
+ai-gateway-check:
+	cd services/ai-gateway && npm run check
+
 # Handover gate. Run at feature freeze: fails while any part is unowned or any
 # thread is neither closed with evidence nor consciously accepted.
 freeze-check:
 	python3 scripts/relay_check.py --freeze
 
-check: memory-check pack-check relay-check work-board-check extension-check live-session-check
-	@echo "AccessLens documentation, delivery board, Access Pack, relay, extension, and live-session checks passed."
+check: memory-check pack-check relay-check work-board-check extension-check live-session-check ai-gateway-check
+	@echo "AccessLens documentation, delivery board, Access Pack, relay, extension, live-session, and ai-gateway checks passed."
 
 # Is the repository ready to deploy the demo? Reports per part; run the script
 # directly with --aws to also probe the account.

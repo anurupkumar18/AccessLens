@@ -8,6 +8,7 @@ export async function createProfile(input: CreateProfileInput, deps: LibraryRout
   const profileId = deps.id();
   const profile: ProfileRecord = {
     profileId,
+    ...(input.ownerSub ? { ownerSub: input.ownerSub } : {}),
     name: input.name,
     subject: input.subject,
     level: input.level,
@@ -20,7 +21,7 @@ export async function createProfile(input: CreateProfileInput, deps: LibraryRout
 }
 
 export async function getProfile(input: ProfilePath, deps: LibraryRouteDeps): Promise<{ profile: ProfileRecord; documents: DocumentRecord[] }> {
-  const profile = await requireProfile(input.profileId, deps);
+  const profile = await requireProfile(input.profileId, deps, input.ownerSub);
   return {
     profile,
     documents: (await storeValues(deps.documents, input.profileId)).filter(document => document.profileId === input.profileId),
@@ -28,7 +29,7 @@ export async function getProfile(input: ProfilePath, deps: LibraryRouteDeps): Pr
 }
 
 export async function deleteProfile(input: ProfilePath, deps: LibraryRouteDeps): Promise<{ deleted: true; id: string }> {
-  await requireProfile(input.profileId, deps);
+  await requireProfile(input.profileId, deps, input.ownerSub);
   for (const document of (await storeValues(deps.documents, input.profileId)).filter(item => item.profileId === input.profileId)) {
     if (document.profileId !== input.profileId) continue;
     // Read the manifest before deleting its S3 prefix; the exact vector keys
@@ -45,7 +46,7 @@ export async function deleteProfile(input: ProfilePath, deps: LibraryRouteDeps):
 }
 
 export async function registerDocument(input: RegisterDocumentInput, deps: LibraryRouteDeps): Promise<DocumentRecord> {
-  await requireProfile(input.profileId, deps);
+  await requireProfile(input.profileId, deps, input.ownerSub);
   const upload = await storeGet(deps.uploads, input.uploadId);
   if (!upload) throw new RouteError('not-found', `upload ${input.uploadId} not found`);
 
@@ -86,7 +87,7 @@ export async function deleteDocument(input: DocumentPath, deps: LibraryRouteDeps
 }
 
 export async function searchProfile(input: SearchProfileInput, deps: LibraryRouteDeps): Promise<SearchResponse> {
-  await requireProfile(input.profileId, deps);
+  await requireProfile(input.profileId, deps, input.ownerSub);
   const hits = await deps.retrieve(input.profileId, input.query, input.k ?? 6, {
     ...(input.kind ? { kind: input.kind } : {}),
     ...(input.docId ? { docId: input.docId } : {}),
@@ -102,13 +103,15 @@ async function removeDocumentStorage(document: DocumentRecord, deps: LibraryRout
   await deps.s3.deletePrefix(`library/${document.profileId}/${document.docId}/`);
 }
 
-async function requireProfile(profileId: string, deps: LibraryRouteDeps): Promise<ProfileRecord> {
+async function requireProfile(profileId: string, deps: LibraryRouteDeps, ownerSub?: string): Promise<ProfileRecord> {
   const profile = await storeGet(deps.profiles, profileId);
-  if (!profile) throw new RouteError('not-found', `profile ${profileId} not found`);
+  // Another instructor's profile is indistinguishable from a missing one.
+  if (!profile || (ownerSub !== undefined && profile.ownerSub !== ownerSub)) throw new RouteError('not-found', `profile ${profileId} not found`);
   return profile;
 }
 
 async function requireDocument(input: DocumentPath, deps: LibraryRouteDeps): Promise<DocumentRecord> {
+  if (input.ownerSub !== undefined) await requireProfile(input.profileId, deps, input.ownerSub);
   const document = await storeGet(deps.documents, input.docId);
   if (!document || document.profileId !== input.profileId) {
     // Do not reveal whether a document id exists in another private profile.

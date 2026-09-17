@@ -16,7 +16,7 @@ models/cell.glb              original glTF 2.0 cell, one named node per organell
 demo-assets/                 the deliberately UNAPPROVED slide for the failure beat
 review/                      content review sheet for a human subject-matter reviewer
 fixtures/                    six ordered event scenarios for Parts 2, 3, and 4
-fixtures/invalid/            ten single-fault events that must be rejected
+fixtures/invalid/            eleven single-fault events that must be rejected
 tools/                       generators, the validator, and the simulator
 PROVENANCE.md                source, licence, and review status of every asset
 ```

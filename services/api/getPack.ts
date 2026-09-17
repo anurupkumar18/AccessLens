@@ -1,4 +1,4 @@
 import { getPack } from './operations';
-import { withErrors } from './http';
+import { withInstructor } from './identity';
 
-export const handler = withErrors(getPack);
+export const handler = withInstructor(getPack);

@@ -7,6 +7,19 @@ export const StudentPreferencesSchema = z.object({
   schemaVersion: z.literal('1.0'),
   mode: z.enum(['focus', 'structured-text', 'audio', 'dyslexic', 'ar']),
   textScale: z.number().min(0.75).max(2),
+  // Defaults make saved preferences from before the reading controls existed
+  // forward-compatible. These values remain entirely in local extension
+  // storage; neither the relay nor an instructor sees them.
+  fontFamily: z.enum(['system', 'serif', 'monospace']).default('system'),
+  lineSpacing: z.enum(['compact', 'comfortable', 'spacious']).default('comfortable'),
+  contentWidth: z.enum(['standard', 'narrow', 'wide']).default('standard'),
+  highContrast: z.boolean().default(false),
+  speechRate: z.number().min(0.75).max(1.5).default(1),
+  // Students who use their own screen reader (VoiceOver, NVDA, JAWS, ChromeVox,
+  // Narrator) hear lesson changes in their own voice and speed, and can have
+  // descriptions read by it instead of the AI voice.
+  announceChanges: z.boolean().default(true),
+  readAloudWith: z.enum(['ai-voice', 'screen-reader', 'browser-voice']).default('ai-voice'),
   reducedMotion: z.boolean(),
   captionsEnabled: z.boolean(),
 }).strict();
@@ -17,6 +30,13 @@ export const defaultPreferences: StudentPreferences = {
   schemaVersion: '1.0',
   mode: 'focus',
   textScale: 1,
+  fontFamily: 'system',
+  lineSpacing: 'comfortable',
+  contentWidth: 'standard',
+  highContrast: false,
+  speechRate: 1,
+  announceChanges: true,
+  readAloudWith: 'ai-voice',
   reducedMotion: false,
   captionsEnabled: true,
 };

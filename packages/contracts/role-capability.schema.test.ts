@@ -34,6 +34,11 @@ describe('role-capability.schema.json', () => {
     expect(validate(withoutToken)).toBe(false);
   });
 
+  it('accepts the relay-issued stream token alongside the signed token', () => {
+    expect(validate({...validCapability, streamToken: 'opaque-stream-token'})).toBe(true);
+    expect(validate({...validCapability, streamToken: ''})).toBe(false);
+  });
+
   it('rejects an identity field on a role capability', () => {
     expect(validate({...validCapability, studentEmail: 'a@b.edu'})).toBe(false);
   });

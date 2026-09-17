@@ -331,11 +331,14 @@ an LMS plugin, can drive the same endpoints. The contract is an OpenAPI 3.1
 document at `packages/contracts/authoring-api.openapi.yaml`, generated from the
 same Zod schemas the Lambdas validate with, and tested so the two cannot drift.
 
-Auth: one bearer token per deployment, generated at deploy time, stored in SSM
-Parameter Store, printed once by the deploy command, and checked by a Lambda
-authorizer on every route. Clients send `Authorization: Bearer <token>`. This
-is a hackathon boundary; the authorizer is the one place to swap in real
-identity later.
+Auth (D12, D13): two roles. Students never call this API. Instructors sign
+in with Google: clients send `Authorization: Bearer <Google ID token>`, and
+API Gateway's JWT authorizer verifies it against Google for this
+deployment's OAuth client id (and the Google Cloud SDK's, so `gcloud auth
+print-identity-token` works for scripts). Any verified Google account is an
+instructor for now; `GET /v1/me` creates the account record on first call.
+Jobs and course profiles belong to the Google account that created them
+and read as 404 to anyone else.
 
 | Method and path | Purpose | Request | Response |
 | --- | --- | --- | --- |
@@ -368,7 +371,7 @@ with `curl`, how to watch a job in the console, and `make destroy` to remove
 everything. Every step names the exact command and what success looks like.
 
 ```text
-make deploy      cdk deploy, then writes .env.local and prints the API URL, viewer URL, and bearer token
+make deploy      cdk deploy with GOOGLE_CLIENT_ID, then writes .env.local and prints the URLs
 make smoke       curl /v1/health, upload the HNSW PDF, start a job, poll to review, print the draft summary
 make destroy     cdk destroy plus emptying the buckets, so nothing keeps billing
 ```

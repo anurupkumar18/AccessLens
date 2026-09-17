@@ -11,6 +11,7 @@
     "role": { "enum": ["instructor", "student"] },
     "issuedAt": { "type": "string", "format": "date-time" },
     "expiresAt": { "type": "string", "format": "date-time" },
-    "token": { "type": "string", "minLength": 1 }
+    "token": { "type": "string", "minLength": 1 },
+    "streamToken": { "type": "string", "minLength": 1, "description": "Opaque short-lived token for the session's live media stream (Amazon IVS), attached by the relay. Optional; passed through untouched." }
   }
 }

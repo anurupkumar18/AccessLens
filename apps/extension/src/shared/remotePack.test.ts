@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { loadRemotePack, remotePackUrl } from './remotePack';
+import { loadRemotePack, publishedPackUrl, remotePackUrl } from './remotePack';
 import { slideImageUrl, resetRemotePackBasesForTests } from './packMedia';
 import publishedPack from '../../../viewer/fixtures/published-pack.json';
 
@@ -24,6 +24,12 @@ describe('remotePackUrl', () => {
       expect(remotePackUrl(`?pack=${encodeURIComponent(bad)}`), bad).toBeNull();
     }
   });
+
+  it('allows a same-machine dev server over plain http, and only that', () => {
+    expect(remotePackUrl(`?pack=${encodeURIComponent('http://localhost:5173/packs/p/1.json')}`)?.hostname).toBe('localhost');
+    expect(remotePackUrl(`?pack=${encodeURIComponent('http://127.0.0.1:5173/packs/p/1.json')}`)?.hostname).toBe('127.0.0.1');
+    expect(remotePackUrl(`?pack=${encodeURIComponent('http://localhost.evil.test/p.json')}`)).toBeNull();
+  });
 });
 
 describe('loadRemotePack', () => {
@@ -46,5 +52,13 @@ describe('loadRemotePack', () => {
 
   it('leaves bundled packs resolving from the bundle when nothing remote is registered', () => {
     expect(slideImageUrl({ packId: 'no-such-pack' }, { mediaUri: 'media/x/1/slide-01.png' })).toBeNull();
+  });
+});
+
+describe('publishedPackUrl', () => {
+  it('names the published pack by id and version under the distribution root', () => {
+    expect(publishedPackUrl('hnsw-explainer', 2, 'https://d.example.net').toString()).toBe('https://d.example.net/packs/hnsw-explainer/2.json');
+    expect(publishedPackUrl('hnsw-explainer', 2, 'https://d.example.net/').toString()).toBe('https://d.example.net/packs/hnsw-explainer/2.json');
+    expect(publishedPackUrl('a b', 1, 'http://localhost:5173').toString()).toBe('http://localhost:5173/packs/a%20b/1.json');
   });
 });

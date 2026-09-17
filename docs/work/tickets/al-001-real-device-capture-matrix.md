@@ -1,7 +1,7 @@
 ---
 id: AL-001
 title: Real-device capture matrix
-status: READY
+status: IN_REVIEW
 priority: P0
 depends_on: []
 task_ids: [A3,A4,A5,A14]

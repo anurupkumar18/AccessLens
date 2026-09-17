@@ -30,19 +30,53 @@ describe('live-event.schema.json contract matrix', () => {
     expect(validate({...base, type:'region.changed', assetId:'cell-slide-03'})).toBe(false);
   });
 
-  it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
+  it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
     'accepts base-only fields for %s',
     (type) => {
       expect(validate({...base, type})).toBe(true);
     }
   );
 
-  it.each(['session.started','capture.paused','capture.resumed','capture.stopped','caption.appended','session.ended','source.unmatched'])(
+  it('accepts a caption with the language spoken, and rejects a caption payload on any other event type', () => {
+    expect(validate({...base, type:'caption.appended', caption:{text:'hi', isFinal:false, lang:'es'}})).toBe(true);
+    expect(validate({...base, type:'session.started', caption:{text:'x', isFinal:true}})).toBe(false);
+    expect(validate({...base, type:'region.changed', assetId:'a', regionId:'r', caption:{text:'x', isFinal:true}})).toBe(false);
+  });
+
+  it.each(['session.started','capture.paused','capture.resumed','capture.stopped','session.ended','source.unmatched'])(
     'rejects %s carrying an assetId, never inventing a match',
     (type) => {
       expect(validate({...base, type, assetId:'cell-slide-03'})).toBe(false);
     }
   );
+
+  it('accepts caption.appended with caption text, with or without the slide it was spoken over', () => {
+    const caption = { text:'The mitochondrion releases usable energy.', isFinal:true };
+    expect(validate({...base, type:'caption.appended', caption})).toBe(true);
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption})).toBe(true);
+  });
+
+  it('rejects caption.appended missing a caption, never a silent empty caption', () => {
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03'})).toBe(false);
+  });
+
+  it('rejects caption.appended carrying a pointer, arState, or regionId', () => {
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x', isFinal:true}, pointer:{x:.1,y:.1}})).toBe(false);
+    expect(validate({...base, type:'caption.appended', caption:{ text:'x', isFinal:true }, regionId:'mitochondrion'})).toBe(false);
+  });
+
+  it('rejects a caption text over 2000 characters', () => {
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'.repeat(2001), isFinal:true}})).toBe(false);
+  });
+
+  it('rejects a caption missing isFinal, or carrying an extra field', () => {
+    expect(validate({...base, type:'caption.appended', assetId:'cell-slide-03', caption:{text:'x'}})).toBe(false);
+    expect(validate({...base, type:'caption.appended', caption:{ text:'x', isFinal:true, audio:'...' }})).toBe(false);
+  });
+
+  it('rejects a non-caption type carrying a caption field', () => {
+    expect(validate({...base, type:'session.started', caption:{ text:'x', isFinal:true }})).toBe(false);
+  });
 
   it('rejects an unknown top-level field', () => {
     expect(validate({...base, type:'session.started', rawFrame:'x'})).toBe(false);

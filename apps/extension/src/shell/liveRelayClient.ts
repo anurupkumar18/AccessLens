@@ -22,6 +22,10 @@ interface UnvalidatedSessionClient {
  *  assuming every transport has one. */
 export interface LiveRelaySessionClient extends SessionClient {
   onConnectionChange?(listener: (connected: boolean) => void): () => void;
+  /** A received relay payload did not satisfy the checked-in LiveEvent schema.
+   * The hook deliberately carries no raw payload or parse detail, so a malformed
+   * event cannot become an accidental content or telemetry channel. */
+  onInvalidEvent?(listener: () => void): () => void;
 }
 
 /**
@@ -33,6 +37,7 @@ export interface LiveRelaySessionClient extends SessionClient {
  * `create`/`join` promise, since the caller is already awaiting it.
  */
 export function wrapLiveRelayClient(underlying: UnvalidatedSessionClient): LiveRelaySessionClient {
+  const invalidEventListeners = new Set<() => void>();
   return {
     async create(sessionId: string): Promise<RoleCapability> {
       return RoleCapabilitySchema.parse(await underlying.create(sessionId));
@@ -47,6 +52,7 @@ export function wrapLiveRelayClient(underlying: UnvalidatedSessionClient): LiveR
       return underlying.subscribe(raw => {
         const parsed = LiveEventSchema.safeParse(raw);
         if (parsed.success) listener(parsed.data);
+        else invalidEventListeners.forEach(notify => notify());
       });
     },
     close(): void {
@@ -55,5 +61,9 @@ export function wrapLiveRelayClient(underlying: UnvalidatedSessionClient): LiveR
     onConnectionChange: underlying.onConnectionChange
       ? (listener: (connected: boolean) => void) => underlying.onConnectionChange!(listener)
       : undefined,
+    onInvalidEvent(listener: () => void): () => void {
+      invalidEventListeners.add(listener);
+      return () => invalidEventListeners.delete(listener);
+    },
   };
 }

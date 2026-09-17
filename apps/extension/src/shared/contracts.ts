@@ -75,16 +75,30 @@ const ScreenAnalysis = z.object({
   title: z.string().min(1), summary: z.string().min(1), text: z.array(z.string().min(1)),
   audioDescription: z.string().min(1), focusRegion: ScreenRegion.optional(),
 }).strict();
+// Bounded instructor speech, scoped to the asset it was said about when there
+// is a current match (T-16). Covers a manually-authored caption line and
+// streaming recognition from either caption path; `isFinal` distinguishes an
+// interim result, which a renderer replaces in place, from a settled one it
+// keeps. `lang` names the language spoken when the producer knows it. Strict:
+// text and these two fields only, so a caption can never carry audio (A2).
+export const CAPTION_MAX_LENGTH = 2000;
+const Caption = z.object({
+  text: z.string().min(1).max(CAPTION_MAX_LENGTH),
+  isFinal: z.boolean(),
+  lang: z.string().min(2).max(16).optional(),
+}).strict();
 
-// Per-type field matrix: only asset.changed and region.changed may name an
-// asset/region. Every other type -- including source.unmatched -- is
-// base-only, so the schema itself forbids inventing a match for unmatched
-// content instead of relying on producers to omit the field.
+// Per-type field matrix: only asset.changed and region.changed may name a
+// region, and only they and caption.appended may name an asset (a caption
+// names the slide it was spoken over, when there is one). Every other type --
+// including source.unmatched -- is base-only, so the schema itself forbids
+// inventing a match for unmatched content instead of relying on producers to
+// omit the field.
 export const LiveEventSchema = z.discriminatedUnion('type', [
   z.object({ ...LiveEventBase, type:z.literal('asset.changed'), assetId:z.string().min(1) }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('region.changed'), assetId:z.string().min(1), regionId:z.string().min(1), pointer:Pointer.optional(), arState:ArState.optional() }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('session.started') }).strict(),
-  z.object({ ...LiveEventBase, type:z.literal('caption.appended') }).strict(),
+  z.object({ ...LiveEventBase, type:z.literal('caption.appended'), assetId:z.string().min(1).optional(), caption:Caption }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.paused') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.resumed') }).strict(),
   z.object({ ...LiveEventBase, type:z.literal('capture.stopped') }).strict(),
@@ -109,6 +123,10 @@ export const RoleCapabilitySchema = z.object({
   issuedAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
   token: z.string().min(1),
+  // Opaque short-lived token for the session's live media stream (Amazon IVS),
+  // attached by the relay since 2026-09-16. Passed through untouched; strict()
+  // still refuses any other field, so identity cannot ride along.
+  streamToken: z.string().min(1).optional(),
 }).strict();
 
 // ---------------------------------------------------------------------------

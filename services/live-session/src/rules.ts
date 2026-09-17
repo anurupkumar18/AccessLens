@@ -48,14 +48,16 @@ export const REQUIRED_FIELDS = [
   'sentAt',
 ] as const;
 
+/** Mirrors CAPTION_MAX_LENGTH in reference_event_check.py and the Zod contract. */
+export const CAPTION_MAX_LENGTH = 2000;
+
 /**
  * Mirrors KNOWN_FIELDS in reference_event_check.py, `caption` included.
  *
- * `caption` is accepted here for the same reason Part 5 accepts it:
- * `caption.appended` is base-only in the shared contract, so a caption event
- * cannot yet carry its caption (T-16). Keeping the field known rather than
- * rejecting it means the relay does not become the reason captions are
- * impossible; the day T-16 closes, this list already agrees.
+ * `caption` carries an instructor-authored or streamed caption on
+ * `caption.appended` (T-16, closed): `{text, isFinal}` and nothing else,
+ * `assetId` when there is a current match, checked below with the same rule
+ * names as the Python reference.
  *
  * Anything *not* in this set is refused by name. That is what makes
  * `frameData`, `studentId`, and `masteryEstimate` bounce: not a blocklist of
@@ -202,6 +204,29 @@ export function checkEvent(
       broken.push('hotspot-not-in-pack');
     } else if (regionId != null && hotspot.regionId !== regionId) {
       broken.push('hotspot-region-mismatch');
+    }
+  }
+
+  // T-16's caption payload has no pack-membership fact to check against, but
+  // its shape is not covered by the generic REQUIRED_FIELDS/KNOWN_FIELDS
+  // checks above (those only ask whether the field name is known, not what
+  // it contains) -- and this relay-side layer is the only one a hostile or
+  // non-conforming client cannot bypass. Charter A2/A9: never forward an
+  // unbounded or malformed value to every student in the session.
+  const caption = event.caption as Record<string, unknown> | undefined | null;
+  if (type !== 'caption.appended') {
+    if (caption !== undefined && caption !== null) broken.push('caption-on-wrong-event-type');
+  } else if (caption !== undefined && caption !== null) {
+    if (typeof caption !== 'object' || Array.isArray(caption)) {
+      broken.push('caption-not-an-object');
+    } else {
+      const text = caption.text;
+      if (typeof text !== 'string' || text.length < 1) broken.push('caption-text-missing');
+      else if (text.length > CAPTION_MAX_LENGTH) broken.push('caption-text-too-long');
+      if (typeof caption.isFinal !== 'boolean') broken.push('caption-isfinal-not-boolean');
+      const lang = caption.lang;
+      const langInvalid = lang !== undefined && (typeof lang !== 'string' || lang.length < 2 || lang.length > 16);
+      if (langInvalid || Object.keys(caption).some(key => key !== 'text' && key !== 'isFinal' && key !== 'lang')) broken.push('caption-invalid');
     }
   }
 

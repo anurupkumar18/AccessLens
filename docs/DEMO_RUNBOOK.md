@@ -72,6 +72,11 @@ Run `make pack-check` before rehearsal. It recomputes every slide fingerprint fr
 the PNG bytes, so a deck edited after the pack was built fails here rather than
 mismatching live.
 
+Record every deployment, capture, quality, rehearsal, fallback, and formative
+review result in [`DEMO_PROOF_SPRINT.md`](DEMO_PROOF_SPRINT.md). Blank evidence
+cells are not a passing result; semantic replay must be named as replay whenever
+the instructor capture path is not being used.
+
 ## Rehearsal checklist
 
 - [ ] Capture permission appears and denial is handled.

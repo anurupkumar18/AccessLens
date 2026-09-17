@@ -19,12 +19,10 @@ const ASPECT_TOLERANCE = 0.02;
  * not look at pixel content, so a slide with a uniform edge region is
  * cropped identically to any other. Raw pixels never leave the caller.
  */
-export function cropToAspect(frame: Frame, aspect: number = SLIDE_ASPECT): Frame {
-  const { width, height } = frame;
-  if (width === 0 || height === 0) return frame;
+/** Where `cropToAspect` crops: the centred rectangle with the slide's aspect ratio, or the whole frame when it already has it. */
+export function aspectRect(width: number, height: number, aspect: number = SLIDE_ASPECT): { x: number; y: number; width: number; height: number } {
   const current = width / height;
-  if (Math.abs(current - aspect) / aspect < ASPECT_TOLERANCE) return frame;
-
+  if (width === 0 || height === 0 || Math.abs(current - aspect) / aspect < ASPECT_TOLERANCE) return { x: 0, y: 0, width, height };
   let cropWidth = width;
   let cropHeight = height;
   if (current < aspect) {
@@ -34,8 +32,15 @@ export function cropToAspect(frame: Frame, aspect: number = SLIDE_ASPECT): Frame
     // Wider than the slide: bars left and right.
     cropWidth = Math.round(height * aspect);
   }
-  const offsetX = Math.floor((width - cropWidth) / 2);
-  const offsetY = Math.floor((height - cropHeight) / 2);
+  return { x: Math.floor((width - cropWidth) / 2), y: Math.floor((height - cropHeight) / 2), width: cropWidth, height: cropHeight };
+}
+
+export function cropToAspect(frame: Frame, aspect: number = SLIDE_ASPECT): Frame {
+  const { width, height } = frame;
+  if (width === 0 || height === 0) return frame;
+  const rect = aspectRect(width, height, aspect);
+  if (rect.width === width && rect.height === height) return frame;
+  const { width: cropWidth, height: cropHeight, x: offsetX, y: offsetY } = rect;
 
   const data = new Uint8ClampedArray(cropWidth * cropHeight * 4);
   for (let y = 0; y < cropHeight; y++) {

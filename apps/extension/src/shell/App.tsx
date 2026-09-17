@@ -1,14 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AccessPackSchema, type AccessPack, type LiveEvent, type SessionClient } from '../shared/contracts';
+import { fetchPublishedPack } from '../shared/remotePack';
 import { defaultPreferences, loadPreferences, savePreferences, type StudentPreferences } from '../shared/preferences';
-import { InstructorPanel } from '../instructor';
+import { CameraControl, InstructorPanel } from '../instructor';
+import { AuthoringPanel } from '../instructor/AuthoringPanel';
+import type { AuthoringClient, PublishedPackSummary } from '../shared/authoringClient';
+import { MediaPrepPanel } from '../mediaPrep/MediaPrepPanel';
 import { createDisplayMediaHost, type CaptureHost, type Scheduler } from '../sources/screen';
 import { createBedrockScreenAnalyzer } from '../sources/screen/screenAnalyzer';
+import { createCameraMediaHost } from '../sources/camera';
 import { StudentExperience } from '../student/StudentExperience';
+import { ReviewExperience } from '../student/ReviewExperience';
 import reviewedBioPack from '../../../../packages/access-packs/bio-cell-demo/pack.json';
-import hnswDraftPack from '../../../../packs/hnsw/pack.draft.json';
 import { RoleNav, type Role } from './RoleNav';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ReadingFontToggle } from './ReadingFontToggle';
+import { ThemeToggle } from './ThemeToggle';
+import { Wordmark } from './Wordmark';
 import { createDefaultClient } from './createDefaultClient';
 
 // Part 4's real relay when VITE_ACCESSLENS_WS_URL is configured (.env.local);
@@ -18,6 +26,7 @@ const defaultClient: SessionClient = createDefaultClient(import.meta.env.VITE_AC
 // Start button (charter A1).
 const defaultHost = createDisplayMediaHost();
 const defaultAnalyzer = createBedrockScreenAnalyzer(import.meta.env.VITE_ACCESSLENS_ANALYSIS_URL);
+const defaultCameraHost = createCameraMediaHost();
 
 /** The same page as a full browser tab. Only meaningful when running as the
  *  extension: the side panel is narrow, and a student who wants large text
@@ -35,35 +44,92 @@ const fullTabUrl = fullTabUrl_();
 export interface PackChoice { id: string; label: string; pack: AccessPack; status: 'reviewed' | 'draft'; draftPath?: string }
 export const packChoices: PackChoice[] = [
   { id: 'bio-cell-demo', label: 'Cell Structure (reviewed)', pack: AccessPackSchema.parse(reviewedBioPack), status: 'reviewed' },
-  { id: 'hnsw-explainer', label: 'How HNSW Works (draft)', pack: AccessPackSchema.parse(hnswDraftPack), status: 'draft', draftPath: 'packs/hnsw/pack.draft.json' },
 ];
+
+/** Published, instructor-reviewed packs any instructor can present without
+ *  signing in, fetched from the asset distribution exactly like a signed-in
+ *  instructor's own. They keep demo lessons reachable where Google sign-in is
+ *  not available (an origin the OAuth client does not list, T-41). */
+export const publishedDemoPacks: PublishedPackSummary[] = [
+  { packId: 'introduction-to-hnsw', title: 'Introduction to HNSW', version: 1, packUrl: 'packs/introduction-to-hnsw/1.json', publishedAt: '2026-09-16T18:24:16.000Z' },
+];
+
+function publishedChoiceId(pack: PublishedPackSummary): string { return `published:${pack.packId}`; }
 
 interface Props {
   client?: SessionClient;
   pack?: AccessPack;
+  /** Fetches the published pack a session names; injected in tests. */
+  fetchPublishedPack?: (packId: string, version: number) => Promise<AccessPack>;
+  /** The authoring API client; injected in tests, otherwise built from the Google session. */
+  authoringClient?: AuthoringClient;
   host?: CaptureHost;
+  cameraHost?: CaptureHost;
   scheduler?: Scheduler;
   analyzer?: import('../sources/screen/screenAnalyzer').ScreenAnalyzer;
 }
 
-export function App({ client = defaultClient, pack, host = defaultHost, scheduler, analyzer = defaultAnalyzer }: Props): React.ReactElement {
+export function App({ client = defaultClient, pack, host = defaultHost, cameraHost = defaultCameraHost, scheduler, analyzer = defaultAnalyzer, fetchPublishedPack: fetchPack = fetchPublishedPack, authoringClient }: Props): React.ReactElement {
   const [role, setRole] = useState<Role>('instructor');
+  const [studentSurface, setStudentSurface] = useState<'live' | 'review'>('live');
+  const [instructorView, setInstructorView] = useState<'live' | 'media'>('live');
   const [event, setEvent] = useState<LiveEvent | null>(null);
   const [preferences, setPreferences] = useState<StudentPreferences>(defaultPreferences);
   const [choiceId, setChoiceId] = useState(packChoices[0].id);
+  // The instructor's own published packs arrive once they sign in below. They
+  // are offered next to the bundled packs; the newest is selected on arrival
+  // unless the instructor already picked something, since presenting what
+  // they just uploaded is why they are here.
+  const [publishedPacks, setPublishedPacks] = useState<PublishedPackSummary[]>([]);
+  const [instructorPack, setInstructorPack] = useState<AccessPack | null>(null);
+  const [instructorPackError, setInstructorPackError] = useState<string | null>(null);
+  const picked = useRef(false);
+  function pickPack(id: string): void { picked.current = true; setChoiceId(id); }
+  function receivePublishedPacks(packs: PublishedPackSummary[]): void {
+    setPublishedPacks(packs);
+    if (!picked.current && packs.length) setChoiceId(publishedChoiceId(packs[0]));
+  }
   // The pack is chosen once per instructor session: the panel is keyed on it
   // so switching packs remounts the controller instead of mixing packs.
   const choice = packChoices.find(c => c.id === choiceId) ?? packChoices[0];
-  const activePack = pack ?? choice.pack;
-  const activeIsDraft = pack ? false : choice.status === 'draft';
+  const demoPacks = publishedDemoPacks.filter(demo => !publishedPacks.some(own => own.packId === demo.packId));
+  const publishedChoice = [...publishedPacks, ...demoPacks].find(p => publishedChoiceId(p) === choiceId);
+  useEffect(() => {
+    if (!publishedChoice) { setInstructorPack(null); setInstructorPackError(null); return; }
+    let stale = false;
+    setInstructorPack(null); setInstructorPackError(null);
+    fetchPack(publishedChoice.packId, publishedChoice.version)
+      .then(loaded => { if (!stale) setInstructorPack(loaded); })
+      .catch((error: unknown) => { if (!stale) setInstructorPackError(`Could not load ${publishedChoice.title} v${publishedChoice.version}: ${error instanceof Error ? error.message : String(error)}`); });
+    return () => { stale = true; };
+  }, [publishedChoice, fetchPack]);
+  const loadedPublished = publishedChoice && instructorPack && instructorPack.packId === publishedChoice.packId && instructorPack.version === publishedChoice.version ? instructorPack : null;
+  const activePack = pack ?? (publishedChoice ? loadedPublished : choice.pack);
+  const activeIsDraft = pack || publishedChoice ? false : choice.status === 'draft';
   // Students never pick a pack: the session's events name the pack the
-  // instructor is teaching, and the student view follows that. Until the
-  // first event arrives there is nothing to render against, so any known
-  // pack will do.
-  const sessionPack = event ? packChoices.find(c => c.pack.packId === event.packId && c.pack.version === event.packVersion)?.pack : undefined;
-  const studentPack = pack ?? sessionPack ?? choice.pack;
+  // instructor is teaching, and the student view follows that. A bundled
+  // pack of that id and version is used as is; anything else is fetched from
+  // the published distribution, which is where every pack the authoring
+  // pipeline publishes lives. Until the first event arrives there is nothing
+  // to render against, so any known pack will do.
+  const [fetchedPack, setFetchedPack] = useState<AccessPack | null>(null);
+  const [packError, setPackError] = useState<string | null>(null);
+  const requestedPack = useRef<string | null>(null);
+  const bundledPack = event ? packChoices.find(c => c.pack.packId === event.packId && c.pack.version === event.packVersion)?.pack : undefined;
+  const publishedPack = event && fetchedPack && fetchedPack.packId === event.packId && fetchedPack.version === event.packVersion ? fetchedPack : undefined;
+  const studentPack = pack ?? bundledPack ?? publishedPack ?? choice.pack;
 
   useEffect(() => client.subscribe(setEvent), [client]);
+  useEffect(() => {
+    if (!event || pack || bundledPack || publishedPack) return;
+    const key = `${event.packId}@${event.packVersion}`;
+    if (requestedPack.current === key) return;
+    requestedPack.current = key;
+    setPackError(null);
+    fetchPack(event.packId, event.packVersion)
+      .then(setFetchedPack)
+      .catch((error: unknown) => setPackError(`Could not load the lesson pack ${event.packId} v${event.packVersion}: ${error instanceof Error ? error.message : String(error)}`));
+  }, [event, pack, bundledPack, publishedPack, fetchPack]);
   useEffect(() => { loadPreferences().then(setPreferences); }, []);
 
   function updatePreferences(next: StudentPreferences): void {
@@ -74,41 +140,72 @@ export function App({ client = defaultClient, pack, host = defaultHost, schedule
   return (
     <ErrorBoundary>
       <main>
-        <header>
-          <div>
-            <h1>AccessLens</h1>
-            <p>Accessible, instructor-authorized lesson sharing</p>
+        <header className="masthead">
+          <div className="topbar">
+            <span className="mark" aria-hidden="true" />
+            <RoleNav role={role} onSelect={setRole} />
+            <ReadingFontToggle />
+            <ThemeToggle />
+            {fullTabUrl && (
+              <a className="full-tab-link" href={fullTabUrl} target="_blank" rel="noopener">
+                Open in a full tab
+              </a>
+            )}
           </div>
-          {fullTabUrl && (
-            <a className="full-tab-link" href={fullTabUrl} target="_blank" rel="noopener">
-              Open in a full tab
-            </a>
-          )}
+          <Wordmark />
+          <p className="tagline">Accessible, instructor-authorized lesson sharing</p>
         </header>
-        <RoleNav role={role} onSelect={setRole} />
-        {role === 'instructor' ? (
-          <>
+        {role === 'instructor' && (
+          <div className="mode-tabs instructor-tabs" role="tablist" aria-label="Instructor tools">
+            <button id="instructor-tab-live" type="button" role="tab" aria-selected={instructorView === 'live'} aria-controls="instructor-panel" onClick={() => setInstructorView('live')}>Live lesson</button>
+            <button id="instructor-tab-media" type="button" role="tab" aria-selected={instructorView === 'media'} aria-controls="instructor-panel" onClick={() => setInstructorView('media')}>Prepare media</button>
+          </div>
+        )}
+        {role === 'instructor' && instructorView === 'media' ? (
+          <div id="instructor-panel" role="tabpanel" aria-labelledby="instructor-tab-media">
+            <MediaPrepPanel />
+          </div>
+        ) : role === 'instructor' ? (
+          <div id="instructor-panel" role="tabpanel" aria-labelledby="instructor-tab-live">
             {!pack && (
               <p className="pack-picker">
                 <label htmlFor="pack-choice">Lesson pack</label>
-                <select id="pack-choice" value={choice.id} onChange={e => setChoiceId(e.target.value)}>
-                  {packChoices.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                <select id="pack-choice" value={publishedChoice ? publishedChoiceId(publishedChoice) : choice.id} onChange={e => pickPack(e.target.value)}>
+                  {publishedPacks.length > 0 && (
+                    <optgroup label="Your published packs">
+                      {publishedPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
+                    </optgroup>
+                  )}
+                  {demoPacks.length > 0 && (
+                    <optgroup label="Published demo packs">
+                      {demoPacks.map(p => <option key={publishedChoiceId(p)} value={publishedChoiceId(p)}>{p.title} (v{p.version})</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label="Bundled demo packs">
+                    {packChoices.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </optgroup>
                 </select>
+                {publishedPacks.length === 0 && <span className="muted">Sign in below to present a pack you uploaded.</span>}
               </p>
             )}
+            {publishedChoice && !activePack && !instructorPackError && <p role="status" aria-live="polite">Loading {publishedChoice.title}…</p>}
+            {instructorPackError && <p role="alert">{instructorPackError}</p>}
             {activeIsDraft && (
               <p role="note" className="draft-note">Draft pack: slide descriptions were generated by Claude and have not been instructor-reviewed yet. Review <code>{choice.draftPath}</code> before a real class.</p>
             )}
-            <InstructorPanel key={activePack.packId} client={client} pack={activePack} host={host} scheduler={scheduler} analyzer={analyzer} />
-          </>
+            {activePack && <InstructorPanel key={`${activePack.packId}@${activePack.version}`} client={client} pack={activePack} host={host} scheduler={scheduler} analyzer={analyzer} />}
+            <CameraControl host={cameraHost} />
+            <AuthoringPanel client={authoringClient} onPublishedPacks={receivePublishedPacks} />
+          </div>
         ) : (
-          <StudentExperience
-            client={client}
-            event={event}
-            pack={studentPack}
-            preferences={preferences}
-            onPreferencesChange={updatePreferences}
-          />
+          <>
+            <nav className="student-surface-nav" aria-label="Student experience">
+              <button type="button" aria-current={studentSurface === 'live'} onClick={() => setStudentSurface('live')}>Live lesson</button>
+              <button type="button" aria-current={studentSurface === 'review'} onClick={() => setStudentSurface('review')}>Review</button>
+            </nav>
+            {packError && <p role="alert" className="pack-error">{packError}</p>}
+            {studentSurface === 'live' ? <StudentExperience client={client} event={event} pack={studentPack} preferences={preferences} onPreferencesChange={updatePreferences} /> : <ReviewExperience pack={studentPack} preferences={preferences} />}
+          </>
         )}
       </main>
     </ErrorBoundary>

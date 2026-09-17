@@ -32,6 +32,13 @@ export interface PublishPackInput {
   /** The review metadata is deliberately opaque; no student identity belongs here. */
   reviewedBy?: string;
   publishedAt?: string;
+  /**
+   * Speech for a region whose short description the instructor edited. The
+   * staged clip was synthesized from the draft text, so it must not be
+   * copied for edited text; without a synthesizer the region publishes with
+   * no audio and Hear mode speaks the edited text locally.
+   */
+  synthesizeAudio?: (text: string) => Promise<Uint8Array>;
 }
 
 export interface PublishResult {
@@ -56,6 +63,12 @@ interface CopyPlan {
   source: string;
   destination: string;
   contentType: string;
+}
+
+/** A clip to synthesize at publish time, for an edited description. */
+interface SynthesisPlan {
+  text: string;
+  destination: string;
 }
 
 const CONTENT_TYPES = {
@@ -142,12 +155,15 @@ function mergeDecisionState(decisions: readonly ReviewDecision[]): {
 function applyDecision(asset: StagedAsset, decisions: readonly ReviewDecision[], deckFingerprint: string, input: PublishPackInput, version: number): {
   asset: PackAsset;
   media: CopyPlan[];
+  synthesis: SynthesisPlan[];
   artifactRoots: string[];
 } {
   const state = mergeDecisionState(decisions);
+  const respoken = new Set<string>();
   const regions = asset.regions.map(region => {
     const edit = state.edits.get(region.regionId);
     if (!edit) return { ...region };
+    if (edit.shortDescription !== undefined && edit.shortDescription !== region.shortDescription) respoken.add(region.regionId);
     return {
       ...region,
       ...(edit.shortDescription === undefined ? {} : { shortDescription: edit.shortDescription }),
@@ -175,10 +191,21 @@ function applyDecision(asset: StagedAsset, decisions: readonly ReviewDecision[],
   const sourceMedia = asset.mediaUri ?? slide.mediaKey;
   ensureStagedKey(sourceMedia, input.job.jobId, `slide ${asset.assetId} media`);
   const media: CopyPlan[] = [{ source: sourceMedia, destination: destinationMedia, contentType: CONTENT_TYPES.image }];
+  const synthesis: SynthesisPlan[] = [];
   const rewrittenRegions = keptRegions.map(region => {
+    const destination = publishedAudioKey(input.job.packId, version, asset.assetId, region.regionId);
+    if (respoken.has(region.regionId)) {
+      // The staged clip says the draft text. Either speak the edited text
+      // fresh or ship no clip; never the stale one.
+      if (!input.synthesizeAudio) {
+        const { audioUri: _stale, ...withoutAudio } = region;
+        return withoutAudio;
+      }
+      synthesis.push({ text: region.shortDescription, destination });
+      return { ...region, audioUri: destination };
+    }
     if (!region.audioUri) return region;
     ensureStagedKey(region.audioUri, input.job.jobId, `audio for ${asset.assetId}/${region.regionId}`);
-    const destination = publishedAudioKey(input.job.packId, version, asset.assetId, region.regionId);
     media.push({ source: region.audioUri, destination, contentType: CONTENT_TYPES.audio });
     return { ...region, audioUri: destination };
   });
@@ -212,7 +239,7 @@ function applyDecision(asset: StagedAsset, decisions: readonly ReviewDecision[],
     ...(asset.references === undefined ? {} : { references: asset.references }),
     ...(visualization === undefined ? {} : { visualization }),
   };
-  return { asset: publishedAsset, media, artifactRoots };
+  return { asset: publishedAsset, media, synthesis, artifactRoots };
 }
 
 function reviewRecord(input: PublishPackInput, publishedAt: string): AccessPack['review'] {
@@ -315,12 +342,14 @@ export async function publishPack(input: PublishPackInput, store: ObjectStore): 
   const publishedAt = input.publishedAt ?? new Date().toISOString();
   const publishedAssets: PackAsset[] = [];
   const media: CopyPlan[] = [];
+  const synthesis: SynthesisPlan[] = [];
   const artifactRoots: string[] = [];
   for (const slide of input.deck.slides) {
     const staged = stagedById.get(slide.assetId)!;
     const result = applyDecision(staged, decisionSet(parsedJob, slide.assetId), slide.fingerprint, input, version);
     publishedAssets.push(result.asset);
     media.push(...result.media);
+    synthesis.push(...result.synthesis);
     artifactRoots.push(...result.artifactRoots);
   }
 
@@ -330,6 +359,12 @@ export async function publishPack(input: PublishPackInput, store: ObjectStore): 
   // Copy media/artifacts only after the completed pack was schema-validated and
   // every staged source was confirmed. No prior version key is ever a target.
   for (const copy of plannedCopies) await store.copy(copy.source, copy.destination, copy.contentType);
+  for (const clip of synthesis) {
+    // Edited text is spoken at publish time. A synthesis failure fails the
+    // publish rather than shipping a pack whose audioUri points at nothing.
+    const bytes = await input.synthesizeAudio!(clip.text);
+    await store.write(clip.destination, bytes, CONTENT_TYPES.audio);
+  }
   await store.write(packKey, JSON.stringify(pack, null, 2) + '\n', CONTENT_TYPES.json);
 
   const packUrl = `${base.replace(/\/+$/u, '')}/${packKey}`;
