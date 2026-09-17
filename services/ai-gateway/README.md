@@ -1,7 +1,7 @@
 # AccessLens AI gateway
 
-The AWS model routes behind three extension features. One Lambda behind an API
-Gateway HTTP API, deployed by `infra/` in the same stack as the relay.
+The AWS model routes behind the extension's AI features. One Lambda behind an
+API Gateway HTTP API, deployed by `infra/` in the same stack as the relay.
 
 | Route | Who | What | AWS |
 | --- | --- | --- | --- |
@@ -143,3 +143,16 @@ Built by the same `cdk deploy` as the relay (see `docs/DEPLOYMENT.md`), after
 `AiApiUrl`; put it in `.env.local` as `VITE_ACCESSLENS_AI_URL` and rebuild the
 extension. With it unset, the extension hides Ask and caption controls behind an
 explanation and Hear mode uses the browser voice.
+
+Whisper is a separate stack because its GPU endpoint (one `ml.g5.xlarge`) bills
+by the hour whether or not anyone is teaching. Deploy it for a rehearsal or demo
+and destroy it afterwards; nothing else depends on it:
+
+```sh
+cd infra
+npx cdk deploy AccessLensWhisper    # 10-15 minutes until the endpoint is InService
+npx cdk destroy AccessLensWhisper   # stops the charge
+```
+
+The smoke test sends Polly speech to Whisper as one clip and skips that check
+when the stack is not deployed.

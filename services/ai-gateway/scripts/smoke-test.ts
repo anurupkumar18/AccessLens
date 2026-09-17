@@ -11,10 +11,15 @@
  *    streams Polly-generated 16 kHz speech through it with the extension's own
  *    event-stream framing and checks the words come back.
  *
- * Step 4's speech comes from Polly with local credentials; nothing is recorded.
+ * 5. Sends the same Polly speech to Whisper on SageMaker as one WAV clip, as
+ *    the extension does, and checks the words come back. Skipped, not failed,
+ *    when the AccessLensWhisper stack is not deployed.
+ *
+ * Steps 4 and 5 use speech from Polly with local credentials; nothing is recorded.
  */
 import { PollyClient, SynthesizeSpeechCommand } from '@aws-sdk/client-polly';
 import { audioEvent, decodeMessage, transcriptFrom } from '../../../apps/extension/src/sources/voice/eventStream.js';
+import { encodeWav } from '../../../apps/extension/src/sources/voice/wav.js';
 
 const [aiUrl, wsUrl] = process.argv.slice(2);
 if (!aiUrl || !wsUrl) {
@@ -76,11 +81,12 @@ check('a student cannot get a caption stream', (await post('transcribe-url', { c
 const grant = await post('transcribe-url', { capability: instructor.capability });
 check('an instructor gets a presigned URL', grant.status === 200 && String(grant.body?.url).startsWith('wss://'));
 
+const polly = new PollyClient({ region: 'us-east-1' });
+const sentence = 'Now look at the nucleus. The mitochondrion releases usable energy.';
+const speech = await polly.send(new SynthesizeSpeechCommand({ Engine: 'neural', OutputFormat: 'pcm', SampleRate: '16000', VoiceId: 'Matthew', Text: sentence }));
+const pcm = await speech.AudioStream!.transformToByteArray();
+
 if (grant.body?.url) {
-  const polly = new PollyClient({ region: 'us-east-1' });
-  const sentence = 'Now look at the nucleus. The mitochondrion releases usable energy.';
-  const speech = await polly.send(new SynthesizeSpeechCommand({ Engine: 'neural', OutputFormat: 'pcm', SampleRate: '16000', VoiceId: 'Matthew', Text: sentence }));
-  const pcm = await speech.AudioStream!.transformToByteArray();
   const socket = new WebSocket(grant.body.url);
   socket.binaryType = 'arraybuffer';
   const finals: string[] = [];
@@ -107,6 +113,20 @@ if (grant.body?.url) {
   const heard = finals.join(' ');
   check('Transcribe returns the spoken words', /nucleus/i.test(heard) && /mitochondri/i.test(heard), `${partials} partials; final: "${heard}"${error ? `; error: ${error}` : ''}`);
 }
+
+console.log('\ntranscribe-chunk (Whisper on SageMaker)');
+const audio = Buffer.from(encodeWav(pcm, 16000)).toString('base64');
+check('a student cannot send a Whisper clip', (await post('transcribe-chunk', { capability: student.capability, audio })).status === 403);
+started = Date.now();
+const whisper = await post('transcribe-chunk', { capability: instructor.capability, audio });
+if (whisper.status === 503 && whisper.body?.error === 'whisper-unavailable') {
+  console.log('  skip  Whisper returns the spoken words — the AccessLensWhisper stack is not deployed (or not InService yet)');
+} else {
+  check('Whisper returns the spoken words', whisper.status === 200 && /nucleus/i.test(whisper.body?.text) && /mitochondri/i.test(whisper.body?.text), `${Date.now() - started} ms: ${JSON.stringify(whisper.body)}`);
+}
+const silence = Buffer.from(encodeWav(new Uint8Array(32000), 16000)).toString('base64');
+const quiet = await post('transcribe-chunk', { capability: instructor.capability, audio: silence });
+check('silence is never sent to Whisper', quiet.status === 200 ? quiet.body?.text === '' : quiet.body?.error === 'whisper-unavailable', JSON.stringify(quiet.body));
 
 instructor.socket.send(JSON.stringify({ kind: 'close', sessionId }));
 instructor.socket.close();
