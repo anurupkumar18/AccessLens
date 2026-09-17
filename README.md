@@ -63,6 +63,7 @@ outputs; see [the AI gateway README](services/ai-gateway/README.md) to run it.
 ## Start here
 
 - [Context relay — start here if you are picking this up](docs/CONTEXT_RELAY.md)
+- [Local dev setup — the `.env.local` values every feature needs](docs/LOCAL_DEV_SETUP.md)
 - [Product proposal](docs/ACCESSLENS_PROPOSAL.md)
 - [System design and technical stack](docs/SYSTEM_DESIGN.md)
 - [Visualization system: agentic slide visuals](docs/VISUALIZATION_SYSTEM.md)

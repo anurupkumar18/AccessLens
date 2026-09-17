@@ -20,7 +20,9 @@ export const WHOLE_SLIDE_NOTE = 'When your instructor points at part of this sli
  * alone; nothing here knows what any particular lesson is about.
  */
 export function FocusView({ pack, assetId, regionId, pointer }: Props): React.ReactElement {
-  const asset = pack.assets.find((candidate) => candidate.assetId === assetId) ?? pack.assets[0];
+  // No fallback to assets[0]: an assetId that names nothing in the pack means
+  // recognition has not confirmed a slide yet, not that the first slide is showing.
+  const asset = pack.assets.find((candidate) => candidate.assetId === assetId);
   if (!asset) return <p role="status">Waiting for a reviewed slide.</p>;
 
   const imageUrl = slideImageUrl(pack, asset);
