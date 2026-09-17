@@ -129,7 +129,11 @@ export function applyLiveEvent(
         captions: current.captions,
       };
     case 'screen.analyzed':
-      return { status: 'live', lastSequence: event.sequence, stream, analysis: event.analysis, message: `Understanding: ${event.analysis.title}.`, captions: current.captions };
+      // Screen analysis is supplemental narration for the current slide. It
+      // must not replace the reviewed slide/region state: otherwise a vision
+      // result arriving after an asset change makes Focus, Read, and AR fall
+      // back to the previous/default slide until the next pointer event.
+      return { ...current, status: 'live', staleReason: undefined, lastSequence: event.sequence, stream, analysis: event.analysis, message: `Understanding: ${event.analysis.title}.` };
     case 'session.ended':
       return { status: 'ended', lastSequence: event.sequence, message: 'The instructor ended this session.', captions: [] };
     case 'session.started':
