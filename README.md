@@ -15,6 +15,17 @@
 </div>
 
 ---
+</div>
+
+### Thank you to the sponsors and hosts
+
+<div align="center">
+
+<img src="assets/sponsors.png" alt="Event sponsors: AWS, The Attic AI, Nucleus, Waystar, and AI Utah." width="80%" />
+
+</div>
+
+---
 
 ## The one-format classroom
 
@@ -109,18 +120,6 @@ Built at the **Minds & Machines: AI in Education Hackathon**, One-U Responsible 
 <div align="center">
 
 <img src="assets/team.png" alt="AccessLens closing slide: the ACCESSLENS wordmark, the tagline A real-time lecture companion, and Team Mind-Stone members Anurup Kumar, Jacob Erard, Kunj Rathod, Omar Rizwan, and Prachi Aswani." width="100%" />
-
-</div>
-
-### Thank you to the sponsors and hosts
-
-<div align="center">
-
-<img src="assets/sponsors.png" alt="Event sponsors: AWS, The Attic AI, Nucleus, Waystar, and AI Utah." width="80%" />
-
-</div>
-
----
 
 <div align="center">
 
