@@ -2,6 +2,12 @@
 
 <img src="assets/banner.gif" alt="AccessLens — 1st Place, Minds & Machines: AI in Education Hackathon 2026. A real-time lecture companion by Team Mind-Stone." width="100%" />
 
+<br />
+
+<img src="assets/utah-sci.png" alt="University of Utah — Scientific Computing & Imaging Institute" width="210" />
+
+**Built at the University of Utah** · One-U Responsible AI Initiative
+
 <br /><br />
 
 <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original-wordmark.svg" alt="Amazon Web Services" height="70" />
