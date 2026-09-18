@@ -1,4 +1,5 @@
 import type { AccessPack } from './contracts';
+import { localSlideUrl } from './localPack';
 
 type Asset = AccessPack['assets'][number];
 
@@ -44,6 +45,8 @@ export function resetRemotePackBasesForTests(): void {
 /** URL for an asset's slide image: the published distribution's if the pack came from one, else the bundle's; null when the pack ships none. */
 export function slideImageUrl(pack: Pick<AccessPack, 'packId'>, asset: Pick<Asset, 'mediaUri'>): string | null {
   if (!asset.mediaUri) return null;
+  const local = localSlideUrl(pack, asset.mediaUri);
+  if (local) return local;
   const remote = remoteBases.get(pack.packId);
   if (remote) return new URL(asset.mediaUri, remote).toString();
   return bundledSlides[pack.packId]?.[basename(asset.mediaUri)] ?? null;

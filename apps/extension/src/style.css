@@ -1,10 +1,15 @@
 /* AccessLens interface.
  *
- * Modelled on Blacksmith's marketing site: a full-bleed acid-yellow masthead
+ * Modelled on Blacksmith's marketing site: a full-bleed colour masthead
  * with a pixel wordmark, `/ LABEL ■` section rules over hairlines, tightly
  * tracked headings, uppercase pill buttons, bordered bento cells, "window"
  * cards with a dotted title bar and a hard offset shadow, halftone dot fields,
- * and a cyan highlight behind key phrases.
+ * and a light highlight behind key phrases.
+ *
+ * Colours differ by role: the instructor view is the neon yellow and the
+ * student view orange, set on <html data-role> by the role switch, so anyone
+ * glancing at a screen can tell which side it is. The role switch's
+ * words say the same thing, so the colour is never the only signal.
  *
  * Two rules constrain every choice here, and they come from the product rather
  * than from taste:
@@ -12,10 +17,12 @@
  * 1. **Colour never carries meaning alone.** Every state has a glyph and a word
  *    as well as a colour, so it survives a colour-blind reader, a greyscale
  *    display, and a screenshot in a bug report. Charter A7.
- * 2. **The accent is a background, never small text on paper.** #f0fb29 on
- *    white is about 1.2:1 — invisible. The same yellow *behind* #202020 is
- *    ~13.7:1, and yellow text *on* #202020 is the same pair reversed. Anything
- *    sitting on yellow or cyan uses the fixed `--on-accent` ink, in both themes.
+ * 2. **Text on a colour uses that colour's own ink.** `--on-accent` is the ink
+ *    for the role accent: #202020 on yellow #f0fb29 (~13.7:1) and on orange
+ *    #e8834a (~6:1). The light highlight, gradient and amber caution fills
+ *    always take the dark `--on-highlight` ink, whichever role is showing.
+ *    Lines and rings drawn in the accent on the page use `--accent-line`,
+ *    which the dark theme lightens where the accent itself would vanish.
  *
  * Both themes are defined from the same tokens, because a student who needs
  * dark should not get a worse-tuned version of the interface.
@@ -55,11 +62,17 @@
   --dot: rgba(32, 32, 32, .28);
   --shadow: #202020;
 
-  /* Fixed in both themes: these are always backgrounds under --on-accent. */
+  /* The same in both themes. Accent, highlight, gradient and caution are
+     fills with their own ink (--on-accent, --on-highlight). These are the
+     instructor's; the student's follow below. --caution stays amber for both,
+     so warnings do not take on a role's colour. */
   --accent: #f0fb29;
-  --cyan: #aee3fd;
+  --accent-line: var(--accent);
+  --highlight: #aee3fd;
   --on-accent: #202020;
+  --on-highlight: #202020;
   --gradient: linear-gradient(90deg, #aee3fd 0%, #f0fb29 100%);
+  --caution: #ffd166;
 
   /* State hues from the Okabe-Ito colour-blind-safe set, darkened for
      light-background contrast. Each is paired with a glyph in the markup. */
@@ -102,18 +115,18 @@
     --rule: #5a5a5a;
     --line: #2f2f2f;
     --dot: rgba(242, 242, 242, .22);
-    --shadow: #f0fb29;
+    --shadow: var(--accent-line);
     --live: #7cb8ff;
     --ok: #5ad1b4;
     --warn: #f0b429;
-    --focus: #f0fb29;
-    --primary-border: #f0fb29;
-    --pill-live-border: #f0fb29;
+    --focus: var(--accent-line);
+    --primary-border: var(--accent-line);
+    --pill-live-border: var(--accent-line);
     --cell-membrane: #5ad1b4;
     --cell-membrane-fill: rgba(90, 209, 180, .14);
     --cell-nucleus: #a68bff;
     --cell-mito: #f0913f;
-    --cell-active: #f0fb29;
+    --cell-active: var(--accent-line);
   }
 }
 :root[data-theme='dark'] {
@@ -126,20 +139,27 @@
   --rule: #5a5a5a;
   --line: #2f2f2f;
   --dot: rgba(242, 242, 242, .22);
-  --shadow: #f0fb29;
+  --shadow: var(--accent-line);
   --live: #7cb8ff;
   --ok: #5ad1b4;
   --warn: #f0b429;
-  --focus: #f0fb29;
-  --primary-border: #f0fb29;
-  --pill-live-border: #f0fb29;
+  --focus: var(--accent-line);
+  --primary-border: var(--accent-line);
+  --pill-live-border: var(--accent-line);
   --cell-membrane: #5ad1b4;
   --cell-membrane-fill: rgba(90, 209, 180, .14);
   --cell-nucleus: #a68bff;
   --cell-mito: #f0913f;
-  --cell-active: #f0fb29;
+  --cell-active: var(--accent-line);
 }
 :root[data-theme='light'] { color-scheme: light; }
+/* The student view's colours. Declared on <html> itself, so the tokens built
+   from --accent there (shadow, focus ring, borders) pick up the change too. */
+:root[data-role='student'] {
+  --accent: #e8834a;
+  --highlight: #fce0cf;
+  --gradient: linear-gradient(90deg, #fce0cf 0%, #e8834a 100%);
+}
 
 * { box-sizing: border-box; }
 /* Chrome gives an installed extension page its own default `body` font
@@ -170,8 +190,8 @@ main {
 }
 
 mark {
-  background: var(--cyan);
-  color: var(--on-accent);
+  background: var(--highlight);
+  color: var(--on-highlight);
   padding: 0 .15em;
 }
 
@@ -180,7 +200,7 @@ mark {
 /* Full-bleed yellow without 100vw (which overflows by the scrollbar width):
    the band's shadow spreads sideways and clip-path trims it vertically. */
 .masthead {
-  --focus: #202020;
+  --focus: var(--on-accent);
   position: relative;
   background: var(--accent);
   box-shadow: 0 0 0 100vmax var(--accent);
@@ -201,10 +221,10 @@ mark {
   height: 28px;
   background: radial-gradient(circle at 64% 50%, var(--accent) 0 7px, var(--on-accent) 7.5px);
 }
-.masthead button.reading-toggle + button.theme-toggle { margin-left: 0; }
+.masthead-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-left: auto; }
 .masthead button.theme-toggle,
 .masthead button.reading-toggle {
-  margin: 0 0 0 auto;
+  margin: 0;
   border-color: var(--on-accent);
   color: var(--on-accent);
   background: transparent;
@@ -245,20 +265,20 @@ nav[aria-label='Role navigation'] button {
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: var(--muted);
+  color: var(--on-accent);
   font: 500 .88rem/1 var(--sans);
   padding: .7rem 1.4rem;
   box-shadow: none;
 }
 
-.student-surface-nav { display: flex; gap: .5rem; margin-top: 1.25rem; }
-.student-surface-nav button { margin: 0; }
-.student-surface-nav [aria-current='true'] { background: var(--ink); color: var(--paper); }
-nav[aria-label='Role navigation'] button + button { border-left: 1px solid var(--line); }
-nav[aria-label='Role navigation'] button:hover { color: var(--ink); }
-nav[aria-label='Role navigation'] button[aria-current='true'] {
-  background: var(--ink);
-  color: var(--paper);
+/* The role switch always sits on the yellow band, so its colours are the fixed
+   accent pair in both themes rather than the theme's ink and paper. */
+nav[aria-label='Role navigation'] button:hover:not(:disabled) { background: transparent; color: var(--on-accent); border-color: var(--on-accent); }
+nav[aria-label='Role navigation'] button[aria-current='true'],
+nav[aria-label='Role navigation'] button[aria-current='true']:hover:not(:disabled) {
+  background: var(--on-accent);
+  border-color: var(--on-accent);
+  color: var(--accent);
 }
 
 /* ---------- Sections -------------------------------------------------- */
@@ -355,19 +375,35 @@ button {
   cursor: pointer;
   transition: background-color .12s ease, color .12s ease, border-color .12s ease;
 }
+/* The side-panel capture handoff is an anchor, but it should retain the same
+   explicit-action affordance as the Start button. */
+a.button {
+  display: inline-block;
+  font: 500 .82rem/1 var(--sans);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .95rem 1.5rem;
+  margin: .3rem .45rem .3rem 0;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
 button:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
 button:disabled { cursor: not-allowed; opacity: .45; }
 
 /* The accent pill: yellow fill, ink outline. Hover inverts it to ink with
    yellow type, the same contrast pair reversed. */
 button.primary,
+.button.primary,
 .join-form button {
   background: var(--accent);
   border-color: var(--primary-border);
   color: var(--on-accent);
 }
 button.primary:hover:not(:disabled),
-.join-form button:hover:not(:disabled) { background: #202020; border-color: var(--primary-border); color: var(--accent); }
+.button.primary:hover,
+.join-form button:hover:not(:disabled) { background: var(--on-accent); border-color: var(--accent-line); color: var(--accent); }
 button.quiet { border-color: transparent; color: var(--muted); }
 button.quiet:hover:not(:disabled) { background: transparent; color: var(--ink); border-color: var(--ink); }
 button.stop { border-color: var(--warn); color: var(--warn); }
@@ -382,6 +418,7 @@ button.stop:hover:not(:disabled) { background: var(--warn); border-color: var(--
 [role='group'][aria-label='Capture controls'] { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.25rem; }
 [role='group'][aria-label='Capture controls'] button { margin: 0; }
 [role='group'][aria-label='Capture controls'] button.primary { flex: 1 1 auto; }
+[role='group'][aria-label='Capture controls'] .button.primary { flex: 1 1 auto; }
 
 /* ---------- Status ---------------------------------------------------- */
 
@@ -407,11 +444,11 @@ button.stop:hover:not(:disabled) { background: var(--warn); border-color: var(--
   font-size: 1.02rem;
 }
 .status[data-tone='live'] .glyph { color: var(--live); }
-.status[data-tone='live'] .label { background: var(--cyan); border-color: var(--on-accent); color: var(--on-accent); }
+.status[data-tone='live'] .label { background: var(--highlight); border-color: var(--on-highlight); color: var(--on-highlight); }
 .status[data-tone='ok'] .glyph { color: var(--ok); }
-.status[data-tone='ok'] .label { background: var(--gradient); border-color: var(--on-accent); color: var(--on-accent); }
+.status[data-tone='ok'] .label { background: var(--gradient); border-color: var(--on-highlight); color: var(--on-highlight); }
 .status[data-tone='warn'] .glyph { color: var(--warn); }
-.status[data-tone='warn'] .label { background: var(--accent); border-color: var(--on-accent); color: var(--on-accent); }
+.status[data-tone='warn'] .label { background: var(--caution); border-color: var(--on-highlight); color: var(--on-highlight); }
 
 /* ---------- Join code ------------------------------------------------- */
 
@@ -419,8 +456,8 @@ button.stop:hover:not(:disabled) { background: var(--warn); border-color: var(--
   margin-top: 1.25rem;
   padding: 1rem 1.1rem;
   background: var(--gradient);
-  color: var(--on-accent);
-  border: 1px solid var(--on-accent);
+  color: var(--on-highlight);
+  border: 1px solid var(--on-highlight);
   box-shadow: 5px 5px 0 var(--shadow);
 }
 .join .hint { margin: 0 0 .35rem; font: 500 .76rem/1.3 var(--sans); text-transform: uppercase; letter-spacing: .06em; }
@@ -477,9 +514,9 @@ input[type='range'] { accent-color: var(--ink); }
 .draft-note {
   margin: 1.25rem 0 0;
   padding: .8rem 1rem;
-  background: var(--accent);
-  color: var(--on-accent);
-  border: 1px solid var(--on-accent);
+  background: var(--caution);
+  color: var(--on-highlight);
+  border: 1px solid var(--on-highlight);
   font-size: .9rem;
 }
 /* The `/ ''` alt-text production keeps this decorative glyph out of the
@@ -600,23 +637,33 @@ input[type='range'] { accent-color: var(--ink); }
 
 /* Mode tabs: a bordered bento strip; the selected cell turns yellow and gets
    a square marker, so selection reads without the colour. */
-.mode-tabs {
+.mode-tabs,
+.student-surface-nav {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1px;
   margin-top: 2.5rem;
   border: 1px solid var(--rule);
+  background: var(--rule);
 }
-.mode-tabs button {
+.mode-tabs button,
+.student-surface-nav button {
   margin: 0;
   border: 0;
   border-radius: 0;
   padding: 1.1rem .5rem;
   font-size: .85rem;
+  line-height: 1.2;
+  background: var(--paper);
 }
-.mode-tabs button + button { border-left: 1px solid var(--rule); }
-.mode-tabs button:hover:not(:disabled) { background: var(--field); color: var(--ink); }
+.mode-tabs button:hover:not(:disabled),
+.student-surface-nav button:hover:not(:disabled) { background: var(--field); color: var(--ink); }
+.student-surface-nav { margin-top: 1.5rem; }
 [role='tab'][aria-selected='true'],
 [role='tab'][aria-selected='true']:hover:not(:disabled),
+.student-surface-nav [aria-current='true'],
+.student-surface-nav [aria-current='true']:hover:not(:disabled),
 [aria-pressed='true'],
 [aria-pressed='true']:hover:not(:disabled) {
   background: var(--accent);
@@ -624,8 +671,12 @@ input[type='range'] { accent-color: var(--ink); }
   font-weight: 600;
 }
 [role='tab'][aria-selected='true']::before,
+.student-surface-nav [aria-current='true']::before,
 [aria-pressed='true']::before { content: '\25A0\2002' / ''; }
 [role='tabpanel'] { border: 1px solid var(--rule); border-top: 0; }
+/* The instructor's top-level views hold whole sections with their own rules
+   and cards; a frame around them only squeezes the content. */
+.view-panel { border: 0; }
 [role='tabpanel']:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .mode-panel { padding: var(--pad); }
 .mode-panel > h3 { margin-top: .25rem; }
@@ -642,6 +693,8 @@ input[type='range'] { accent-color: var(--ink); }
 .dyslexic-view--enabled .dyslexic-reading p,
 .dyslexic-view--enabled .dyslexic-reading li { max-width: 42rem; }
 .dyslexic-toggle { margin-top: .25rem; }
+/* OpenDyslexic's numerals are wide: give the list markers room inside the panel. */
+.dyslexic-view--enabled .read-regions { padding-left: 2.2rem; }
 
 /* Read / Dyslexic: the whole lesson, student-paced. */
 .read-contents { display: flex; flex-wrap: wrap; gap: .4rem 1rem; padding: 0; margin: 0 0 1rem; list-style: none; }
@@ -659,9 +712,9 @@ input[type='range'] { accent-color: var(--ink); }
   gap: .2rem;
   margin-top: 1rem;
   padding: .9rem 1rem;
-  background: var(--cyan);
-  color: var(--on-accent);
-  border: 1px solid var(--on-accent);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: 1px solid var(--on-highlight);
 }
 .active-concept h4 { margin: 0; }
 
@@ -688,7 +741,9 @@ input[type='range'] { accent-color: var(--ink); }
 .slide-figure figcaption { margin: 0; padding: .6rem .75rem; border-top: 1px solid var(--rule); background: var(--card); color: var(--ink); }
 .slide-image { display: block; width: 100%; height: auto; }
 /* Slides can be dark or light whatever the theme, so the outline is a fixed
-   yellow band edged in ink on both sides: it reads on either. */
+   yellow band edged in ink on both sides: it reads on either. It is kept
+   yellow in both role colours on purpose: it marks slide content, and no
+   slide palette is likely to hide it. */
 .region-highlight { position: absolute; box-sizing: border-box; border: 3px solid #f0fb29; border-radius: 4px; box-shadow: inset 0 0 0 2px #202020, 0 0 0 2px #202020, 0 0 0 200vmax rgb(32 32 32 / 55%); pointer-events: none; }
 .focus-pointer { position: absolute; width: 28px; height: 28px; pointer-events: none; overflow: visible; }
 .focus-pointer.start { transform: translate(-100%, -100%); }
@@ -738,9 +793,9 @@ input[type='range'] { accent-color: var(--ink); }
 .live-captions .consent {
   margin: 0 0 1rem;
   padding: .75rem .9rem;
-  background: var(--cyan);
-  color: var(--on-accent);
-  border: 1px solid var(--on-accent);
+  background: var(--highlight);
+  color: var(--on-highlight);
+  border: 1px solid var(--on-highlight);
   font-size: .9rem;
 }
 .caption-engine { margin: 0 0 .5rem; padding: 0; border: 0; min-width: 0; }
@@ -748,7 +803,7 @@ input[type='range'] { accent-color: var(--ink); }
 .caption-engine:disabled label { color: var(--muted); }
 .caption-option { display: flex; align-items: center; gap: .6rem; margin: .5rem 0 .75rem; }
 .caption-option label { margin: 0; text-transform: none; letter-spacing: 0; font: 400 .92rem/1.4 var(--sans); color: var(--ink); }
-.caption-preview { margin-top: .75rem; padding: .6rem .8rem; border-left: 6px solid var(--accent); font-family: var(--mono); font-size: .9rem; }
+.caption-preview { margin-top: .75rem; padding: .6rem .8rem; border-left: 6px solid var(--accent-line); font-family: var(--mono); font-size: .9rem; }
 .caption-preview .eyebrow { display: block; }
 
 .captions-view { margin-top: 1.5rem; border: 1px solid var(--rule); padding: 1rem var(--pad); }
@@ -757,8 +812,8 @@ input[type='range'] { accent-color: var(--ink); }
 .caption-tag {
   padding: .25rem .5rem;
   background: var(--gradient);
-  color: var(--on-accent);
-  border: 1px solid var(--on-accent);
+  color: var(--on-highlight);
+  border: 1px solid var(--on-highlight);
   font: 500 .72rem/1 var(--mono);
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -784,7 +839,7 @@ input[type='range'] { accent-color: var(--ink); }
 .study-chat-suggestions button { margin: 0; text-transform: none; letter-spacing: 0; }
 .chat-message { max-width: 88%; padding: .6rem .8rem; border: 1px solid var(--line); background: var(--card); }
 .chat-message.student { justify-self: end; border-right: 4px solid var(--ink); }
-.chat-message.assistant { justify-self: start; border-left: 4px solid var(--accent); }
+.chat-message.assistant { justify-self: start; border-left: 4px solid var(--accent-line); }
 .chat-author { margin: 0 0 .2rem; font: 500 .72rem/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .chat-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-typing { margin: 0; color: var(--muted); font-style: italic; }
@@ -853,19 +908,103 @@ input[type='range'] { accent-color: var(--ink); }
 :root[data-reading='dyslexic'] section h3 { line-height: 1.35; }
 :root[data-reading='dyslexic'] .tagline { line-height: 1.35; }
 
-@media (max-width: 460px) {
-  .topbar { gap: .6rem; }
-  .full-tab-link { margin-left: 0; flex-basis: 100%; padding: 0; }
-  nav[aria-label='Role navigation'] { margin-left: auto; }
-  .mode-tabs { grid-template-columns: repeat(2, 1fr); }
-  .mode-tabs { grid-template-columns: repeat(3, 1fr); }
-  .mode-tabs button:nth-child(4), .mode-tabs button:nth-child(5) { border-top: 1px solid var(--line); }
-  .mode-tabs button:nth-child(4) { border-left: 0; }
-  .student-heading { flex-direction: column; gap: .5rem; }
-  .semantic-hotspots li { grid-template-columns: 1fr; gap: .5rem; }
+/* ---------- Compact: the Chrome side panel and phones ------------------
+ *
+ * The side panel is 320-500px wide, which is where students and instructors
+ * actually use AccessLens during class, so this is a layout in its own right,
+ * not a squeezed desktop page. The masthead drops to three short rows (brand,
+ * role switch, reading switches), cards lose some chrome, and tab strips wrap
+ * into even rows. DOM order is unchanged, so focus order still matches what
+ * is on screen.
+ */
+@media (max-width: 640px) {
+  main { padding-bottom: 3rem; }
+
+  .masthead {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .75rem .6rem;
+    padding: .85rem 0 1rem;
+  }
+  .topbar { display: contents; }
+  .mark {
+    grid-area: 1 / 1;
+    width: 32px;
+    height: 22px;
+    background: radial-gradient(circle at 64% 50%, var(--accent) 0 5px, var(--on-accent) 5.5px);
+  }
+  .wordmark { grid-area: 1 / 2; margin: 0; }
+  .wordmark svg { width: auto; max-width: 100%; height: 18px; }
+  .full-tab-link { grid-area: 1 / 3; padding: .35rem 0; font-size: .72rem; }
+  nav[aria-label='Role navigation'] {
+    grid-area: 2 / 1 / 3 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    border: 1px solid var(--on-accent);
+    border-radius: 999px;
+  }
+  nav[aria-label='Role navigation'] button { padding: .7rem .5rem; }
+  .masthead-tools { grid-area: 3 / 1 / 4 / -1; margin: 0; gap: .4rem; }
+  .masthead button.theme-toggle,
+  .masthead button.reading-toggle { padding: .55rem .8rem; font-size: .72rem; }
+  .tagline { display: none; }
+
+  section { margin-top: 2rem; }
+  section h2 { margin: 1rem 0 .4rem; font-size: 1.75rem; }
+  section h3 { margin: 1.4rem 0 .6rem; font-size: 1.2rem; }
+
+  button, a.button { padding: .8rem 1.1rem; }
+
+  .console,
+  .join-form {
+    padding: calc(26px + 1rem) 1rem 1rem;
+    box-shadow: 5px 5px 0 var(--shadow);
+    margin: 0 5px 5px 0;
+  }
+  .console::before,
+  .join-form::before {
+    height: 26px;
+    background:
+      radial-gradient(circle, var(--ink) 2.75px, transparent 3.25px) 8px 50% / 14px 10px no-repeat,
+      radial-gradient(circle, var(--ink) 2.75px, transparent 3.25px) 22px 50% / 14px 10px no-repeat,
+      radial-gradient(circle, var(--ink) 2.75px, transparent 3.25px) 36px 50% / 14px 10px no-repeat,
+      radial-gradient(var(--dot) .8px, transparent 1px) 0 0 / 4px 4px;
+  }
+  .join { padding: .8rem .9rem; box-shadow: 4px 4px 0 var(--shadow); margin-right: 4px; }
+  .join code { font-size: 1.9rem; }
+
+  .pack-picker { margin-top: 1.25rem; gap: .5rem; }
+  .pack-picker select { width: 100%; }
+  .instructor .panel-grid { margin-top: 1.25rem; gap: 2rem; }
+  [role='group'][aria-label='Capture controls'] button { flex: 1 1 auto; }
+  ol.steps li { grid-template-columns: 2.75rem 1fr; padding: .8rem 0; }
+
+  .student-heading { gap: .5rem; align-items: center; }
+  .join-form { margin-top: 1.25rem; }
   .join-form div { flex-direction: column; }
   .ask-row { flex-direction: column; }
-  [role='group'][aria-label='Capture controls'] button { flex: 1 1 auto; }
+  .semantic-hotspots li { grid-template-columns: 1fr; gap: .5rem; }
+
+  .mode-tabs { margin-top: 1.75rem; }
+  .mode-tabs button,
+  .student-surface-nav button { padding: .9rem .4rem; font-size: .78rem; }
+  /* Four or more choices go two to a row; an odd one out spans the row. */
+  :is(.mode-tabs, .student-surface-nav):has(> :nth-child(4)) {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  :is(.mode-tabs, .student-surface-nav):has(> :nth-child(4)) > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .mode-panel { padding: 1rem; }
+
+  .study-chat, .ask-class, .authoring { margin-top: 2rem; }
+  .study-chat-log { max-height: 22rem; padding: .75rem; }
+  .chat-message { max-width: 94%; }
+  .display-settings { margin-top: 2rem; }
+  .display-settings select { width: 11.5rem; min-width: 0; }
+  .captions-view { padding: .9rem; }
+  .course-assistant { margin: 1.25rem 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -899,7 +1038,7 @@ input[type='range'] { accent-color: var(--ink); }
 .library { margin: 1.5rem 0; padding: 1rem; border: 1px solid var(--rule); }
 .library h3 { margin: 0 0 .25rem; font-size: 1.05rem; }
 .library form { display: grid; gap: .6rem; max-width: 36rem; margin-top: .75rem; }
-.library-tabs { grid-template-columns: repeat(2, 1fr); margin-top: 1rem; }
+.library-tabs { margin-top: 1rem; }
 .library-tabs button { padding: .8rem .5rem; }
 .library-add { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
 .library-add h4 { margin: 0; font-size: 1rem; }
@@ -959,7 +1098,7 @@ input[type='range'] { accent-color: var(--ink); }
   margin: 0;
   font-size: .82rem;
   padding: .4rem .55rem;
-  border-inline-start: 4px solid var(--accent);
+  border-inline-start: 4px solid var(--accent-line);
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   border-radius: var(--r-sm);
 }
@@ -988,7 +1127,7 @@ input[type='range'] { accent-color: var(--ink); }
 
 /* ---------- Course materials ----------------------------------------- */
 
-.view-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 1rem; }
+.view-tabs { margin: 1.5rem 0 0; }
 label.inline-label { display: inline; }
 .course-materials { display: grid; gap: .75rem; }
 .class-card { padding: .8rem; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--card); }

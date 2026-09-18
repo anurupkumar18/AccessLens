@@ -3,9 +3,28 @@ import * as THREE from 'three';
 import { CELL_HOTSPOTS, hotspotFor } from './cellScene';
 
 interface Props {
+  assetId?: string;
   regionId?: string;
   hotspotId?: string;
   reducedMotion: boolean;
+}
+
+type CellSlideVariant = 'whole-cell' | 'nucleus' | 'mitochondria' | 'protein-factory' | 'storage';
+
+function variantFor(assetId?: string): CellSlideVariant {
+  if (assetId === 'cell-slide-02') return 'nucleus';
+  if (assetId === 'cell-slide-03') return 'mitochondria';
+  if (assetId === 'cell-slide-04') return 'protein-factory';
+  if (assetId === 'cell-slide-05') return 'storage';
+  return 'whole-cell';
+}
+
+function variantTitle(variant: CellSlideVariant): string {
+  if (variant === 'nucleus') return 'the nucleus';
+  if (variant === 'mitochondria') return 'mitochondria and energy';
+  if (variant === 'protein-factory') return 'the protein factory';
+  if (variant === 'storage') return 'cell storage and recycling';
+  return 'the animal cell';
 }
 
 type ArAvailability = 'checking' | 'supported' | 'unavailable';
@@ -15,7 +34,7 @@ interface XrSystemLike {
   requestSession(mode: 'immersive-ar', options?: { optionalFeatures?: string[] }): Promise<unknown>;
 }
 
-export function CellArView({ regionId, hotspotId, reducedMotion }: Props): React.ReactElement {
+export function CellArView({ assetId, regionId, hotspotId, reducedMotion }: Props): React.ReactElement {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneGroupRef = useRef<THREE.Group | null>(null);
@@ -23,6 +42,7 @@ export function CellArView({ regionId, hotspotId, reducedMotion }: Props): React
   const [webglUnavailable, setWebglUnavailable] = useState(false);
   const [arAvailability, setArAvailability] = useState<ArAvailability>('checking');
   const [localRegion, setLocalRegion] = useState(regionId);
+  const variant = variantFor(assetId);
   const activeHotspot = useMemo(
     () => hotspotFor(localRegion ?? regionId, localRegion === regionId ? hotspotId : undefined),
     [hotspotId, localRegion, regionId],
@@ -59,7 +79,7 @@ export function CellArView({ regionId, hotspotId, reducedMotion }: Props): React
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.xr.enabled = true;
       renderer.domElement.tabIndex = 0;
-      renderer.domElement.setAttribute('aria-label', 'Interactive AR cell model. Use arrow keys to rotate it.');
+      renderer.domElement.setAttribute('aria-label', `Interactive AR model of ${variantTitle(variant)}. Use arrow keys to rotate it.`);
       renderer.domElement.setAttribute('aria-describedby', 'ar-instructions');
       mount.appendChild(renderer.domElement);
 
@@ -106,6 +126,79 @@ export function CellArView({ regionId, hotspotId, reducedMotion }: Props): React
         group.add(mesh);
         if (index === 0) meshes.set('mitochondrion', mesh);
       });
+
+      const addSphere = (id: string, color: number, position: [number, number, number], scale: [number, number, number] = [1, 1, 1], opacity = 1): THREE.Mesh => {
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.45, 28, 20),
+          new THREE.MeshStandardMaterial({ color, transparent: opacity < 1, opacity, roughness: 0.38, emissive: 0x000000 }),
+        );
+        mesh.name = id;
+        mesh.position.set(...position);
+        mesh.scale.set(...scale);
+        mesh.userData.baseScale = mesh.scale.clone();
+        group.add(mesh);
+        meshes.set(id, mesh);
+        return mesh;
+      };
+      const addBox = (id: string, color: number, position: [number, number, number], scale: [number, number, number]): THREE.Mesh => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), new THREE.MeshStandardMaterial({ color, roughness: 0.42, emissive: 0x000000 }));
+        mesh.name = id;
+        mesh.position.set(...position);
+        mesh.scale.set(...scale);
+        mesh.userData.baseScale = mesh.scale.clone();
+        group.add(mesh);
+        meshes.set(id, mesh);
+        return mesh;
+      };
+
+      // Each reviewed slide gets a different spatial composition. The common
+      // cell primitives remain available for the first overview slide, while
+      // later slides hide unrelated structures and foreground their concept.
+      const membraneMesh = meshes.get('membrane');
+      const mitochondrionMesh = meshes.get('mitochondrion');
+      const nucleusMesh = meshes.get('nucleus');
+      if (variant !== 'whole-cell') {
+        if (membraneMesh) membraneMesh.visible = false;
+        if (nucleusMesh) nucleusMesh.visible = variant === 'nucleus';
+        if (mitochondrionMesh) mitochondrionMesh.visible = variant === 'mitochondria';
+      }
+      if (variant === 'nucleus') {
+        nucleusMesh?.scale.setScalar(1.5);
+        addSphere('nucleolus', 0xd887b9, [-0.18, 0.2, 0.35], [0.38, 0.38, 0.38]);
+        for (let index = 0; index < 8; index += 1) {
+          const angle = (index / 8) * Math.PI * 2;
+          addSphere(`nucleus-pore-${index}`, 0x9bdbe4, [Math.cos(angle) * 0.9, Math.sin(angle) * 0.9, 0.2], [0.12, 0.12, 0.12]);
+        }
+      }
+      if (variant === 'mitochondria') {
+        if (mitochondrionMesh) {
+          mitochondrionMesh.position.set(0, 0, 0);
+          mitochondrionMesh.scale.set(2.7, 1.1, 1.1);
+        }
+        for (let index = 0; index < 9; index += 1) {
+          const angle = (index / 9) * Math.PI * 2;
+          addSphere(`energy-particle-${index}`, 0xf6d45c, [Math.cos(angle) * 1.35, Math.sin(angle) * 0.7, 0.25], [0.12, 0.12, 0.12]);
+        }
+      }
+      if (variant === 'protein-factory') {
+        if (nucleusMesh) nucleusMesh.visible = false;
+        for (let index = 0; index < 3; index += 1) {
+          const er = addBox(index === 0 ? 'rough-er' : `rough-er-${index}`, 0x5cbf9b, [-0.95 + index * 0.35, 0.4 - index * 0.35, 0], [1.6, 0.16, 0.45]);
+          er.rotation.z = index % 2 === 0 ? 0.22 : -0.22;
+        }
+        addBox('golgi-apparatus', 0xb07ce8, [0.8, 0.1, 0], [1.5, 0.18, 0.5]);
+        addSphere('ribosome', 0xf3b454, [-1.2, 0.65, 0.25], [0.2, 0.2, 0.2]);
+        addSphere('ribosome-2', 0xf3b454, [-0.5, 0.1, 0.25], [0.2, 0.2, 0.2]);
+        addSphere('vesicle', 0xf3b454, [1.25, 0.65, 0.2], [0.28, 0.28, 0.28]);
+        addSphere('vesicle-2', 0xf3b454, [1.35, -0.35, 0.2], [0.22, 0.22, 0.22]);
+      }
+      if (variant === 'storage') {
+        if (nucleusMesh) nucleusMesh.visible = false;
+        addSphere('lysosome', 0xe87972, [-0.85, 0.45, 0], [0.55, 0.55, 0.55]);
+        addSphere('vacuole', 0x75c9e8, [0.75, -0.05, 0], [1.05, 0.8, 0.8], 0.72);
+        addSphere('storage-particle-1', 0xf4d35e, [0.55, 0.35, 0.65], [0.16, 0.16, 0.16]);
+        addSphere('storage-particle-2', 0xf4d35e, [0.95, -0.4, 0.55], [0.16, 0.16, 0.16]);
+      }
 
       const resize = (): void => {
         const width = Math.max(mount.clientWidth, 280);
@@ -169,7 +262,7 @@ export function CellArView({ regionId, hotspotId, reducedMotion }: Props): React
       renderer?.dispose();
       setWebglUnavailable(true);
     }
-  }, [reducedMotion]);
+  }, [reducedMotion, variant]);
 
   useEffect(() => {
     for (const [id, mesh] of meshesRef.current) {
@@ -209,7 +302,7 @@ export function CellArView({ regionId, hotspotId, reducedMotion }: Props): React
   return (
     <section className="mode-panel ar-view" aria-labelledby="ar-title">
       <p className="eyebrow">Synchronized AR</p>
-      <h3 id="ar-title">Explore the cell</h3>
+      <h3 id="ar-title">Explore {variantTitle(variant)}</h3>
       <p id="ar-instructions" className="supporting-text">
         The instructor's current structure is highlighted. Drag or use arrow keys to rotate the model.
       </p>

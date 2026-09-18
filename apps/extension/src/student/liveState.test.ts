@@ -165,6 +165,21 @@ describe('student live state', () => {
     } as LiveEvent, validPack);
     expect(restarted.captions).toEqual([]);
   });
+
+  it('keeps the current slide when supplemental screen analysis arrives', () => {
+    const onSlide = applyLiveEvent(initialStudentLiveState, {
+      ...validEvent, type: 'asset.changed', sequence: 1, assetId: 'cell-slide-03',
+    } as LiveEvent, validPack);
+    const analysed = applyLiveEvent(onSlide, {
+      ...validEvent, type: 'screen.analyzed', sequence: 2,
+      analysis: {
+        title: 'Cell overview', summary: 'A cell diagram.', text: ['Cell'],
+        audioDescription: 'A diagram of a cell.',
+      },
+    } as LiveEvent, validPack);
+    expect(analysed.assetId).toBe('cell-slide-03');
+    expect(analysed.analysis?.title).toBe('Cell overview');
+  });
 });
 
 describe('applyLiveEvent: live video survives slide changes', () => {

@@ -19,10 +19,45 @@ import { createIvsSubscriber, type StreamSubscriber } from '../sources/stream';
 // the session's video stage only once the instructor announces a stream.
 const defaultSubscriber = createIvsSubscriber();
 
+const PackArView = React.lazy(async () => {
+  const module = await import('../ar/PackArView');
+  return { default: module.PackArView };
+});
 const CellArView = React.lazy(async () => {
   const module = await import('../ar/CellArView');
   return { default: module.CellArView };
 });
+const WaterLevelArView = React.lazy(async () => {
+  const module = await import('../ar/WaterLevelArView');
+  return { default: module.WaterLevelArView };
+});
+
+// The cell demo's first slide is the deliberate hardcoded bridge from the
+// uploaded/local `cell-slide-01` image to the reviewed mitochondria model.
+// Other uploaded slides continue through the pack-driven AR renderer.
+function usesCellModel(pack: AccessPack, asset: AccessPack['assets'][number] | undefined): boolean {
+  const normalize = (value: string | undefined): string => value?.trim().toLowerCase().replace(/\\/gu, '/') ?? '';
+  const packTitle = normalize(pack.title);
+  const assetId = normalize(asset?.assetId);
+  const assetTitle = normalize(asset?.title);
+  return pack.packId === 'bio-cell-demo'
+    || packTitle === 'cell-slide-01'
+    || assetId === 'cell-slide-01'
+    || assetId === 'local-slide-01' && assetTitle.includes('cell-slide-01');
+}
+
+function usesWaterLevelModel(pack: AccessPack, asset: AccessPack['assets'][number] | undefined): boolean {
+  const normalize = (value: string | undefined): string => value?.trim().toLowerCase().replace(/\\/gu, '/') ?? '';
+  const packTitle = normalize(pack.title);
+  const assetTitle = normalize(asset?.title);
+  const assetId = normalize(asset?.assetId);
+  return packTitle.includes('waterlevel')
+    || packTitle.includes('water level')
+    || assetTitle.includes('waterlevel')
+    || assetTitle.includes('water level')
+    || assetId.includes('waterlevel')
+    || assetId.includes('water-level');
+}
 
 interface Props {
   client: SessionClient;
@@ -41,14 +76,17 @@ interface Props {
 const allModes: Array<{ id: StudentPreferences['mode']; label: string }> = [
   { id: 'focus', label: 'Focus' },
   { id: 'structured-text', label: 'Read' },
-  { id: 'dyslexic', label: 'Reading spacing' },
+  // HIDDEN FOR DEMO 2026-09-17: Reading spacing (dyslexic mode). Restore this
+  // line to bring the tab back; DyslexicTextView and its render path (below,
+  // `activeMode === 'dyslexic'`) are untouched.
+  // { id: 'dyslexic', label: 'Reading spacing' },
   { id: 'ar', label: 'AR' },
 ];
 
-/** AR is offered only when the pack actually carries a scene to render. */
+/** Every reviewed asset with regions can render the same meaning spatially. */
 function modesFor(pack: AccessPack): typeof allModes {
-  const hasArScene = pack.assets.some((asset) => asset.arScene !== undefined);
-  return hasArScene ? allModes : allModes.filter((mode) => mode.id !== 'ar');
+  const hasSpatialContent = pack.assets.some((asset) => asset.regions.length > 0);
+  return hasSpatialContent ? allModes : allModes.filter((mode) => mode.id !== 'ar');
 }
 
 export function StudentExperience({ client, event, pack, preferences, onPreferencesChange, ai = defaultAiClient, chat = defaultChatClient, subscriber = defaultSubscriber }: Props): React.ReactElement {
@@ -242,7 +280,7 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
       )}
 
       <p id="mode-help" className="supporting-text">
-        Screen readers read every description here. Focus announces the slide and region the instructor is on; Read and Reading spacing hold the whole lesson.
+        Screen readers read every description here. Focus announces the slide and region the instructor is on; Read holds the whole lesson.
       </p>
       <div className="mode-tabs" role="tablist" aria-label="Choose how to experience this lesson" aria-describedby="mode-help">
         {modes.map((mode, index) => (
@@ -269,7 +307,13 @@ export function StudentExperience({ client, event, pack, preferences, onPreferen
         {!live.analysis && activeMode === 'dyslexic' ? <DyslexicTextView pack={pack} /> : null}
         {activeMode === 'ar' ? (
           <Suspense fallback={<p role="status">Loading the AR scene…</p>}>
-            <CellArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            {usesWaterLevelModel(pack, currentAsset) ? (
+              <WaterLevelArView regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            ) : usesCellModel(pack, currentAsset) ? (
+              <CellArView assetId={live.assetId} regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            ) : (
+              <PackArView packId={pack.packId} asset={currentAsset} regionId={live.regionId} hotspotId={live.hotspotId} reducedMotion={preferences.reducedMotion} />
+            )}
           </Suspense>
         ) : null}
       </div>

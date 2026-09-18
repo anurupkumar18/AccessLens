@@ -59,7 +59,7 @@ work is being made directly on `master` by explicit product-owner direction.
 | --- | --- | --- | --- | --- |
 | 1. Foundation and contracts | Anurup Kumar | merged as `38542ad` | Shell split, per-type discriminated-union event contract, `RoleCapabilitySchema`, frozen `SessionClient` (create/join/send/subscribe/close), local-only preferences, `.env.example`, ajv + typecheck in `npm run check`. AL-010 reading controls, AL-040's non-live reviewed-pack Review route, AL-041's reviewed-bounds focus pointer, AL-042's disabled/no-network Bedrock gateway seam, AL-043's explicit private Review progress, AL-044's keyboard-equivalent Review formats, AL-045's disabled course-material-provider seam, AL-046's local camera consent lifecycle, AL-047's automated accessibility coverage for those three surfaces, AL-048's caption.appended payload, AL-049's caption instructor input/student display, AL-050's server-side caption shape validation, AL-051's honest session-end-on-unmount fix, and AL-052's high-contrast fix are IN REVIEW. AL-041 uses the existing optional event field without a transport/schema change; AL-042 cannot invoke a model; AL-043 is not assessment data; AL-044 retains no keyboard data; AL-045 cannot access Canvas or course content; AL-046 cannot recognise or relay camera content; AL-047 is test-only; AL-048 is a contract-only change; AL-049 wires it into the UI, unit-tested, real-device QA open. Closed T-02, T-03, T-04, T-16. T-21's additive lifecycle correction is in review. Anurup's signed T-29 response is recorded; T-29 still awaits the other four contributors. | `npm run check`; `dist/` loads unpacked; `docs/TEAM_ALIGNMENT_CHECK.md`; `memory/episodic/0065-caption-appended-payload.md` |
 | 2. Instructor capture | Jacob | merged as `2e82db8` | A3 explicit capture, A4 matcher on Part 5's `dhash12` contract (byte-identical to the reviewed pack, thresholds read from `pack.matching`), A5 correction control with sticky anchor. Pack schema widened additively so the reviewed pack loads (T-05, closed). `BroadcastSessionClient` for same-machine testing. `scripts/build-pack.ts` drafts a pack from a `.pptx` with Sonnet 4.6 descriptions (A3 drafts, not reviewed). Brought Part 3's student experience in with it. | `make check`; `docs/PART2_HANDOFF.md`; `memory/episodic/0041-part2-instructor-capture.md` |
-| 3. Student experience and AR | Prachi | merged as `7a199c0` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. Follow-up adds a Dyslexic-friendly mode and hardens capture gesture handling for tab/window/screen sharing. | `npm run typecheck`; targeted Vitest checks; `docs/NEXT_STEPS.md` |
+| 3. Student experience and AR | Prachi | merged as `20bd4be` | Student modes, direct Three.js/WebXR AR, semantic fallback, and local preferences are implemented. AR is pack-driven for every recognized asset with reviewed regions; localhost also has device-local slide-image preview scenes for cell and water-level uploads. The current handoff includes the source-grounded one-page guide at `output/pdf/accesslens-one-pager.pdf`. | `node_modules/.bin/vitest.cmd run apps/extension/src/ar/WaterLevelArView.test.tsx apps/extension/src/ar/CellArView.test.tsx apps/extension/src/student/StudentExperience.test.tsx` (26 passed); `npm.cmd run build`; `scripts/build_accesslens_one_pager.py` |
 | 4. AWS live service | Omar Rizwan | `workstream/4-aws-live` | **Built and deployed.** 2026-09-16 (`integ/ui-api`, Jacob): one IVS Real-Time stage per session, publish/subscribe tokens beside the capabilities, `stream.started`/`stream.stopped` on the contract, stage deleted on close and by a DynamoDB-stream sweeper on TTL expiry; proven live by `scripts/probe-video.mjs`. `services/live-session/` (server-side rules, HMAC role capabilities, DynamoDB state with TTL enforced on read, WebSocket handler, redacted logging, real `SessionClient`) and `infra/` (CDK: WebSocket API, Lambda, two tables, log group, generated secret). Live endpoint `wss://ktlrnmxq0f.execute-api.us-east-1.amazonaws.com/demo`. 49 unit tests, including per-event validator parity with Part 5's Python reference. Closed T-15, T-19; T-22 now enforced server-side. | `make live-session-check`; `node services/live-session/scripts/integration-test.mjs <url>` — 12/12 against real AWS |
 | 5. Content, camera, and demo QA | Kunj Rathod | merged as `a881f11`, `82a1ef6`, `1b5ff73` | Reviewed pack, AR model, six event scenarios, ten rejection fixtures, E2E fixture replay against Part 1's real client, content review sheet for A15, runbook-versus-pack checks, and the relay gate itself. Camera adapter still deliberately not started (T-10). | `make pack-check`; `make check` |
 | 6. Authoring pipeline and visualization | Jacob / Codex (AL-056/057/058) | `workstream/6-authoring` / `codex/course-library-assistant` / `codex/student-course-experience` / `codex/class-library-deletion-jobs` | API spine live: upload → ingest → deck analyst → per-slide description + Polly audio → review → publish, proven end to end on AWS (job `9ec32fb5`, execution `SUCCEEDED`, pack `hnsw-explainer` v1/v2 on CloudFront, 8 assets, 27 regions, 27 audio files, student view renders it). Visualization stages (5–8) implemented and evaluated but not deployed; catalog admission gated on D6. AL-056 adds an approval-gated PDF class-assistant slice; AL-057 adds its separate signed-in student client, cited answers, and local-only task list; AL-058 makes profile deletion archive-first with durable purge status. The stacked corrections make invite redemption atomic, reject writes to archived classes, and complete metadata purges on retry; the feature flag stays off by default and does not authorize real course data. | `docs/DEPLOY.md` §5, `docs/VIZ_DECISIONS.md` D1–D10, `docs/VIZ_HANDOFF.md`, `docs/work/tickets/al-056-approval-gated-course-library-and-cited-class-assistant.md`, `docs/work/tickets/al-057-student-class-library-experience.md`, `docs/work/tickets/al-058-durable-class-library-deletion-jobs.md`, RL-060, RL-068, RL-069, RL-070, RL-071 |
@@ -94,7 +94,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-03 | `live-event.schema.json` omitted `regionId` and `pointer` that the Zod schema accepts, so Part 1's own fixture failed Part 1's own JSON Schema. | Part 1 | — | CLOSED | `c3ddc27` mirrors the Zod matrix in the JSON Schema, with ajv tests |
 | T-04 | The event contract had no `arState`, but AR is a required renderer (A10, A12). | Part 1 + Part 3 | — | CLOSED | `c3ddc27` adds `arState {hotspotId, action}` to `region.changed`. Part 5 dropped the `camera` field it had wanted — it is derivable from the hotspot in the pack |
 | T-05 | `access-pack.schema.json` now sets `additionalProperties: false` on the **asset** object too, which makes `arScene` illegal. AR is a required renderer and `SYSTEM_DESIGN.md` §6's own pack example contains `arScene`, so the pack cannot carry the scene the MVP requires. Also blocks `mediaUri`, `subtitle`, region `label`, and the four root blocks. | Part 1 | Part 3, Part 5 | CLOSED | PR #8 merged; `AccessPackSchema` and `access-pack.schema.json` both widened additively (`arScene`, `mediaUri`, `subtitle`, region `label`, `review`, `matching`, `arCameras`, `reservedReadingOrderIds`). `check_contract_conformance.py` on the integration branch reports all eight of these gaps CLOSED; only two documented, intentional gaps remain (caption payload, forbidden-assetId negative fixtures). |
-| T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract, which cannot express it until T-05 lets the pack carry `arScene`. | Part 1 + Part 3 | Part 3 | BLOCKED | Blocked on T-05 |
+| T-06 | `hotspotId` is scoped per asset (`cell-slide-03:mitochondrion`) because one region appears on several slides. Needs acknowledging in the shared contract, which cannot express it until T-05 lets the pack carry `arScene`. | Part 1 + Part 3 | Part 3 | CLOSED | T-05 is closed; `ArScene.hotspots` carries the asset-scoped id, and the pack-driven renderer maps the current asset's regions without cross-slide fallback |
 | T-07 | CI does not run on the integration branch. `.github/workflows/check.yml` pushes only on `[main, master]`, and no check has run on PR #4 or #5 either. The branch the whole hackathon lives on is unwatched. Manually verified green at `0771bce` (RL-013), so the risk has not bitten yet — but that was a person choosing to look, which is not a process. PR #5 fixes the trigger. | UNOWNED | Everyone | UNOWNED | `gh pr checks 4` reports no checks; RL-013 |
 | T-08 | `c3ddc27` wired `npm run check` into `make check`, but `.github/workflows/check.yml` still has no `setup-node` and no `npm ci`. `make check` therefore **fails** in CI: `sh: vitest: command not found`. Worse than before — the shared check is now broken rather than merely incomplete. | Part 5 | Everyone | CLOSED | PR #5 added `setup-node` + `npm ci`; PR #8's `node-version: "22"` pin fixed the follow-on jsdom/undici failure. Confirmed with an actual green CI run against the integration branch head after the merge: run `35039069067`, `conclusion: success`. |
 | T-09 | A15: no external biology instructor or accessibility professional has reviewed the pack, so it must not be described as expert-reviewed or accessibility-audited. The Part 5 side is now unblocked — `review/content-review-sheet.html` draws every region on its slide beside the exact words a student gets, so there is something to review. **What remains needs a person: finding the two reviewers.** | Part 5 | Demo claims, charter A11 | OPEN | `packages/access-packs/bio-cell-demo/review/content-review-sheet.html` |
@@ -125,7 +125,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-48 | **Hosted shell at `/app/` is behind the deployed relay.** `AccessLensLiveSession` (deployed 2026-09-16 from `integ/ui-api`) now returns `streamToken` on every capability; the hosted shell built before that parses capabilities with the strict `RoleCapabilitySchema`, so its create/join reject until `bash infra/scripts/deploy.sh` republishes the shell from a tree that carries `f50ce29` or later. Rolling the relay back is the other way out. Shell redeployed 2026-09-16 from `lane/window-stream`. | Jacob | Live demo from the hosted shell | CLOSED | `bash infra/scripts/deploy.sh` from `lane/window-stream` → `/app/assets/index-Co7Ueiio.js` carries `streamToken`, "Stream this window", "Instructor's live slide video" and the relay URL; `AccessLensLiveSession` redeployed with no changes; probe-video shows publish/subscribe tokens and stage deleted on close |
 | T-49 | **A deploy from another checkout overwrote `AccessLensLiveSession`.** At 22:55 UTC on 2026-09-16 the stack was deployed from a tree without `f50ce29` (the plain `Mind-Machine` checkout on `workstream/6-authoring`): the relay lost its pack resolver (every non-bundled pack got `pack-id-mismatch`, students saw no slide changes), the IVS stage lifecycle and sweeper, and the AI handler and API were deleted. Redeployed from `lane/window-stream`; the AI API came back under a new URL (`https://5skua1vus7.execute-api.us-east-1.amazonaws.com`), so the hosted shell and `.env.local` were updated. Rule: only the lane that owns the live-session code deploys that stack, and the CDK app should refuse to deploy it from a bundle without the resolver. | Jacob | Any live demo | OPEN | Stack events show `AiHandler`, `StageSweeper` and IVS policies `DELETE_COMPLETE` at 22:55; relay logs show `pack-id-mismatch` for `introduction-to-hnsw` 23:03–23:05; probe-video green after the redeploy |
 | T-50 | **No warning when a student's network stalls silently.** If Wi-Fi drops without closing the socket, the student's pill stays "live" while nothing arrives (live bench R01/R02). Detecting it needs a relay-answered heartbeat, which means adding a message kind to the frozen `SessionMessageSchema` and redeploying the relay. T-28 removed the content-silence timer because it raised false alarms, so a timer is not the fix. | Omar Rizwan | A trustworthy "live" pill on flaky classroom Wi-Fi | OPEN | `docs/qa/live-bench-results.md` BUG-1; `services/live-session/src/client/webSocketSessionClient.ts` |
-| T-51 | **Course materials publish generated alt text and captions with no instructor review.** Product decision by Kunj Rathod on 2026-09-16: professors upload and students see the result automatically. This departs from charter A3 (instructor review before publication) for uploaded course materials, and it stores uploads and derived files in S3 for 90 days, where the charter's raw-media rule was written for live capture. The team should confirm or amend the charter wording, as was done for the orb. Mitigations in place: every student view says the text was generated automatically and can contain mistakes; a failed description shows the page's real text rather than nothing. | Kunj Rathod | Charter wording; demo claims about review | OPEN | `services/course-media/src/descriptions.ts` header; `apps/extension/src/courseMedia/MaterialViewer.tsx` notice; RL-083 |
+| T-51 | **Course materials publish generated alt text and captions with no instructor review.** Product decision by Kunj Rathod on 2026-09-16: professors upload and students see the result automatically. This departs from charter A3 (instructor review before publication) for uploaded course materials, and it stores uploads and derived files in S3 for 90 days, where the charter's raw-media rule was written for live capture. Decided 2026-09-17 by Anurup Kumar: ship as-is for the demo (option 1 of 3 considered). Do not claim blanket "nothing is ever invented" coverage when discussing this pathway; the existing disclosure ("generated automatically and can contain mistakes") is the accepted mitigation for now, not a placeholder for a future review gate. The charter-wording question is still open for the team meeting. | Kunj Rathod | Charter wording; demo claims about review | ACCEPTED | `services/course-media/src/descriptions.ts` header; `apps/extension/src/courseMedia/MaterialViewer.tsx` notice; RL-083; decision recorded 2026-09-17 in this session's episodic record |
 | T-14 | `dist/` build output is committed and is not in `.gitignore`. Decide whether that is intentional (it makes the unpacked extension loadable without a build) or should be removed. | Part 1 | Nothing | OPEN | `git ls-files dist` |
 | T-22 | Nothing stops a student from picking the instructor role. The shell's role switch is a plain toggle and `SessionClient.create` takes no credential, so anyone with the extension can start a session and broadcast events. **The relay half is now built:** every event type is instructor-only, roles come from an HMAC-signed capability the relay issues, and a student publishing is refused as `role-not-permitted-to-publish` — proven against the deployed endpoint. So a student cannot broadcast *through AWS*. What remains is client-side and still open: the shell toggle, and the fact that anyone who can reach the endpoint can still `create` a session, because there is no authorizer on `$connect` and the session id is the only secret. | Part 2 + Part 4 | Demo integrity | OPEN | `services/live-session/test/relay.test.ts` 'refuses a student publisher'; integration run. Shell side: `apps/extension/src/shell/App.tsx` role switch |
 | T-21 | The event enum had no `capture.stopped`, so Part 2's Stop emitted `session.ended` and then reused the same session on the next Start. Students saw "session ended" for what was really stopped sharing. | Part 1 + Part 2 | Part 3 wording, Part 4 session lifecycle | IN PROGRESS | AL-003 adds base-only `capture.stopped`; controller, student state, relay lifecycle/latest-state, schemas, simulator, and parity tests pass locally. **The second shared-contract review is now done** (`docs/work/updates/AL-003-CHECKPOINT-20260916-0652.md`): stop-retains-session and restart-resumes-session are confirmed, base-only is confirmed against media/identity/preference but **not** enforced relay-side for asset/region (T-31). The existing endpoint was independently re-probed and still rejects `capture.stopped` as `event-type-not-allowlisted`. `2d04fad` separately prevents an invalid inbound lifecycle event from silently leaving a student marked live (T-33, closed). Deployed-relay update and T-31/T-32 remain before closure. |
@@ -140,6 +140,7 @@ Status vocabulary: `UNOWNED`, `OPEN`, `IN PROGRESS`, `BLOCKED`, `CLOSED`,
 | T-36 | Part 6's `references[].quote` cap (300 characters, charter-adjacent: a student is never shown more of a professor's textbook than a citation needs) is expressed as `maxLength` in `access-pack.schema.json`, a keyword Part 5's `check_contract_conformance.py` did not implement. Its unsupported-keyword guard did its job and stopped rather than passing quietly. The checker now implements `maxLength`, with mutation tests in `tests/access_pack/test_conformance_maxlength.py`. | Part 5 + Part 6 | Nothing | CLOSED | `packages/access-packs/bio-cell-demo/tools/check_contract_conformance.py`; `tests/access_pack/test_conformance_maxlength.py` (8 tests, mutation plus control); checker exit status unchanged from baseline |
 | T-37 | `docs/VISUALIZATION_SYSTEM.md` calls the slide fingerprint `dhash-v1` throughout (§3, §5, §8 stage 1), but the shared module, Part 5's reviewed pack, and Part 2's matcher all use the identifier `dhash12`. Documents beat code on this project, but implementing the document here would change the algorithm id inside a pack that has already been reviewed and would break recognition for it, so Part 6's ingest reads `FINGERPRINT_ALGORITHM` from the shared module instead of hardcoding either spelling — which is what the spec actually asks for in substance ("the fingerprint comes from the shared screen-source module so packs and the matcher cannot drift"). The spec prose is what should change. | Part 5 + Part 6 | Nothing | OPEN | `apps/extension/src/sources/screen/fingerprint.ts` (`dhash12`); `packs/hnsw/pack.draft.json`; `docs/VISUALIZATION_SYSTEM.md` §3 |
 | T-38 | Two branches each wrote a relay entry numbered RL-025: `workstream/6-authoring` (Part 6 claim, this branch) and `origin/accesslens-extension-ar-pivot` (cross-cutting, which continues through RL-028 and carries the IBM Plex interface rebuild, the Part 4 relay wiring, and T-28/T-29). Neither branch has a PR open. Whichever merges second must renumber, and `relay_check.py` will refuse a duplicate id. | Part 6 + cross-cutting | The merge of either branch into the other | CLOSED | Resolved 2026-09-16 by the master merge: Part 6 renumbered to RL-036/037 and T-31..T-38. |
+| T-52 | **Local dev config (`.env.local`, `vite.config.ts`'s `/ai` proxy) has no automation and goes stale every time a stack redeploys and its endpoint URL rotates** — it already happened once (T-49: AI API URL moved to `5skua1vus7...`, `.env.local` was updated then, but `vite.config.ts`'s proxy target was not, and both drifted again to the current `nxhrvn0odk...` without anyone noticing until this session). The deployed extension build has its own auto-injection for `ApiUrl`/`GoogleClientId` post-deploy (RL-092/RL-094); local dev has nothing equivalent for `VITE_ACCESSLENS_AI_URL`, `VITE_ACCESSLENS_CHAT_URL`, `VITE_ACCESSLENS_COURSE_MEDIA_ENDPOINT`, or `VITE_ACCESSLENS_ORB_ENDPOINT`. Also, the dev server itself is easy to lose track of: it was found dead mid-session, started outside any tracked config, in a terminal nobody was watching. | UNOWNED | Anyone doing local rehearsal after a stack redeploy | UNOWNED | `memory/episodic/0076-local-dev-e2e-debugging.md`; `.claude/launch.json`'s new `accesslens-dev` entry now at least makes the dev server's own logs visible |
 
 ---
 
@@ -2036,3 +2037,423 @@ T-47 still OPEN until a master Deploy run completes.
 **Next agent needs to know:** deploy from master (push, or run the workflow). A push
 to the integration line no longer deploys. Whisper is deployed and destroyed only
 with the flag, as `services/ai-gateway/README.md` now shows.
+### RL-092 — 2026-09-16 — deployment configuration — Codex
+
+**Landed:** the post-deploy extension build now inlines `ApiUrl` and
+`GoogleClientId` from `AccessLensAuthoring`, alongside the existing relay and
+service endpoints. Before this correction, the downloadable extension had no
+authoring API or Google sign-in configuration even though the stack exposed both
+outputs, so the Upload slides panel correctly failed closed. The local Vite
+preview was separately configured from its ignored `.env.local`; no credential,
+student data, upload policy, or course-assistant activation changed here.
+`docs/DEPLOYMENT.md` now records the completed OIDC setup and requires these two
+outputs in a successful release summary.
+**Threads touched:** none.
+**Next agent needs to know:** deploy the workflow revision and install its newly
+published extension artifact before testing Upload slides. Google sign-in still
+depends on the Google Console origin and the deployed instructor allowlist; a
+failed sign-in is not permission to weaken either boundary.
+
+### RL-093 — 2026-09-16 — Part 3 + Part 4 — Claude (at Omar Rizwan's direction)
+
+**Landed:** the study chat guardrail's denied-topic definition is under Bedrock's
+200-character limit. Deploying `AccessLensLiveSession` from master failed on
+`StudyChatGuardrail` ("topic definitions exceeds the maximum allowed length") and
+rolled back to the relay-only stack, so the AI and study chat functions could not
+come back; the Deploy workflow would have failed the same way.
+**Threads touched:** T-47 still OPEN until a master Deploy run completes.
+**Next agent needs to know:** keep the definition at 200 characters or fewer and
+each example at 100 or fewer.
+### RL-094 — 2026-09-16 — deployment configuration — Codex
+
+**Landed:** the master deployment workflow reads `ApiUrl`, `GoogleClientId`, and
+`AssetBaseUrl` from the existing `AccessLensAuthoring` stack before deploying
+the other stacks. `AccessLensAuthoring` owns the OAuth client and hosted web
+assets, so its own script remains responsible for deployment; the generic CDK
+run creates only its required synth placeholders. The downloadable extension
+then falls back to these public authoring outputs when `/tmp/outputs.json` does
+not contain that separately managed stack. This resolves both the prior
+`CannotFindAsset .../dist-web` failure and the missing Upload slides
+configuration without inventing endpoints or weakening sign-in.
+**Threads touched:** none.
+**Next agent needs to know:** wait for a successful master deployment before
+asking an instructor to retest Upload slides. A successful build exposes the
+sign-in control; authorization still depends on the configured Google origin
+and instructor allowlist.
+
+### RL-095 — 2026-09-16 — deployment configuration — Codex
+
+**Landed:** the deploy workflow now invalidates CloudFront's stable extension,
+install-page, and demo-pack paths after publishing them. The master deployment
+artifact contained the authoring API and Google client configuration, but the
+public `accesslens-extension.zip` still served an older cache entry; a targeted
+invalidation was issued to restore the current installer immediately. Future
+deployments create that invalidation themselves, using the deploy role's
+existing `cloudfront:CreateInvalidation` permission.
+**Threads touched:** none.
+**Next agent needs to know:** verify the public ZIP's hash or its embedded
+authoring configuration after a deployment before telling an instructor to
+reload. The workflow artifact alone is not proof that CloudFront is current.
+
+### RL-096 — 2026-09-16 — deployment — Kunj Rathod
+
+**Landed:** The master Deploy run after #31 deployed every stack and then failed publishing: the new cache invalidation looked the distribution up with `cloudfront:ListDistributions`, which `AccessLensGitHubDeploy` does not allow. `AccessLensDistribution` now outputs `DistributionId` and the workflow invalidates by that id, so no role change is needed.
+**Threads touched:** none.
+**Next agent needs to know:** the deploy role allows `cloudfront:CreateInvalidation` only; anything that needs to find AWS resources in CI should read stack outputs rather than list the account.
+
+### RL-097 — 2026-09-16 — cross-cutting — Claude (live pairing with Anurup Kumar)
+
+**Landed:** local dev (`http://localhost:5173` in real Chrome, no unpacked extension) now works end to end against the deployed AWS stacks. Found three separate causes: (1) the `npx vite` process on 5173 had silently died, started outside any tracked config in a terminal nobody could see — added an `accesslens-dev` entry to `.claude/launch.json` so it's a tracked, log-visible process; (2) `.env.local` never had `VITE_ACCESSLENS_AI_URL`/`VITE_ACCESSLENS_CHAT_URL`/`VITE_ACCESSLENS_COURSE_MEDIA_ENDPOINT`/`VITE_ACCESSLENS_ORB_ENDPOINT` set even though those backends are deployed and CORS-open — pulled current values from `aws cloudformation describe-stacks` and added them; (3) `vite.config.ts`'s `/ai` proxy target was stale (still `5skua1vus7...` from the T-49 incident recovery, itself since superseded by `nxhrvn0odk...`), confirmed dead/unused but fixed anyway. Verified live against real AWS, not mocked: relay create/join/event-delivery in under 2s, Ask-this-class answering with a correct citation and the Bedrock guardrail correctly declining an off-topic question, a valid signed Transcribe grant, `make pack-check` clean (70/70), and — on the user's actual Chrome — a full screen-share → join-code → student-join → unmatched-on-Discord → recognized-slide-sync round trip. Also added `packages/access-packs/bio-cell-demo/deck-preview.html`, a static click/arrow-key slideshow over the five reviewed slide PNGs, so one shared tab can stand in for a real presentation deck during local rehearsal instead of a single static image.
+**Threads touched:** T-52 opened (local dev config has no redeploy-sync automation and this is the second time it's silently gone stale).
+**Next agent needs to know:** `npm run test` has one pre-existing unrelated failure, `services/ingest/src/ingest.test.ts` needing `soffice`/LibreOffice installed locally for PPTX conversion — not a regression, doesn't block the live-session demo. "AI screen analysis is not configured" in the instructor panel is expected/correct: per `docs/IMPLEMENTED_FEATURES.md`, no generic screen-analysis Lambda has ever been deployed on master; the offline pack matcher is the intended fallback. Full account in `memory/episodic/0076-local-dev-e2e-debugging.md`.
+
+### RL-098 — 2026-09-16 — deployment configuration — Claude (at Anurup Kumar's direction)
+
+**Landed:** the deploy workflow's "Rebuild the extension against the deployed endpoints" step (`.github/workflows/deploy.yml`) wires `AccessLensLiveSession`'s captions/recap/translate/course-media/orb outputs into the built extension's config, but never included `AiApiUrl` or `StudyChatUrl` — the two endpoints Ask-this-class and Study Chat need. The real installed/downloadable extension has therefore never had either feature configured, on any past deploy. Added the two missing lines (`VITE_ACCESSLENS_AI_URL=${find("AiApiUrl")}`, `VITE_ACCESSLENS_CHAT_URL=${find("StudyChatUrl")}`), matching the existing pattern exactly; YAML validated with `python3 -c "import yaml; yaml.safe_load(...)"`.
+**Threads touched:** none opened; relevant to T-40 (closed) in spirit but that thread was about the routes existing at all, not the extension build wiring them in.
+**Next agent needs to know:** committed and pushed as `00dea5f`, but **no deploy has actually completed with this change yet** as of this entry — a triggered run was intentionally cancelled mid-check at the requester's instruction, before `cdk deploy` started. First real deploy after this lands should confirm Ask-this-class and Study Chat actually appear in the downloaded extension.
+
+### RL-099 — 2026-09-17 — cross-cutting — Claude (live pairing with Anurup Kumar)
+
+**Landed:** every published pack other than the two bundled demo packs failed to load in local dev with "Failed to fetch" — found live while QA-ing the Upload-slides pipeline with a real 23-slide instructor deck. Root cause was self-inflicted earlier the same session: `.env.local`'s `VITE_ACCESSLENS_ASSET_BASE_URL` had been set to the absolute CloudFront URL (RL-097, to fix the unrelated AI-screen-analysis message), which makes `remotePack.ts`'s `publishedPackUrl()` build a cross-origin URL that bypasses `vite.config.ts`'s same-origin `/packs` proxy entirely — sending the browser straight to CloudFront, where its CORS response turned out to be inconsistent across edges. Fixed by clearing the variable back to empty (its own code comment already said to); verified with the app's exact code path before confirming live with the instructor's real Chrome, on both a real 23-slide class deck and a synthetic test deck. Strengthened `.env.example`'s comment on this variable so the lesson survives even though `.env.local` itself is gitignored.
+**Threads touched:** relates to T-52 (local dev config drift) but is a distinct failure mode — a value that is actively wrong for local dev, not merely stale.
+**Next agent needs to know:** this almost certainly never affected the real deployed extension — a packaged Chrome extension's `host_permissions` (already listing `https://*.cloudfront.net/*`) bypass CORS entirely for its own fetches, a privilege a plain `npx vite` browser tab does not have. Not independently verified against a real installed build. Full debugging trail, including the dead ends chased first (a suspected CDN propagation delay, a cancelled-then-irrelevant CloudFront invalidation, a device-emulation red herring, Dark Reader ruled out via Incognito), is in `memory/episodic/0077-published-pack-cors-local-dev.md`.
+### RL-100 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** the student AR entry point is now pack-driven in
+`apps/extension/src/ar/PackArView.tsx`. Recognized slides render their reviewed
+regions as synchronized spatial hotspots, using authored `arScene` labels when
+present and a deterministic reviewed-region fallback otherwise. Unmatched
+content stays explicitly unmatched.
+
+**Threads touched:** T-06 closed; no capture, transport, raw-media, or privacy
+contract changed.
+
+**Next agent needs to know:** real immersive WebXR still needs a compatible
+device smoke test.
+
+### RL-101 — 2026-09-17 — Part 3 + authoring surface — Codex
+
+**Landed:** localhost now has a dev-only local slide preview. Without an
+authoring API or Google client, `AuthoringPanel` accepts a PNG or JPEG, computes
+the same `dhash12` fingerprint used by capture, registers the object URL locally,
+and hands the shell a device-local one-slide Access Pack. It never sends the
+image to AWS or weakens production Google authorization.
+
+**Threads touched:** none; authenticated PPTX/PDF upload, review, and publish
+behavior is unchanged.
+
+**Next agent needs to know:** local preview accepts slide images, not PPTX/PDF
+parsing. Use an exported slide image for local matching and AR.
+
+### RL-102 — 2026-09-17 — Part 2 capture lifetime — Codex
+
+**Landed:** the extension side panel no longer starts browser capture directly.
+When it detects the side-panel context, it offers the persistent full-tab
+instructor view instead. This prevents choosing a slide tab from unloading the
+capture-owning React document and releasing the stream. The full tab keeps the
+existing explicit Start and browser-permission flow; its URL is marked with
+`surface=full`.
+
+**Threads touched:** T-34 / AL-001 physical capture matrix remains IN PROGRESS.
+
+**Next agent needs to know:** this is a lifecycle workaround, not physical
+Chrome evidence. Test the unpacked extension by opening the full tab first,
+then sharing the image or deck tab and confirming the session survives tab
+switches.
+
+### RL-103 — 2026-09-17 — Part 2 local recognition — Codex
+
+**Landed:** local image-pack fingerprints now use the same centred 16:9 crop as
+the live tab sampler. This removes browser/image-tab letterboxing as a source
+of false `source.unmatched` states while keeping the existing reviewed-pack
+matcher and thresholds unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for physical Chrome evidence.
+
+**Next agent needs to know:** reload the local slide pack after this code change,
+then start a fresh share; an already-created local pack retains its old
+fingerprint.
+
+### RL-104 — 2026-09-17 — Part 3 local student handoff — Codex
+
+**Landed:** localhost local preview packs now persist their pack JSON and image
+data URL in same-origin browser storage. A student tab can therefore restore
+the same local pack named by the session instead of fetching a nonexistent
+`/packs/local-*/1.json` resource. The published/authenticated pack path is
+unchanged.
+
+**Threads touched:** no contract or privacy thread; T-34 / AL-001 remains open
+for real-browser capture evidence.
+
+**Next agent needs to know:** stop the old session, reload the local slide once,
+then start a new session so both tabs pick up the persisted local pack.
+
+### RL-105 — 2026-09-17 — Part 3 local matching follow-up — Codex
+
+**Landed:** the student shell now uses a persisted local pack only when its
+pack ID/version matches the live session, and it no longer tries the remote
+`/packs` fetch for that local case. Local preview recognition also uses the
+reviewed capture tolerance (26 bits), while the same no-invention unmatched
+state remains in force.
+
+**Threads touched:** no new thread; T-34 / AL-001 remains open for physical
+Chrome evidence.
+
+**Next agent needs to know:** hard-refresh both tabs, load the image again,
+start a new instructor session, and join with its new code.
+
+### RL-106 — 2026-09-17 — Part 3 automatic spatial AR — Codex
+
+**Landed:** product direction was clarified to make spatial AR automatic for
+uploaded slides without an instructor approval step in this MVP. The renderer
+now places the slide image behind spatial region cards derived from each asset's
+geometry, and the existing semantic region events focus the card under the
+instructor cursor. Local uploaded images receive deterministic neutral grid
+areas so the path works without inventing subject-matter claims.
+
+**Threads touched:** this supersedes the current AR review-gate wording for
+this MVP path; the charter's no-invention and equivalent-access requirements
+remain active. T-34 / AL-001 remains open for physical capture evidence.
+
+**Next agent needs to know:** share a window or entire screen to include the
+cursor. A browser tab share can match the slide but cannot drive cursor focus.
+
+### RL-107 — 2026-09-17 — Part 3 layered spatial slide renderer — Codex
+
+**Landed:** the generic pack-driven AR renderer now presents each shared slide
+as a layered 3D board: the source image sits behind a framed stage, regions are
+raised translucent tiles, and each tile has a depth connector and spatial
+anchor. Drag, arrow-key rotation, reduced-motion behavior, synchronized region
+highlighting, and the equivalent semantic controls remain available. The
+renderer still does not require a camera or WebXR; immersive AR remains an
+optional enhancement.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence; no contract or privacy boundary changed.
+
+**Next agent needs to know:** test locally on the AR tab with the uploaded
+slide. The scene is intentionally subject-neutral: uploaded bounds determine
+placement, and the semantic text remains the source of instructional meaning.
+
+### RL-108 — 2026-09-17 — Part 3 local pack late-tab race — Codex
+
+**Landed:** student live-session matching now re-reads the latest same-origin
+local preview pack when a live event arrives. A student tab opened before the
+instructor uploads a slide therefore adopts the matching `local-*` pack instead
+of attempting a remote `/packs/local-*/1.json` fetch. A stale fetch error is
+hidden once the local pack matches.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence; published-pack fetching is unchanged.
+
+**Next agent needs to know:** refresh the student tab, join a newly started
+session, and confirm the incompatible/HTTP 502 message does not return.
+
+### RL-109 — 2026-09-17 — Part 3 circular spatial markers — Codex
+
+**Landed:** replaced the generic square region overlays with floating spherical
+markers, circular halos, and depth tethers. The visual treatment now follows
+the existing mitochondria/cell AR renderer: a movable 3D composition with
+rounded forms and active-region glow, while the uploaded slide remains the
+source-reference plane behind the markers.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence; no camera, WebXR, contract, or privacy behavior changed.
+
+**Next agent needs to know:** hard-refresh the student page after Vite reload,
+start a fresh local session, choose AR, and drag the circular scene to verify
+the depth and active-region highlight.
+
+### RL-110 — 2026-09-17 — Part 3 renderer regression rollback — Codex
+
+**Landed:** the experimental circular-marker renderer was rolled back after
+the local real-browser run stopped delivering a usable live asset to Focus,
+Read, and AR. The last working pack-driven renderer is restored while the
+local-pack/session fixes remain in place.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** verify the restored renderer first before making
+another visual AR change.
+
+### RL-111 — 2026-09-17 — Part 3 circular spatial markers — Codex
+
+**Landed:** changed only the working pack-driven AR renderer's visual layer.
+Region bounds now produce visible floating spheres, circular halos, and depth
+tethers over the shared slide. Capture, matching, Focus, Read, session
+transport, and the equivalent semantic controls are unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh the student page, start a fresh
+session, choose AR, and verify the circular markers rotate and highlight the
+current region.
+
+### RL-112 — 2026-09-17 — Part 3 independent spatial lesson model — Codex
+
+**Landed:** replaced the slide-background AR composition with an independent
+Three.js spatial lesson model: a translucent central core, orbiting region
+objects, visible halos, and depth tethers. Region bounds still determine the
+node set and live events still determine focus. The uploaded slide is no longer
+painted behind the 3D scene, and Focus/Read/capture behavior is unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh both localhost tabs, start a fresh
+session, choose AR, and verify the model rotates independently of the source
+slide while the active region glow follows instructor events.
+
+### RL-113 — 2026-09-17 — Part 3 standalone model rollback — Codex
+
+**Landed:** rolled back the standalone spatial-model rewrite after the local
+browser run stopped keeping the student experience usable. The last committed
+PackArView renderer is restored; session, matching, Focus, Read, and local-pack
+fixes remain unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh both tabs and verify the working
+baseline before attempting another AR visual redesign.
+
+### RL-114 — 2026-09-17 — Part 3 reviewed cell AR renderer — Codex
+
+**Landed:** the reviewed `bio-cell-demo` now selects the existing tested
+mitochondria-style `CellArView` for the student AR mode. Other packs continue
+using the pack-driven renderer. Capture, matching, Focus, Read, and session
+transport were not changed.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh the student tab, start a fresh cell
+lesson session, choose AR, and verify the rotatable cell model and semantic
+hotspot controls.
+
+### RL-115 — 2026-09-17 — Part 3 cell-slide-01 AR bridge — Codex
+
+**Landed:** the student AR selector now routes the reviewed `bio-cell-demo` and
+the local/uploaded `cell-slide-01` asset to the existing mitochondria-style
+`CellArView`. All other packs and slides retain `PackArView`; capture,
+matching, Focus, Read, and session transport are unchanged.
+
+**Threads touched:** T-34 / AL-001 remains open for real-browser capture
+evidence.
+
+**Next agent needs to know:** hard-refresh both localhost tabs, start a fresh
+session with `cell-slide-01`, choose AR, and verify the rotatable cell model.
+
+### RL-116 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** created a one-page PDF guide at
+`output/pdf/accesslens-one-pager.pdf`, based on the supplied hackathon one-pager
+instructions and the repository's current source-of-truth documents. It explains
+the live flow, why the extension-first design is the best fit for the MVP, the
+privacy and unmatched-content boundaries, the local demo steps, and the limits
+that must not be overclaimed. The visual layout follows the winner examples in
+`docs/One Pager.pdf`: dark presentation canvas, orange rule, tall white vertical
+document panel, and stacked colored callout cards.
+
+**Threads touched:** no product or contract thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** use the generated PDF for the pitch/demo handoff;
+rerun `python scripts/build_accesslens_one_pager.py` after content edits and
+visually inspect the single rendered page before sharing it.
+
+### RL-117 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** added a dedicated water-level AR renderer for local uploads whose
+title or filename identifies the water-level lesson. It shows a rotatable,
+graduated-cylinder scene with blood plasma, fluid between cells, and fluid inside
+cells as synchronized hotspots. It includes immersive-AR detection, keyboard and
+touch rotation, reset, and equivalent semantic controls. Cell, pack-driven, and
+unmatched routes remain unchanged.
+
+**Threads touched:** no contract or privacy thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** upload `docs/waterlevel.png` in the instructor local
+preview, use a title containing `water level`, start a fresh session, and choose
+AR in Student mode to verify the graduated-cylinder scene.
+
+### RL-118 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** removed the six generic `auto-area` regions from local image packs.
+Local uploads now use the original single `whole-slide` placeholder, so Focus,
+Read, and Reading spacing no longer expose generated spatial-area copy. The
+water-level AR scene remains available through its dedicated title/filename route
+and owns its three fluid hotspots independently.
+
+**Threads touched:** no contract or privacy thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** reload both localhost tabs and upload the water-level
+image again; an old local pack in browser storage may still show six regions until
+the new upload replaces it.
+
+### RL-119 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** the reviewed five-slide cell deck now selects distinct spatial
+compositions in AR: whole cell, nucleus and nucleolus, mitochondria and energy,
+protein factory, and storage/recycling. The hotspot list now covers the slide
+regions for membrane, cytoplasm, nucleus, nucleolus, mitochondrion, ribosome,
+rough ER, Golgi, lysosome, and vacuole. Focus, Read, and Reading spacing were not
+changed.
+
+**Threads touched:** no contract or privacy thread changed. T-34 / AL-001 remains
+open for physical Chrome capture evidence.
+
+**Next agent needs to know:** use the local reviewed deck preview and move through
+all five assets in AR; each asset title drives its distinct scene variant.
+
+### RL-120 — 2026-09-17 — Part 3 — Codex
+
+**Landed:** updated `cellScene.test.ts` from the stale three-hotspot expectation
+to the ten-hotspot map added for all reviewed cell-deck regions. Added the two
+AWS SDK dependencies missing from the root workspace manifest so the root
+TypeScript check can resolve the AI gateway imports.
+
+**Validation:** the focused cell-scene test passes; pack, memory, relay, and
+work-board checks pass; root and service typechecks resolve their dependencies.
+The full Windows test run still has unrelated environment-sensitive failures
+(`python3`, child-package Vitest config, Linux temp paths, generated line endings,
+and agent fixture paths).
+
+**Threads touched:** T-34 / AL-001 remains open for physical browser capture
+evidence.
+
+**Next agent needs to know:** start localhost and manually verify the five cell
+AR scene variants.
+
+### RL-121 — 2026-09-17 — Part 1 + Part 3 — Omar Rizwan
+
+**Landed:** a compact layout for the Chrome side panel and phones (under 640px),
+and a colour per role. The masthead becomes three short rows (brand with "Open in
+a full tab", a full-width Instructor/Student switch, the reading and theme
+switches); tab strips (instructor views, student surfaces, lesson modes) wrap
+into even rows via a 1px grid gap; the instructor's view panels lost the frame
+that had pushed content against and past their border. Colours are set on
+`<html data-role>`: the instructor keeps the neon yellow, the student view is
+orange `#e8834a` with dark ink (~6:1). Light fills take `--on-highlight` ink and
+warnings a fixed amber `--caution`, whatever the role. Kunj's second caption
+control is retitled "Captions in another language" so the two start buttons are
+not confused, and the orb content script no longer mounts on AccessLens's own
+page (`meta[name="accesslens-app"]`), where it covered End Session. Checked at
+320, 360, 400, 520 and 1180px in light, dark and dyslexia modes, in the built
+extension, and with the browser QA suite (24/24 against the deployed relay and
+study chat).
+**Threads touched:** none opened.
+**Next agent needs to know:** `dist/` was not rebuilt in this change. The
+slide-region outline and pointer stay yellow in both roles on purpose: they mark
+slide content, not interface chrome.
+
+### RL-122 — 2026-09-17 — deployment — Kunj Rathod
+
+**Landed:** `docs/install.html` (served as the CloudFront index) is now a landing page rather than a download page: hero with the shared-region moment, four measured numbers, how it works, a feature grid led by course materials, the audiences section, an AWS strip, install, and the unchanged limits section. Two decorative React islands from libraries.dev — `border-beam` and `thinking-orbs`, the latter already an extension dependency — are imported from esm.sh and mounted only when the reader has not asked for reduced motion; the page is complete without them.
+**Threads touched:** none.
+**Next agent needs to know:** the numbers on the page are the ones measured on 2026-09-17 (about 5 s speech-to-caption, about 60 s from upload to ready across five files). Checked in Chrome at 1440 and 390 px, light and dark: axe reports no violations, no horizontal scroll, and nothing mounts under prefers-reduced-motion.

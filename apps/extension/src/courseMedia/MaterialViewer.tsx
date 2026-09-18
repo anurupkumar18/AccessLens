@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { CourseMediaApi, ItemDetail } from './api';
+import { MaterialArView } from './MaterialArView';
 
 /**
  * How a student reads one piece of course material: every page and image has
@@ -14,6 +15,7 @@ export function MaterialViewer({ api, classCode, itemId, onBack }: {
 }): React.ReactElement {
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showAr, setShowAr] = useState(false);
   const heading = useRef<HTMLHeadingElement | null>(null);
 
   useEffect(() => {
@@ -39,6 +41,8 @@ export function MaterialViewer({ api, classCode, itemId, onBack }: {
       {manifest && (
         <>
           <h3 ref={heading} tabIndex={-1}>{manifest.fileName}</h3>
+          <button type="button" onClick={() => setShowAr(value => !value)} aria-expanded={showAr}>{showAr ? 'Hide spatial view' : 'Explore in AR'}</button>
+          {showAr && <MaterialArView manifest={manifest} />}
           {manifest.document && <DocumentView pages={manifest.document.pages} truncatedAt={manifest.document.truncatedAt} url={url} />}
           {manifest.image && (
             <figure className="material-image">

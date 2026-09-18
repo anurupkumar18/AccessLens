@@ -95,12 +95,35 @@ jobs:
             npm run build --prefix "$dir"
           done
 
+      # AccessLensAuthoring is deployed by infra/scripts/deploy.sh because it
+      # owns the Google OAuth client and hosted web assets. Its public outputs
+      # still configure the downloadable extension and the relay pack source.
+      - name: Read deployed authoring configuration
+        run: |
+          aws cloudformation describe-stacks --stack-name AccessLensAuthoring --output json > /tmp/authoring-stack.json
+          node -e '
+            const { appendFileSync, readFileSync } = require("node:fs");
+            const stack = JSON.parse(readFileSync("/tmp/authoring-stack.json", "utf8"));
+            const outputs = Object.fromEntries((stack.Stacks[0]?.Outputs ?? []).map(output => [output.OutputKey, output.OutputValue]));
+            const required = { VITE_ACCESSLENS_API_URL: "ApiUrl", VITE_GOOGLE_CLIENT_ID: "GoogleClientId", VITE_ACCESSLENS_ASSET_BASE_URL: "AssetBaseUrl" };
+            for (const [env, key] of Object.entries(required)) {
+              if (!outputs[key]) throw new Error(`AccessLensAuthoring is missing ${key}`);
+              appendFileSync(process.env.GITHUB_ENV, `${env}=${outputs[key]}\n`);
+            }
+            console.log("Loaded public authoring configuration from AccessLensAuthoring.");
+          '
+
       # From infra/, where cdk.json names the app; run from the repo root, the
-      # CDK CLI finds no app to deploy.
+      # CDK CLI finds no app to deploy. AccessLensAuthoring is not deployed here:
+      # it needs the Google OAuth client id and its web builds, so
+      # infra/scripts/deploy.sh deploys it. Synth still constructs it, so its
+      # asset folders only have to exist.
       - name: Deploy the stacks
         run: |
+          mkdir -p ../apps/viewer/dist ../dist-web
           npm ci
-          npx cdk deploy --all --require-approval never --outputs-file /tmp/outputs.json
+          npx cdk deploy AccessLensLiveSession AccessLensAccessibility AccessLensCourseMedia AccessLensDistribution AccessLensOrbExplain \
+            --require-approval never --outputs-file /tmp/outputs.json
         working-directory: infra
 
       - name: Rebuild the extension against the deployed endpoints
@@ -110,8 +133,12 @@ jobs:
             const find = (k) => Object.values(o).map(s => s[k]).find(Boolean) ?? "";
             const lines = [
               `VITE_ACCESSLENS_WS_URL=${find("WebSocketUrl") || find("LiveSessionUrl")}`,
+              `VITE_ACCESSLENS_API_URL=${find("ApiUrl") || process.env.VITE_ACCESSLENS_API_URL || ""}`,
+              `VITE_GOOGLE_CLIENT_ID=${find("GoogleClientId") || process.env.VITE_GOOGLE_CLIENT_ID || ""}`,
+              `VITE_ACCESSLENS_AI_URL=${find("AiApiUrl")}`,
+              `VITE_ACCESSLENS_CHAT_URL=${find("StudyChatUrl")}`,
               `VITE_ACCESSLENS_ORB_ENDPOINT=${find("OrbExplainUrl")}`,
-              `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl")}`,
+              `VITE_ACCESSLENS_ASSET_BASE_URL=${find("DistributionUrl") || process.env.VITE_ACCESSLENS_ASSET_BASE_URL || ""}`,
               `VITE_ACCESSLENS_CAPTIONS_ENDPOINT=${find("CaptionsUrl")}`,
               `VITE_ACCESSLENS_RECAP_ENDPOINT=${find("RecapUrl")}`,
               `VITE_ACCESSLENS_TRANSLATE_ENDPOINT=${find("TranslateSpeakUrl")}`,
@@ -140,6 +167,19 @@ jobs:
           aws s3 cp accesslens-extension.zip "s3://$BUCKET/accesslens-extension.zip"
           aws s3 sync packages/access-packs/bio-cell-demo "s3://$BUCKET/packs/bio-cell-demo" --delete
           aws s3 cp docs/install.html "s3://$BUCKET/index.html" || true
+
+          # Read from the stack output: the deploy role can create invalidations
+          # but is not allowed cloudfront:ListDistributions.
+          DISTRIBUTION_ID=$(node -e '
+            const o = require("/tmp/outputs.json");
+            console.log(Object.values(o).map(s => s.DistributionId).find(Boolean) ?? "");
+          ')
+          if [ -z "$DISTRIBUTION_ID" ]; then
+            echo "::error::AccessLensDistribution has no DistributionId output."
+            exit 1
+          fi
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths '/accesslens-extension.zip' '/index.html' '/app/*' '/packs/bio-cell-demo/*'
 
       - name: Summarise what is live
         run: |

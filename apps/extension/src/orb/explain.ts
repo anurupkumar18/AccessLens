@@ -55,7 +55,13 @@ export function sanitiseSvg(raw: string): string | undefined {
       // No event handlers, no xlink (can reference external documents), no
       // javascript: or data: URLs hiding in href/style.
       if (name.startsWith('on') || name.startsWith('xlink:') || name === 'href') continue;
-      if (/url\(|javascript:|data:/i.test(attribute.value)) continue;
+      if (/javascript:|data:/i.test(attribute.value)) continue;
+      // `url(#arrow)` points at a <marker> inside this same SVG, which is how
+      // every arrowhead in a flow diagram is drawn. Blanket-rejecting `url(`
+      // silently deleted every arrow from every diagram the model produced.
+      // Only same-document fragments are allowed through; anything reaching
+      // outward is still dropped.
+      if (/url\(/i.test(attribute.value) && !/^[^u]*url\(\s*['"]?#/i.test(attribute.value)) continue;
       copy.setAttribute(attribute.name, attribute.value);
     }
     for (const child of Array.from(node.children)) {
@@ -71,6 +77,19 @@ export function sanitiseSvg(raw: string): string | undefined {
   const safe = clean(root);
   if (!safe) return undefined;
   safe.setAttribute('role', 'img');
+
+  // Sizing. A model writes `viewBox` and omits width/height, which leaves the
+  // element unconstrained -- mounted in the panel it stretched to 1784x1070.
+  // Dropping any authored pixel size and deriving the ratio from the viewBox
+  // lets CSS scale it to the panel while keeping its proportions.
+  const viewBox = safe.getAttribute('viewBox');
+  safe.removeAttribute('width');
+  safe.removeAttribute('height');
+  if (viewBox) {
+    const [, , w, h] = viewBox.split(/[\s,]+/).map(Number);
+    if (w > 0 && h > 0) safe.setAttribute('style', `aspect-ratio:${w}/${h}`);
+  }
+  safe.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   return safe.outerHTML;
 }
 
