@@ -21,7 +21,7 @@
 
 <div align="center">
 
-<img src="assets/sponsors.png" alt="Event sponsors: AWS, The Attic AI, Nucleus, Waystar, and AI Utah." width="80%" />
+<img src="assets/sponsors.png" alt="Event sponsors: AWS, The Attic AI, Nucleus, Waystar, and AI Utah." width="100%" />
 
 </div>
 
