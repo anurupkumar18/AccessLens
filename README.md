@@ -4,6 +4,8 @@
 
 <br /><br />
 
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original-wordmark.svg" alt="Amazon Web Services" height="70" />
+
 [![1st Place](https://img.shields.io/badge/1st_Place-Minds_%26_Machines_2026-F2FB5B?style=for-the-badge&labelColor=16160e)](https://rai.utah.edu/events/hackathon/)
 [![University of Utah](https://img.shields.io/badge/One--U_Responsible_AI-University_of_Utah-16160e?style=for-the-badge)](https://rai.utah.edu/)
 [![Live on AWS](https://img.shields.io/badge/Live_on-AWS-232F3E?style=for-the-badge&logo=amazonaws&logoColor=FF9900)](#accesslens-on-aws)
@@ -19,14 +21,6 @@
 An instructor presents a slide, diagram, video, website, or simulation in **one form**. Students who cannot see, hear, parse, translate, or sustain attention on that form lose the lesson as the class moves on.
 
 AccessLens is a browser extension that keeps every student in sync with the instructor's live screen and renders the same lesson in a form each student can access.
-
-<div align="center">
-
-<img src="assets/screenshot-instructor.png" alt="AccessLens instructor console: a reviewed Cell Structure pack loaded, a Start button to share a tab or window, and a three-step how-it-works panel." width="88%" />
-
-<sub>The instructor console. Load a reviewed pack, share a tab or window, read the join code to students.</sub>
-
-</div>
 
 ---
 
@@ -83,8 +77,6 @@ Six CDK stacks, one account, `us-east-1`. Every model call and every upload goes
 | **Deploy** | GitHub OIDC | GitHub Actions to CloudFormation/CDK, CodeBuild builds the worker image to ECR |
 
 <div align="center">
-
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original-wordmark.svg" alt="Amazon Web Services" height="70" />
 
 ![Amazon Bedrock](https://img.shields.io/badge/Amazon_Bedrock-232F3E?style=flat-square&logo=amazonaws&logoColor=FF9900)
 ![Amazon Transcribe](https://img.shields.io/badge/Amazon_Transcribe-232F3E?style=flat-square&logo=amazonaws&logoColor=FF9900)
