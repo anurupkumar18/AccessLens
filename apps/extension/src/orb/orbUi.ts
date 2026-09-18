@@ -68,7 +68,17 @@ h2 { margin: 0 0 2px; font-size: 1rem; }
   border: 1px solid #e2e7ef; border-radius: 9px; padding: 12px;
   background: #fafbfd; font-size: .92rem; white-space: pre-wrap;
 }
-.result svg { max-width: 100%; height: auto; display: block; margin-top: 10px; }
+/* The model writes diagram colours against an assumed white page: dark title
+   text, white labels inside coloured boxes. Rendered on the dark panel that
+   is exactly backwards -- the dark text disappears, which is the "text and
+   background both white" report. The figure gets its own guaranteed light
+   canvas in both themes so the colours it chose always land, with a border so
+   it still reads as a panel element rather than a hole. */
+.result figure.svg-figure {
+  margin: 10px 0 0; padding: 8px; background: #ffffff;
+  border: 1px solid #d7dce5; border-radius: 8px; line-height: 0;
+}
+.result figure.svg-figure svg { max-width: 100%; height: auto; width: 100%; display: block; }
 .status { font-size: .82rem; opacity: .8; margin: 8px 0 0; }
 .close {
   position: absolute; top: 10px; right: 12px; background: none; border: none;
@@ -227,7 +237,8 @@ export function mountOrb(handlers: OrbHandlers, speechAvailable: boolean): OrbVi
       body.textContent = text;
       result.append(banner, body);
       if (svg) {
-        const figure = document.createElement('div');
+        const figure = document.createElement('figure');
+        figure.className = 'svg-figure';
         // Already structurally sanitised in explain.ts.
         figure.innerHTML = svg;
         result.appendChild(figure);
