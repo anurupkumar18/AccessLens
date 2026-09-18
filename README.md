@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="AccessLens — 1st Place, Minds & Machines: AI in Education Hackathon 2026. A real-time lecture companion by Team Mind-Stone." width="100%" />
+<img src="assets/banner.gif" alt="AccessLens — 1st Place, Minds & Machines: AI in Education Hackathon 2026. A real-time lecture companion by Team Mind-Stone." width="100%" />
 
 <br /><br />
 
